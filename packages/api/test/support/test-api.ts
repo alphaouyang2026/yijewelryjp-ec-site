@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto';
+import { Hono } from 'hono';
 import { hc } from 'hono/client';
+import { setCookie } from 'hono/cookie';
 import { CookieJar } from 'tough-cookie';
 import { afterAll, beforeAll, beforeEach } from 'vitest';
-import { createApp, type AppType } from '../../src/app';
+import { createApp, type AppDeps } from '../../src/app';
 import { createTable, deleteTable, localDynamoClient } from '../../src/db';
 import { createTestClock } from './test-clock';
 
@@ -13,14 +15,32 @@ const ORIGIN = 'https://shop.test';
 const DEFAULT_NOW = new Date('2026-01-01T00:00:00+09:00');
 
 /**
+ * Routes that exist only in tests, under /api/_test, so tests can check the
+ * test client itself. POST sets a cookie; GET answers with the Cookie header
+ * the request carried.
+ */
+const testOnlyRoutes = new Hono()
+  .post('/cookie', (c) => {
+    setCookie(c, 'probe', 'set-by-api');
+    return c.body(null, 204);
+  })
+  .get('/cookie', (c) => c.json({ cookie: c.req.header('cookie') ?? null }, 200));
+
+function createTestApp(deps: AppDeps) {
+  return createApp(deps).route('/_test', testOnlyRoutes);
+}
+
+type TestApp = ReturnType<typeof createTestApp>;
+
+/**
  * Builds the API with test adapters for the enclosing test file (or describe
  * block): a fresh DynamoDB Local table, created before its tests and deleted
- * after, and a clock the tests control.
+ * after, and a clock the tests control. The test-only routes are mounted too.
  */
 export function useTestApi({ withTable = true }: { withTable?: boolean } = {}) {
   const db = { client: localDynamoClient(), tableName: `test-${randomUUID()}` };
   const clock = createTestClock(DEFAULT_NOW);
-  const app = createApp({ db, clock });
+  const app = createTestApp({ db, clock });
 
   beforeAll(async () => {
     if (withTable) await createTable(db);
@@ -39,12 +59,12 @@ export function useTestApi({ withTable = true }: { withTable?: boolean } = {}) {
     clock,
     /** A new client with its own cookie jar, like a fresh browser. */
     client() {
-      return hc<AppType>(ORIGIN, { fetch: fetchWithCookies(app, new CookieJar()) });
+      return hc<TestApp>(ORIGIN, { fetch: fetchWithCookies(app, new CookieJar()) });
     },
   };
 }
 
-function fetchWithCookies(app: AppType, jar: CookieJar): typeof fetch {
+function fetchWithCookies(app: TestApp, jar: CookieJar): typeof fetch {
   return async (input, init) => {
     const request = new Request(input, init);
     const cookie = await jar.getCookieString(request.url);
