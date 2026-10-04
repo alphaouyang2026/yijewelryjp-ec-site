@@ -1,0 +1,9 @@
+.header {
+  width: var(--logo-header);
+  height: var(--logo-header);
+}
+
+.footer {
+  width: var(--logo-footer);
+  height: var(--logo-footer);
+}

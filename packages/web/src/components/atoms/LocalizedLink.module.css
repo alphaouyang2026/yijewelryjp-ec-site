@@ -1,0 +1,39 @@
+/*
+ * Every variant: a link on a dark ground, linen with brand gold on hover and
+ * on the current page's link, at least a tap target tall.
+ */
+.link {
+  display: flex;
+  align-items: center;
+  min-height: var(--tap-target);
+  color: var(--color-linen);
+  text-decoration: none;
+}
+
+.link:hover,
+.link[aria-current='page'] {
+  color: var(--color-brand-gold);
+}
+
+/* Navigation text, centred in a tap target. */
+.nav {
+  composes: link;
+  justify-content: center;
+  min-width: var(--tap-target);
+  font-size: var(--text-nav);
+  letter-spacing: var(--tracking-nav);
+}
+
+/* Small text, such as footer links. */
+.caption {
+  composes: link;
+  font-size: var(--text-caption);
+  letter-spacing: var(--tracking-caption);
+}
+
+/* An icon, centred in a tap target. */
+.icon {
+  composes: link;
+  justify-content: center;
+  min-width: var(--tap-target);
+}

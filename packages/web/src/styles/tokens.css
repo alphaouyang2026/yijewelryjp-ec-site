@@ -1,0 +1,95 @@
+/*
+ * Design tokens: the only place colors, fonts, type settings, spacing and
+ * layout sizes are defined. Source: spec #1 "视觉设计". Components use these
+ * through CSS Modules and never hard-code such values.
+ */
+:root {
+  /* Colors. Dark areas: onyx ground with gold accents. Light areas: porcelain ground. */
+  --color-onyx: #111111; /* dark-area ground, light-area primary button, body text */
+  --color-brand-gold: #d4be72; /* from the logo; on dark grounds only */
+  --color-deep-gold: #7a6630; /* gold text and icons on light grounds */
+  --color-charcoal: #1f1e1b; /* photo ground in dark areas */
+  --color-bronze-line: #4a3f28; /* dividers on dark grounds */
+  --color-smoke: #b8b2a8; /* secondary text on dark grounds */
+  --color-porcelain: #fafaf9; /* light-area ground */
+  --color-mist: #f1efec; /* light-area block ground */
+  --color-linen: #e9e5df; /* photo ground in light areas, disabled buttons */
+  --color-hairline: #dcd8d2; /* dividers and borders on light grounds */
+  --color-graphite: #5c5a57; /* secondary text on light grounds */
+
+  /*
+   * Font families, by role. Headings and body text follow <html lang> (see the
+   * :lang() rules below); English labels and prices use --font-latin in every locale.
+   */
+  --font-latin: 'Cormorant Garamond', 'Times New Roman', serif; /* English labels, prices */
+  --font-heading: 'Shippori Mincho', 'Hiragino Mincho ProN', serif; /* headings, product names */
+  --font-body: 'Zen Kaku Gothic New', 'Hiragino Sans', sans-serif; /* body, buttons, navigation, forms */
+  --font-weight-medium: 500; /* English labels, headings */
+
+  /* Type scale */
+  --text-display: clamp(30px, 3.4vw, 50px);
+  --text-section-title: 30px;
+  --text-product-name: 15px;
+  --text-body: 14px;
+  --text-nav: 13px;
+  --text-caption: 12px;
+  --text-caption-small: 11px;
+  --text-label: 14px;
+  --text-price: 20px;
+  --text-price-detail: 28px;
+  --text-tax-note: 11px;
+  --line-height-body: 2;
+  --line-height-tight: 1.5; /* headings, one-line bars */
+  --tracking-body: 0.06em;
+  --tracking-caption: 0.08em; /* small text: footer links, tagline, fine print */
+  --tracking-heading: 0.12em; /* Japanese headings */
+  --tracking-nav: 0.16em; /* navigation, announcement bar */
+  --tracking-label: 0.34em; /* English labels */
+
+  /* Spacing, on an 8px base: --space-N is N × 8px */
+  --space-1: 8px;
+  --space-2: 16px;
+  --space-3: 24px;
+  --space-4: 32px;
+  --space-5: 40px;
+  --space-6: 48px;
+  --space-7: 56px;
+  --space-9: 72px;
+  --space-15: 120px;
+
+  /* Layout */
+  --content-max-width: 1200px;
+  --gutter: var(--space-3);
+  --section-spacing: var(--space-15);
+  --tap-target: 44px;
+  --nav-gap: clamp(var(--space-2), 3vw, var(--space-5)); /* between navigation links */
+  --button-height: 52px;
+  --line-width: 1px;
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+  --icon-size: 22px;
+  --icon-stroke-width: 1.2; /* in the icons' 24-unit grid */
+  --logo-header: 88px;
+  --logo-footer: 96px;
+  --footer-brand-width: 260px; /* preferred widths; the footer columns wrap below them */
+  --footer-column-width: 220px;
+}
+
+/* Simplified Chinese: Japanese fonts lack many Simplified glyphs. src/i18n/fonts.ts loads these on zh pages only. */
+:root:lang(zh) {
+  --font-heading: 'Noto Serif SC', 'Songti SC', serif;
+  --font-body: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+/* English: Cormorant Garamond headings; the body keeps Zen Kaku Gothic New's Latin glyphs. */
+:root:lang(en) {
+  --font-heading: var(--font-latin);
+}
+
+@media (max-width: 767px) {
+  :root {
+    --gutter: var(--space-2);
+    --section-spacing: var(--space-9);
+    --logo-header: 72px;
+  }
+}

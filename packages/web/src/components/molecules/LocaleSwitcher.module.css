@@ -1,0 +1,14 @@
+/* No gaps: on a 390px phone the three names just fit beside the logo; narrower screens wrap them. */
+.list {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Each name centred in at least a tap target's width. */
+.link {
+  justify-content: center;
+  min-width: var(--tap-target);
+}

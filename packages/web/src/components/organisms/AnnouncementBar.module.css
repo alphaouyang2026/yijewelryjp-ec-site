@@ -1,0 +1,10 @@
+.bar {
+  padding: var(--space-1) var(--gutter);
+  background: var(--color-onyx);
+  border-bottom: var(--line-width) solid var(--color-bronze-line);
+  color: var(--color-brand-gold);
+  font-size: var(--text-caption);
+  line-height: var(--line-height-tight);
+  letter-spacing: var(--tracking-nav);
+  text-align: center;
+}

@@ -1,0 +1,16 @@
+/* English label (spec #1): 14px, 0.34em tracking, all caps. */
+.label {
+  font-family: var(--font-latin);
+  font-size: var(--text-label);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.dark {
+  color: var(--color-brand-gold);
+}
+
+.light {
+  color: var(--color-deep-gold);
+}

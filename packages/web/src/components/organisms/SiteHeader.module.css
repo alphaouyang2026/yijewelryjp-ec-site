@@ -1,0 +1,35 @@
+.header {
+  background: var(--color-onyx);
+  border-bottom: var(--line-width) solid var(--color-bronze-line);
+}
+
+/* Locale switcher on the left, logo centred, cart on the right; equal side columns keep the logo centred. */
+.top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  padding: var(--space-3) var(--gutter) 0;
+}
+
+.localeSwitcher {
+  grid-column: 1;
+  justify-self: start;
+}
+
+.logoLink {
+  grid-column: 2;
+  display: block;
+}
+
+.cart {
+  grid-column: 3;
+  justify-self: end;
+}
+
+.nav {
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  padding: var(--space-2) var(--gutter) var(--space-1);
+}
