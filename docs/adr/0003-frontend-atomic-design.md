@@ -8,7 +8,7 @@
 - 站内链接一律用 `LocalizedLink` 原子，保证链接带着当前语言。
 - 路径、API 客户端、品牌常量、多语言资源等非界面代码放在 `components` 之外。
 
-这些规则用 ESLint 检查：每层的导入限制、原子里的固定 JSX 文字，以及组件直接使用 React Router 的 `Link`。测试仍只在页面层（React Testing Library 加 MSW），不给单个组件写测试或快照，组件可以随意重组。
+这些规则用 ESLint 检查：每层的导入限制、原子里的固定文字和翻译资源，以及组件直接使用 React Router 的 `Link`。测试仍只在页面层（React Testing Library 加 MSW），不给单个组件写测试或快照，组件可以随意重组。
 
 ## Considered Options
 

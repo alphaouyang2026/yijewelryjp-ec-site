@@ -59,7 +59,7 @@ packages/web/src/
 
 - 依赖只能向下：atoms ← molecules ← organisms ← templates ← pages。
 - 只有 pages 调用 API，而且通过 `api.ts` 建立的客户端；其他代码只通过 props 拿数据（可以使用 API 的类型），不导入 `hono/client`，也不手写 `/api` 的 URL。
-- 原子不包含固定文字；分子和有机体用 `useMessages()` 取界面文字。
+- 原子不包含固定文字，也不用 `useMessages()`，文字从 props 传入；分子和有机体用 `useMessages()` 取界面文字。
 - 站内链接一律用 `LocalizedLink`，不直接用 React Router 的 `Link`。
 - 非界面代码（路径、API 客户端、品牌常量、多语言）放在 `components` 之外。
 

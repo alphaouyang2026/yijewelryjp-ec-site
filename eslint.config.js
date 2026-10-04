@@ -169,10 +169,24 @@ function webImportRestrictions({ callsApi = false, paths = [], patterns = [] } =
   ];
 }
 
-/** What a level may not import: the levels above it. */
+const NO_FIXED_TEXT = 'Atoms contain no fixed text: take it from props.';
+
+/** What a level may not import: the levels above it, and for atoms the translation resources. */
 function atomicLevelPatterns(level) {
   const higher = ATOMIC_LEVELS.slice(ATOMIC_LEVELS.indexOf(level) + 1);
-  return higher.length > 0 ? [forbid(segment(...higher), `Atomic Design: ${level} use only the levels below them.`)] : [];
+  const patterns = [];
+  if (higher.length > 0) {
+    patterns.push(forbid(segment(...higher), `Atomic Design: ${level} use only the levels below them.`));
+  }
+  if (level === 'atoms') {
+    patterns.push(
+      forbid(
+        '(^|/)i18n/(useMessages|messages(/.*)?)$',
+        'Atoms contain no fixed text, not even from the translation resources: take it from props.',
+      ),
+    );
+  }
+  return patterns;
 }
 
 /** Router links would drop the visitor's locale; the LocalizedLink atom keeps it. */
@@ -221,18 +235,26 @@ const atomicLevelConfigs = [
   },
 ];
 
-const NO_FIXED_TEXT = 'Atoms contain no fixed text: take it from props.';
+const TEXT_ATTRIBUTE = 'JSXAttribute[name.name=/^(alt|title|aria-label|placeholder)$/]';
+
+/** Strings a JSX expression container shows: the expression itself, or a branch of a conditional or logical in it. */
+const shownStrings = (container) => [
+  `${container} > Literal[value=/\\S/]`,
+  `${container} > TemplateLiteral > TemplateElement[value.raw=/\\S/]`,
+  `${container} :matches(ConditionalExpression, LogicalExpression) > Literal[value=/\\S/]`,
+  `${container} :matches(ConditionalExpression, LogicalExpression) > TemplateLiteral > TemplateElement[value.raw=/\\S/]`,
+];
+
+const ATOM_TEXT_SYNTAX = [
+  'JSXText[value=/\\S/]',
+  `${TEXT_ATTRIBUTE} > Literal`,
+  ...shownStrings(':matches(JSXElement, JSXFragment) > JSXExpressionContainer'),
+  ...shownStrings(`${TEXT_ATTRIBUTE} > JSXExpressionContainer`),
+].map((selector) => ({ selector, message: NO_FIXED_TEXT }));
 
 const atomTextConfig = {
   files: ['packages/web/src/components/atoms/**/*.tsx'],
-  rules: {
-    'no-restricted-syntax': [
-      'error',
-      ...API_URL_SYNTAX,
-      { selector: 'JSXText[value=/\\S/]', message: NO_FIXED_TEXT },
-      { selector: 'JSXAttribute[name.name=/^(alt|title|aria-label|placeholder)$/] > Literal', message: NO_FIXED_TEXT },
-    ],
-  },
+  rules: { 'no-restricted-syntax': ['error', ...API_URL_SYNTAX, ...ATOM_TEXT_SYNTAX] },
 };
 
 export default defineConfig([
