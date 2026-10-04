@@ -15,7 +15,7 @@ import type { Clock } from './shared-kernel/clock';
 export type AppDeps = {
   categories: CategoryRepository;
   products: ProductRepository;
-  database: DatabaseProbe;
+  databaseProbe: DatabaseProbe;
   clock: Clock;
 };
 

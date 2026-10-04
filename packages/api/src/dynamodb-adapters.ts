@@ -12,6 +12,6 @@ export function dynamoDbAdapters(db: Database): Omit<AppDeps, 'clock'> {
   return {
     categories: dynamoDbCategoryRepository(db),
     products: dynamoDbProductRepository(db),
-    database: dynamoDbTableProbe(db),
+    databaseProbe: dynamoDbTableProbe(db),
   };
 }
