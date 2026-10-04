@@ -13,8 +13,6 @@ const ORIGIN = 'https://shop.test';
 // Every test starts at this instant unless it sets the clock itself.
 const DEFAULT_NOW = new Date('2026-01-01T00:00:00+09:00');
 
-type App = ReturnType<typeof createApp>;
-
 /**
  * Builds the API with test adapters for the enclosing test file (or describe
  * block): a fresh DynamoDB Local table, created before its tests and deleted
@@ -47,7 +45,7 @@ export function useTestApi({ createTable = true }: { createTable?: boolean } = {
   };
 }
 
-function fetchWithCookies(app: App, jar: CookieJar): typeof fetch {
+function fetchWithCookies(app: AppType, jar: CookieJar): typeof fetch {
   return async (input, init) => {
     const request = new Request(input, init);
     const cookie = await jar.getCookieString(request.url);
