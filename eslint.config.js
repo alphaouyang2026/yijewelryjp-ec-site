@@ -30,6 +30,10 @@ const COMPOSITION_ROOT = forbid(
   '^(\\.\\./)+(app|dynamodb-adapters|local|lambda|index)$',
   'Only the entry points assemble the API; layers never import the composition root.',
 );
+const DYNAMODB_LOCAL = forbid(
+  '(^|/)dynamodb-local$',
+  'DynamoDB Local is for local development and tests only; production code never loads it.',
+);
 
 const apiLayerRules = {
   domain: [
@@ -73,13 +77,19 @@ const apiLayerConfigs = API_MODULES.flatMap((module) =>
     rules: {
       'no-restricted-imports': [
         'error',
-        { patterns: [...rules, ...otherModuleRules(module, layer), COMPOSITION_ROOT] },
+        { patterns: [...rules, ...otherModuleRules(module, layer), COMPOSITION_ROOT, DYNAMODB_LOCAL] },
       ],
     },
   })),
 );
 
 const apiSharedConfigs = [
+  {
+    // The composition root and the Lambda entry point; local.ts may use DynamoDB Local.
+    files: ['packages/api/src/*.ts'],
+    ignores: ['packages/api/src/local.ts'],
+    rules: { 'no-restricted-imports': ['error', { patterns: [DYNAMODB_LOCAL] }] },
+  },
   {
     files: ['packages/api/src/shared-kernel/**/*.ts'],
     rules: {
@@ -90,6 +100,7 @@ const apiSharedConfigs = [
             forbid(segment(...API_MODULES, 'platform'), 'The shared kernel depends on nothing else in the API.'),
             forbid(FRAMEWORKS, 'The shared kernel uses no framework, validation library or AWS SDK.'),
             COMPOSITION_ROOT,
+            DYNAMODB_LOCAL,
           ],
         },
       ],
@@ -104,6 +115,7 @@ const apiSharedConfigs = [
           patterns: [
             forbid(segment(...API_MODULES), 'Technical building blocks know nothing of the contexts.'),
             COMPOSITION_ROOT,
+            DYNAMODB_LOCAL,
           ],
         },
       ],

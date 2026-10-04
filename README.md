@@ -21,7 +21,7 @@ packages/api/src/
 ├── store/            店铺     │   domain/ application/ infrastructure/ interface/
 ├── identity/         店主身份 ┘
 ├── operations/       健康检查（不是上下文，按同样的方式分层）
-├── platform/         技术部件：DynamoDB 单表、locale 查询参数的校验
+├── platform/         技术部件：DynamoDB 单表、locale 查询参数的校验；dynamodb-local.ts 只供本地开发和测试使用
 ├── app.ts            createApp：把注入的适配器交给各用例，挂上各模块的路由
 ├── dynamodb-adapters.ts  DynamoDB 上的仓储和表探测
 ├── local.ts          本地入口（Node.js + DynamoDB Local）

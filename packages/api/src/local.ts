@@ -4,7 +4,8 @@ import { Hono } from 'hono';
 import { logger } from 'hono/logger';
 import { createApp } from './app';
 import { dynamoDbAdapters } from './dynamodb-adapters';
-import { createTable, localDynamoClient, waitForDynamoDbLocal, type Database } from './platform/dynamodb';
+import type { Database } from './platform/dynamodb';
+import { createTable, localDynamoClient, waitForDynamoDbLocal } from './platform/dynamodb-local';
 import { systemClock } from './shared-kernel/clock';
 
 // packages/web/vite.config.ts proxies /api to this port.

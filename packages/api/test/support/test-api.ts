@@ -6,7 +6,7 @@ import { CookieJar } from 'tough-cookie';
 import { afterAll, beforeAll, beforeEach } from 'vitest';
 import { createApp, type AppDeps } from '../../src/app';
 import { dynamoDbAdapters } from '../../src/dynamodb-adapters';
-import { createTable, deleteTable, localDynamoClient } from '../../src/platform/dynamodb';
+import { createTable, deleteTable, localDynamoClient } from '../../src/platform/dynamodb-local';
 import { createTestClock } from './test-clock';
 
 // Requests never leave the process; the origin only gives cookies a domain to live on.
