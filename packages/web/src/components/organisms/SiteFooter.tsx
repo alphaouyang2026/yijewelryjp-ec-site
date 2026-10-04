@@ -1,51 +1,54 @@
 import type { Category } from '../../api';
 import { BRAND_NAME } from '../../brand';
+import { useMessages } from '../../i18n/useMessages';
 import { paths } from '../../paths';
 import { Label } from '../atoms/Label';
 import { Logo } from '../atoms/Logo';
-import { NavLinkList, type NavLinkItem } from '../molecules/NavLinkList';
-import { categoryLinks } from './categoryLinks';
+import { NavLinkList } from '../molecules/NavLinkList';
 import styles from './SiteFooter.module.css';
-
-const guideLinks: NavLinkItem[] = [
-  { to: paths.shippingReturns, label: '配送・返品について' },
-  { to: paths.tokushoho, label: '特定商取引法に基づく表記' },
-  { to: paths.privacy, label: 'プライバシーポリシー' },
-  { to: paths.terms, label: '利用規約' },
-];
+import { useCategoryLinks } from './useCategoryLinks';
 
 export function SiteFooter({ categories }: { categories: Category[] }) {
+  const text = useMessages().footer;
+  const categoryLinks = useCategoryLinks(categories);
+  const guideLinks = [
+    { to: paths.shippingReturns, label: text.shippingReturns },
+    { to: paths.tokushoho, label: text.tokushoho },
+    { to: paths.privacy, label: text.privacy },
+    { to: paths.terms, label: text.terms },
+  ];
+
   return (
     <footer className={styles.footer}>
       <div className={styles.columns}>
         <div className={styles.brand}>
           <Logo alt={BRAND_NAME} size="footer" />
-          <p className={styles.tagline}>[ブランドの一言紹介]</p>
+          <p className={styles.tagline}>{text.tagline}</p>
         </div>
-        <nav aria-label="ショッピングガイド" className={styles.column}>
+        <nav aria-label={text.guideNav} className={styles.column}>
           <Label ground="dark" className={styles.columnTitle}>
-            GUIDE
+            {text.guideLabel}
           </Label>
           <NavLinkList links={guideLinks} variant="footer" />
         </nav>
-        <nav aria-label="カテゴリー（フッター）" className={styles.column}>
+        <nav aria-label={text.categoriesNav} className={styles.column}>
           <Label ground="dark" className={styles.columnTitle}>
-            CATEGORY
+            {text.categoriesLabel}
           </Label>
-          <NavLinkList links={categoryLinks(categories)} variant="footer" />
+          <NavLinkList links={categoryLinks} variant="footer" />
         </nav>
         <div className={styles.column}>
           <Label ground="dark" className={styles.columnTitle}>
-            CONTACT
+            {text.contactLabel}
           </Label>
           {/* The contact address comes from the store settings once they exist. */}
-          <p className={styles.contact}>[メールアドレス]</p>
+          <p className={styles.contact}>{text.contactEmail}</p>
         </div>
       </div>
       <div className={styles.bottomWrap}>
         <div className={styles.bottom}>
           <span>© {BRAND_NAME}</span>
-          <span>表示価格はすべて税込です</span>
+          <span>{text.pricesIncludeTax}</span>
         </div>
       </div>
     </footer>
