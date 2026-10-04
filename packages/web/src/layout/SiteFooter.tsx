@@ -1,11 +1,11 @@
-import { Link } from 'react-router';
 import type { Category } from '../api';
 import { BRAND_NAME, logoUrl } from '../brand';
 import { paths } from '../paths';
 import { categoryLinks } from './categoryLinks';
+import { NavLinks, type NavLinkItem } from './NavLinks';
 import styles from './SiteFooter.module.css';
 
-const guideLinks = [
+const guideLinks: NavLinkItem[] = [
   { to: paths.shippingReturns, label: '配送・返品について' },
   { to: paths.tokushoho, label: '特定商取引法に基づく表記' },
   { to: paths.privacy, label: 'プライバシーポリシー' },
@@ -22,19 +22,11 @@ export function SiteFooter({ categories }: { categories: Category[] }) {
         </div>
         <nav aria-label="ショッピングガイド" className={styles.column}>
           <p className={styles.columnTitle}>GUIDE</p>
-          {guideLinks.map((link) => (
-            <Link key={link.to} to={link.to} className={styles.link}>
-              {link.label}
-            </Link>
-          ))}
+          <NavLinks links={guideLinks} className={styles.link} />
         </nav>
         <nav aria-label="カテゴリー（フッター）" className={styles.column}>
           <p className={styles.columnTitle}>CATEGORY</p>
-          {categoryLinks(categories).map((link) => (
-            <Link key={link.to} to={link.to} className={styles.link}>
-              {link.label}
-            </Link>
-          ))}
+          <NavLinks links={categoryLinks(categories)} className={styles.link} />
         </nav>
         <div className={styles.column}>
           <p className={styles.columnTitle}>CONTACT</p>

@@ -3,6 +3,7 @@ import type { Category } from '../api';
 import { BRAND_NAME, logoUrl } from '../brand';
 import { paths } from '../paths';
 import { categoryLinks } from './categoryLinks';
+import { NavLinks } from './NavLinks';
 import styles from './SiteHeader.module.css';
 
 export function SiteHeader({ categories }: { categories: Category[] }) {
@@ -17,11 +18,7 @@ export function SiteHeader({ categories }: { categories: Category[] }) {
         </Link>
       </div>
       <nav aria-label="カテゴリー" className={styles.nav}>
-        {categoryLinks(categories).map((link) => (
-          <Link key={link.to} to={link.to} className={styles.navLink}>
-            {link.label}
-          </Link>
-        ))}
+        <NavLinks links={categoryLinks(categories)} className={styles.navLink} />
       </nav>
     </header>
   );
