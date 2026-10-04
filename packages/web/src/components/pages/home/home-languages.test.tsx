@@ -99,6 +99,21 @@ test('links on a /zh/ page stay in Chinese', async () => {
   ]);
 });
 
+test('the home page asks the API for its data in the page’s language', async () => {
+  server.use(
+    mockApi.homeByLocale({
+      ja: { ...emptyHomeData, categories: [{ slug: 'ring', name: 'リング' }] },
+      zh: { ...emptyHomeData, categories: [{ slug: 'ring', name: '戒指' }] },
+      en: { ...emptyHomeData, categories: [{ slug: 'ring', name: 'Rings' }] },
+    }),
+  );
+
+  renderRoute('/en/');
+
+  const categories = await screen.findByRole('navigation', { name: 'Categories' });
+  expect(within(categories).getAllByRole('link').map((link) => link.textContent)).toEqual(['New Arrivals', 'Rings']);
+});
+
 function hrefs(container: HTMLElement) {
   return within(container)
     .getAllByRole('link')
