@@ -2,7 +2,7 @@ import { LocalizedLink } from '../atoms/LocalizedLink';
 import styles from './NavLinkList.module.css';
 
 /** One entry of a navigation list: the page's path (from paths.ts) and the link text. */
-export type NavLinkItem = { to: string; label: string };
+export type NavLinkItem = { to: string; text: string };
 
 /** The links' look in each list. */
 const LINK_VARIANT = { header: 'nav', footer: 'caption' } as const;
@@ -17,7 +17,7 @@ export function NavLinkList({ links, variant }: { links: NavLinkItem[]; variant:
       {links.map((link) => (
         <li key={link.to}>
           <LocalizedLink to={link.to} variant={LINK_VARIANT[variant]}>
-            {link.label}
+            {link.text}
           </LocalizedLink>
         </li>
       ))}

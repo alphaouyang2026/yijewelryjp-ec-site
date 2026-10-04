@@ -12,10 +12,10 @@ export function SiteFooter({ categories }: { categories: Category[] }) {
   const text = useMessages().footer;
   const categoryLinks = useCategoryLinks(categories);
   const guideLinks = [
-    { to: paths.shippingReturns, label: text.shippingReturns },
-    { to: paths.tokushoho, label: text.tokushoho },
-    { to: paths.privacy, label: text.privacy },
-    { to: paths.terms, label: text.terms },
+    { to: paths.shippingReturns, text: text.shippingReturns },
+    { to: paths.tokushoho, text: text.tokushoho },
+    { to: paths.privacy, text: text.privacy },
+    { to: paths.terms, text: text.terms },
   ];
 
   return (

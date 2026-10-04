@@ -7,7 +7,7 @@ import type { NavLinkItem } from '../molecules/NavLinkList';
 export function useCategoryLinks(categories: Category[]): NavLinkItem[] {
   const text = useMessages().categoryNav;
   return [
-    { to: paths.products, label: text.newArrivals },
-    ...categories.map((category) => ({ to: paths.category(category.slug), label: category.name })),
+    { to: paths.products, text: text.newArrivals },
+    ...categories.map((category) => ({ to: paths.category(category.slug), text: category.name })),
   ];
 }
