@@ -115,49 +115,64 @@ const apiSharedConfigs = [
 // Web (packages/web/src): Atomic Design. See docs/adr/0003-frontend-atomic-design.md.
 //
 // src/components has five levels, atoms <- molecules <- organisms <- templates
-// <- pages, and a level uses only the levels below it. Only pages call the API;
-// the other levels get data through props (they may use the API's types).
-// Atoms contain no fixed text. Links go through the LocalizedLink atom. Non-UI
-// code (paths, the API client, brand constants, i18n) lives outside
-// src/components.
+// <- pages, and a level uses only the levels below it. Only pages call the API,
+// through the client src/api.ts builds; other code gets data through props
+// (it may use the API's types). Atoms contain no fixed text. Links go through
+// the LocalizedLink atom. Non-UI code (paths, the API client, brand constants,
+// i18n) lives outside src/components.
 // ---------------------------------------------------------------------------
 
 const ATOMIC_LEVELS = ['atoms', 'molecules', 'organisms', 'templates', 'pages'];
 
-/** The web's import restrictions: always the API's type-only rule, plus `extra`. */
-function webImportRestrictions(extra = {}) {
+// Calling the API. Only src/api.ts builds a client and knows the API's URLs;
+// pages, and the test support's API mocks, use that client. Everywhere else the
+// client and hono/client are off limits at runtime (their types are fine), and
+// so is writing an /api URL by hand. Tests may write API URLs, to check the
+// requests a page sends.
+const API_CLIENT = 'packages/web/src/api.ts';
+const TEST_SUPPORT = 'packages/web/src/test/**/*.{ts,tsx}';
+const TESTS = 'packages/web/src/**/*.test.{ts,tsx}';
+const ONLY_PAGES_CALL_THE_API = 'Only pages call the API, through the client in src/api.ts; other code gets data through props.';
+
+const API_CLIENT_IMPORTS = {
+  paths: [{ name: 'hono/client', allowTypeImports: true, message: ONLY_PAGES_CALL_THE_API }],
+  patterns: [forbid('^(\\./|(\\.\\./)+)api$', ONLY_PAGES_CALL_THE_API, { allowTypeImports: true })],
+};
+
+const NO_API_URLS = 'Write no /api URLs by hand; call the API through the client in src/api.ts.';
+const API_URL_SYNTAX = [
+  { selector: 'Literal[value=/^\\/api(\\/|$)/]', message: NO_API_URLS },
+  { selector: 'TemplateElement[value.raw=/^\\/api(\\/|$)/]', message: NO_API_URLS },
+];
+
+/**
+ * The web's import restrictions: never the API's runtime code (only its
+ * types), never the API client unless `callsApi`, plus `extra`.
+ */
+function webImportRestrictions({ callsApi = false, paths = [], patterns = [] } = {}) {
+  const apiClient = callsApi ? { paths: [], patterns: [] } : API_CLIENT_IMPORTS;
   return [
     'error',
     {
       paths: [
         // The web app uses the API's route types (Hono RPC) but never its runtime code.
         { name: '@yi/api', allowTypeImports: true, message: 'Import only types from @yi/api (`import type`).' },
-        ...(extra.paths ?? []),
+        ...apiClient.paths,
+        ...paths,
       ],
       patterns: [
         { group: ['@yi/api/*', '**/api/src/**'], message: 'Import API types from @yi/api only.' },
-        ...(extra.patterns ?? []),
+        ...apiClient.patterns,
+        ...patterns,
       ],
     },
   ];
 }
 
-/** What a level may not import: higher levels, and (below pages) the API client at runtime. */
+/** What a level may not import: the levels above it. */
 function atomicLevelPatterns(level) {
-  const index = ATOMIC_LEVELS.indexOf(level);
-  const higher = ATOMIC_LEVELS.slice(index + 1);
-  const patterns = [];
-  if (higher.length > 0) {
-    patterns.push(forbid(segment(...higher), `Atomic Design: ${level} use only the levels below them.`));
-  }
-  if (level !== 'pages') {
-    patterns.push(
-      forbid('^(\\.\\./)+api$', 'Only pages call the API; the other levels get data through props.', {
-        allowTypeImports: true,
-      }),
-    );
-  }
-  return patterns;
+  const higher = ATOMIC_LEVELS.slice(ATOMIC_LEVELS.indexOf(level) + 1);
+  return higher.length > 0 ? [forbid(segment(...higher), `Atomic Design: ${level} use only the levels below them.`)] : [];
 }
 
 /** Router links would drop the visitor's locale; the LocalizedLink atom keeps it. */
@@ -169,11 +184,30 @@ const ROUTER_LINKS = {
 
 const LOCALIZED_LINK = 'packages/web/src/components/atoms/LocalizedLink.tsx';
 
+const webApiConfigs = [
+  {
+    files: ['packages/web/src/**/*.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': webImportRestrictions(),
+      'no-restricted-syntax': ['error', ...API_URL_SYNTAX],
+    },
+  },
+  {
+    files: [API_CLIENT, TEST_SUPPORT],
+    rules: { '@typescript-eslint/no-restricted-imports': webImportRestrictions({ callsApi: true }) },
+  },
+  {
+    files: [API_CLIENT, TEST_SUPPORT, TESTS],
+    rules: { 'no-restricted-syntax': 'off' },
+  },
+];
+
 const atomicLevelConfigs = [
   ...ATOMIC_LEVELS.map((level) => ({
     files: [`packages/web/src/components/${level}/**/*.{ts,tsx}`],
     rules: {
       '@typescript-eslint/no-restricted-imports': webImportRestrictions({
+        callsApi: level === 'pages',
         paths: [ROUTER_LINKS],
         patterns: atomicLevelPatterns(level),
       }),
@@ -194,6 +228,7 @@ const atomTextConfig = {
   rules: {
     'no-restricted-syntax': [
       'error',
+      ...API_URL_SYNTAX,
       { selector: 'JSXText[value=/\\S/]', message: NO_FIXED_TEXT },
       { selector: 'JSXAttribute[name.name=/^(alt|title|aria-label|placeholder)$/] > Literal', message: NO_FIXED_TEXT },
     ],
@@ -216,8 +251,8 @@ export default defineConfig([
     files: ['packages/web/src/**/*.{ts,tsx}'],
     extends: [reactHooks.configs.flat.recommended, reactRefresh.configs.vite()],
     languageOptions: { globals: globals.browser },
-    rules: { '@typescript-eslint/no-restricted-imports': webImportRestrictions() },
   },
+  ...webApiConfigs,
   ...atomicLevelConfigs,
   atomTextConfig,
 ]);
