@@ -49,7 +49,7 @@ packages/web/src/
 ├── app/              路由表（每种语言一棵）和每种语言的根路由
 ├── i18n/             语言、语言前缀的路径、三种语言的翻译资源、按语言加载的字体
 ├── api.ts            Hono RPC 客户端和由 API 推出的响应类型
-├── paths.ts          页面路径（不带语言前缀）
+├── paths.ts          页面路径（`PagePath` 类型，不带语言前缀）
 ├── brand.ts          logo 和品牌名
 ├── styles/           tokens.css（设计 token）和 global.css
 └── test/             测试工具和 MSW handler

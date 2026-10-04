@@ -1,11 +1,12 @@
 import { Link, type LinkProps } from 'react-router';
 import { localizedPath, type Locale } from '../../i18n/locales';
 import { useLocale } from '../../i18n/useLocale';
+import type { PagePath } from '../../paths';
 import styles from './LocalizedLink.module.css';
 
 type LocalizedLinkProps = Omit<LinkProps, 'to' | 'className'> & {
-  /** A page path from paths.ts, without a locale prefix. */
-  to: string;
+  /** The page to link to, from paths.ts. */
+  to: PagePath;
   /** The locale to link to; the current page's unless switching locales. */
   locale?: Locale;
   /**

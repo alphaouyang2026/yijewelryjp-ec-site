@@ -1,8 +1,9 @@
+import type { PagePath } from '../../paths';
 import { LocalizedLink } from '../atoms/LocalizedLink';
 import styles from './NavLinkList.module.css';
 
 /** One entry of a navigation list: the page's path (from paths.ts) and the link text. */
-export type NavLinkItem = { to: string; text: string };
+export type NavLinkItem = { to: PagePath; text: string };
 
 /** The links' look in each list. */
 const LINK_VARIANT = { header: 'nav', footer: 'caption' } as const;

@@ -1,4 +1,5 @@
 import type { Locale } from '@yi/api';
+import type { PagePath } from '../paths';
 
 export type { Locale };
 
@@ -36,8 +37,8 @@ export function localeName(locale: Locale): string {
   return LOCALE_SETTINGS[locale].name;
 }
 
-/** `path` (a page path from paths.ts, maybe with a query or hash) in `locale`: '/cart' in zh is '/zh/cart', '/' is '/zh/'. */
-export function localizedPath(locale: Locale, path: string): string {
+/** The page path `path` in `locale`: '/cart' in zh is '/zh/cart', '/' is '/zh/'. */
+export function localizedPath(locale: Locale, path: PagePath): string {
   return `${LOCALE_SETTINGS[locale].pathPrefix}${path}`;
 }
 
@@ -51,7 +52,15 @@ export function localeOfPath(pathname: string): Locale {
   );
 }
 
-/** A URL path without its locale prefix, as paths.ts writes it: '/zh/cart' is '/cart', '/zh/' is '/'. */
-export function pathWithoutLocale(pathname: string): string {
-  return pathname.slice(LOCALE_SETTINGS[localeOfPath(pathname)].pathPrefix.length) || '/';
+/**
+ * The page a URL shows, as a page path: its path without the locale prefix,
+ * then its query and hash. '/zh/cart?step=2' is '/cart?step=2', '/zh/' is '/'.
+ */
+export function pathWithoutLocale({
+  pathname,
+  search,
+  hash,
+}: Pick<Location, 'pathname' | 'search' | 'hash'>): PagePath {
+  const path = pathname.slice(LOCALE_SETTINGS[localeOfPath(pathname)].pathPrefix.length) || '/';
+  return `${path}${search}${hash}` as PagePath;
 }

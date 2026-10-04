@@ -12,8 +12,7 @@ import styles from './LocaleSwitcher.module.css';
  */
 export function LocaleSwitcher({ className }: { className?: string }) {
   const currentLocale = useLocale();
-  const { pathname, search, hash } = useLocation();
-  const currentPage = `${pathWithoutLocale(pathname)}${search}${hash}`;
+  const currentPage = pathWithoutLocale(useLocation());
 
   return (
     <nav aria-label={useMessages().localeSwitcher.nav} className={className}>
