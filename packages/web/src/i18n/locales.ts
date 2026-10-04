@@ -7,7 +7,11 @@ type LocaleSettings = {
   pathPrefix: string;
   /** The `<html lang>` value. Simplified Chinese is zh-Hans, so browsers pick Simplified glyphs. */
   htmlLang: string;
-  /** The locale's name in itself, the same in every locale, for the locale switcher. */
+  /**
+   * The locale's name in itself, for the locale switcher. It stays here, not in
+   * the translation resources, because it is the same in every locale: visitors
+   * look for their language by its own name.
+   */
   name: string;
 };
 
