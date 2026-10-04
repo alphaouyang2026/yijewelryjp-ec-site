@@ -302,13 +302,19 @@ const atomTextConfig = {
 };
 
 export default defineConfig([
-  globalIgnores(['**/dist', '**/.vitest', '**/coverage']),
+  globalIgnores(['**/dist', '**/.vitest', '**/coverage', '**/cdk.out']),
   {
     files: ['**/*.{js,ts,tsx}'],
     extends: [js.configs.recommended, tseslint.configs.recommended],
   },
   {
-    files: ['eslint.config.js', 'packages/api/**/*.ts', 'packages/*/vite*.config.ts', 'packages/*/vitest*.config.ts'],
+    files: [
+      'eslint.config.js',
+      'packages/api/**/*.ts',
+      'packages/infra/**/*.ts',
+      'packages/*/vite*.config.ts',
+      'packages/*/vitest*.config.ts',
+    ],
     languageOptions: { globals: globals.node },
   },
   ...apiLayerConfigs,

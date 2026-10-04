@@ -3,6 +3,7 @@ import { getHomeData } from './catalog/application/get-home-data';
 import type { CategoryRepository } from './catalog/domain/category';
 import type { ProductRepository } from './catalog/domain/product';
 import { homeRoutes } from './catalog/interface/home-routes';
+import { noStoreUnlessAllowed } from './interface/cache-control';
 import { checkHealth } from './operations/application/check-health';
 import type { DatabaseProbe } from './operations/domain/database-probe';
 import { healthRoutes } from './operations/interface/health-routes';
@@ -23,6 +24,7 @@ export type AppDeps = {
 export function createApp(deps: AppDeps) {
   return new Hono()
     .basePath('/api')
+    .use(noStoreUnlessAllowed)
     .route('/health', healthRoutes(checkHealth(deps)))
     .route('/home', homeRoutes(getHomeData(deps)));
 }
