@@ -3,6 +3,7 @@ import {
   DeleteTableCommand,
   DescribeTableCommand,
   DynamoDBClient,
+  ListTablesCommand,
   ResourceInUseException,
 } from '@aws-sdk/client-dynamodb';
 
@@ -46,11 +47,39 @@ export async function deleteTable({ client, tableName }: Database) {
   await client.send(new DeleteTableCommand({ TableName: tableName }));
 }
 
+const LOCAL_ENDPOINT = process.env.DYNAMODB_ENDPOINT ?? 'http://localhost:8100';
+
 /** A client for DynamoDB Local at DYNAMODB_ENDPOINT (default http://localhost:8100), which accepts any credentials. */
 export function localDynamoClient() {
   return new DynamoDBClient({
-    endpoint: process.env.DYNAMODB_ENDPOINT ?? 'http://localhost:8100',
+    endpoint: LOCAL_ENDPOINT,
     region: 'ap-northeast-1',
     credentials: { accessKeyId: 'local', secretAccessKey: 'local' },
   });
+}
+
+/**
+ * Waits until DynamoDB Local answers, so a container that is still starting is
+ * not an error. Rejects after 30 seconds with a hint on how to start it.
+ */
+export async function waitForDynamoDbLocal() {
+  const client = localDynamoClient();
+  const deadline = Date.now() + 30_000;
+  try {
+    for (;;) {
+      try {
+        await client.send(new ListTablesCommand({ Limit: 1 }));
+        return;
+      } catch (error) {
+        if (Date.now() > deadline) {
+          throw new Error(`DynamoDB Local is not reachable at ${LOCAL_ENDPOINT}. Start it with \`npm run db:start\`.`, {
+            cause: error,
+          });
+        }
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+    }
+  } finally {
+    client.destroy();
+  }
 }
