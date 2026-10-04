@@ -1,6 +1,7 @@
 import { Link } from 'react-router';
+import type { Category } from '../api';
 import { BRAND_NAME, logoUrl } from '../brand';
-import { categoryLinks, type CategoryLink } from './categoryLinks';
+import { categoryLinks } from './categoryLinks';
 import styles from './SiteFooter.module.css';
 
 const guideLinks = [
@@ -10,7 +11,7 @@ const guideLinks = [
   { to: '/terms', label: '利用規約' },
 ];
 
-export function SiteFooter({ categories }: { categories: CategoryLink[] }) {
+export function SiteFooter({ categories }: { categories: Category[] }) {
   return (
     <footer className={styles.footer}>
       <div className={styles.columns}>

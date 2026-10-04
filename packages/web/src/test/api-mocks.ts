@@ -1,9 +1,7 @@
-import type { InferResponseType } from 'hono/client';
 import { http, HttpResponse } from 'msw/http';
-import { api } from '../api';
+import { api, type HomeData } from '../api';
 
 // Mock bodies are typed by the API's own route types, so they cannot drift from the real responses.
-export type HomeData = InferResponseType<typeof api.home.$get, 200>;
 
 export const emptyHomeData: HomeData = { newArrivals: [], categories: [] };
 

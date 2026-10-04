@@ -49,15 +49,14 @@ export function useTestApi({ createTable = true }: { createTable?: boolean } = {
 
 function fetchWithCookies(app: App, jar: CookieJar): typeof fetch {
   return async (input, init) => {
-    const url = input instanceof Request ? input.url : input.toString();
-    const headers = new Headers(init?.headers);
-    const cookie = await jar.getCookieString(url);
-    if (cookie) headers.set('cookie', cookie);
+    const request = new Request(input, init);
+    const cookie = await jar.getCookieString(request.url);
+    if (cookie) request.headers.set('cookie', cookie);
 
-    const response = await app.request(input, { ...init, headers });
+    const response = await app.request(request);
 
     for (const setCookie of response.headers.getSetCookie()) {
-      await jar.setCookie(setCookie, url);
+      await jar.setCookie(setCookie, request.url);
     }
     return response;
   };

@@ -1,9 +1,10 @@
 import { Link } from 'react-router';
+import type { Category } from '../api';
 import { BRAND_NAME, logoUrl } from '../brand';
-import { categoryLinks, type CategoryLink } from './categoryLinks';
+import { categoryLinks } from './categoryLinks';
 import styles from './SiteHeader.module.css';
 
-export function SiteHeader({ categories }: { categories: CategoryLink[] }) {
+export function SiteHeader({ categories }: { categories: Category[] }) {
   return (
     <header className={styles.header}>
       <div className={styles.top}>
