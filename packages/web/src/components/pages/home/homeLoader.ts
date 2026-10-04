@@ -1,4 +1,4 @@
-import { api } from '../../api';
+import { api } from '../../../api';
 
 export async function homeLoader() {
   const res = await api.home.$get({ query: { locale: 'ja' } });

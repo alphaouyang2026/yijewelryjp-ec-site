@@ -1,8 +1,10 @@
-import type { Category } from '../api';
-import { BRAND_NAME, LOGO_FILE_SIZE, logoUrl } from '../brand';
-import { paths } from '../paths';
+import type { Category } from '../../api';
+import { BRAND_NAME } from '../../brand';
+import { paths } from '../../paths';
+import { Label } from '../atoms/Label';
+import { Logo } from '../atoms/Logo';
+import { NavLinkList, type NavLinkItem } from '../molecules/NavLinkList';
 import { categoryLinks } from './categoryLinks';
-import { NavLinks, type NavLinkItem } from './NavLinks';
 import styles from './SiteFooter.module.css';
 
 const guideLinks: NavLinkItem[] = [
@@ -17,25 +19,25 @@ export function SiteFooter({ categories }: { categories: Category[] }) {
     <footer className={styles.footer}>
       <div className={styles.columns}>
         <div className={styles.brand}>
-          <img
-            src={logoUrl}
-            alt={BRAND_NAME}
-            width={LOGO_FILE_SIZE.width}
-            height={LOGO_FILE_SIZE.height}
-            className={styles.logo}
-          />
+          <Logo alt={BRAND_NAME} size="footer" />
           <p className={styles.tagline}>[ブランドの一言紹介]</p>
         </div>
         <nav aria-label="ショッピングガイド" className={styles.column}>
-          <p className={styles.columnTitle}>GUIDE</p>
-          <NavLinks links={guideLinks} className={styles.link} />
+          <Label ground="dark" className={styles.columnTitle}>
+            GUIDE
+          </Label>
+          <NavLinkList links={guideLinks} variant="footer" />
         </nav>
         <nav aria-label="カテゴリー（フッター）" className={styles.column}>
-          <p className={styles.columnTitle}>CATEGORY</p>
-          <NavLinks links={categoryLinks(categories)} className={styles.link} />
+          <Label ground="dark" className={styles.columnTitle}>
+            CATEGORY
+          </Label>
+          <NavLinkList links={categoryLinks(categories)} variant="footer" />
         </nav>
         <div className={styles.column}>
-          <p className={styles.columnTitle}>CONTACT</p>
+          <Label ground="dark" className={styles.columnTitle}>
+            CONTACT
+          </Label>
           {/* The contact address comes from the store settings once they exist. */}
           <p className={styles.contact}>[メールアドレス]</p>
         </div>

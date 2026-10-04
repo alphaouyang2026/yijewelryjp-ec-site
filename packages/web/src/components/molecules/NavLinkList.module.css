@@ -1,0 +1,42 @@
+.header,
+.footer {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  column-gap: var(--nav-gap);
+}
+
+.footer {
+  display: flex;
+  flex-direction: column;
+}
+
+.link {
+  display: flex;
+  align-items: center;
+  min-height: var(--tap-target);
+  color: var(--color-linen);
+  text-decoration: none;
+}
+
+.link:hover {
+  color: var(--color-brand-gold);
+}
+
+.header .link {
+  justify-content: center;
+  min-width: var(--tap-target);
+  font-size: var(--text-nav);
+  letter-spacing: var(--tracking-nav);
+}
+
+.footer .link {
+  font-size: var(--text-caption);
+  letter-spacing: var(--tracking-caption);
+}

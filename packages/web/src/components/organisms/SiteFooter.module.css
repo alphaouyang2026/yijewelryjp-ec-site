@@ -20,11 +20,6 @@
   gap: var(--space-3); /* the logo keeps a quarter of its width clear */
 }
 
-.logo {
-  width: var(--logo-footer);
-  height: var(--logo-footer);
-}
-
 .tagline {
   color: var(--color-smoke);
   font-size: var(--text-caption);
@@ -38,30 +33,16 @@
   flex-direction: column;
 }
 
-/* English label (spec #1): 14px, 0.34em tracking, all caps. */
 .columnTitle {
   padding-bottom: var(--space-1);
-  color: var(--color-brand-gold);
-  font-family: var(--font-latin);
-  font-size: var(--text-label);
-  font-weight: var(--font-weight-medium);
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
 }
 
-.link,
 .contact {
   display: flex;
   align-items: center;
   min-height: var(--tap-target);
-  color: var(--color-linen);
   font-size: var(--text-caption);
   letter-spacing: var(--tracking-caption);
-  text-decoration: none;
-}
-
-.link:hover {
-  color: var(--color-brand-gold);
 }
 
 .bottomWrap {

@@ -1,8 +1,8 @@
 import { screen, within } from '@testing-library/react';
 import { beforeEach, expect, test } from 'vitest';
-import { emptyHomeData, mockApi } from '../../test/api-mocks';
-import { renderRoute } from '../../test/render';
-import { server } from '../../test/server';
+import { emptyHomeData, mockApi } from '../../../test/api-mocks';
+import { renderRoute } from '../../../test/render';
+import { server } from '../../../test/server';
 
 beforeEach(() => {
   server.use(mockApi.home(emptyHomeData));
