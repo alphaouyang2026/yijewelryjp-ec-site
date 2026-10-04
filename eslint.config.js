@@ -111,6 +111,68 @@ const apiSharedConfigs = [
   },
 ];
 
+// ---------------------------------------------------------------------------
+// Web (packages/web/src): Atomic Design. See docs/adr/0003-frontend-atomic-design.md.
+//
+// src/components has five levels, atoms <- molecules <- organisms <- templates
+// <- pages, and a level uses only the levels below it. Only pages call the API;
+// the other levels get data through props (they may use the API's types).
+// Atoms contain no fixed text. Non-UI code (paths, the API client, brand
+// constants, i18n) lives outside src/components.
+// ---------------------------------------------------------------------------
+
+const ATOMIC_LEVELS = ['atoms', 'molecules', 'organisms', 'templates', 'pages'];
+
+/** The web's import restrictions: always the API's type-only rule, plus `extra`. */
+function webImportRestrictions(extra = {}) {
+  return [
+    'error',
+    {
+      paths: [
+        // The web app uses the API's route types (Hono RPC) but never its runtime code.
+        { name: '@yi/api', allowTypeImports: true, message: 'Import only types from @yi/api (`import type`).' },
+        ...(extra.paths ?? []),
+      ],
+      patterns: [
+        { group: ['@yi/api/*', '**/api/src/**'], message: 'Import API types from @yi/api only.' },
+        ...(extra.patterns ?? []),
+      ],
+    },
+  ];
+}
+
+const atomicLevelConfigs = ATOMIC_LEVELS.map((level, index) => {
+  const higher = ATOMIC_LEVELS.slice(index + 1);
+  const patterns = [];
+  if (higher.length > 0) {
+    patterns.push(forbid(segment(...higher), `Atomic Design: ${level} use only the levels below them.`));
+  }
+  if (level !== 'pages') {
+    patterns.push(
+      forbid('^(\\.\\./)+api$', 'Only pages call the API; the other levels get data through props.', {
+        allowTypeImports: true,
+      }),
+    );
+  }
+  return {
+    files: [`packages/web/src/components/${level}/**/*.{ts,tsx}`],
+    rules: { '@typescript-eslint/no-restricted-imports': webImportRestrictions({ patterns }) },
+  };
+});
+
+const NO_FIXED_TEXT = 'Atoms contain no fixed text: take it from props.';
+
+const atomTextConfig = {
+  files: ['packages/web/src/components/atoms/**/*.tsx'],
+  rules: {
+    'no-restricted-syntax': [
+      'error',
+      { selector: 'JSXText[value=/\\S/]', message: NO_FIXED_TEXT },
+      { selector: 'JSXAttribute[name.name=/^(alt|title|aria-label|placeholder)$/] > Literal', message: NO_FIXED_TEXT },
+    ],
+  },
+};
+
 export default defineConfig([
   globalIgnores(['**/dist', '**/.vitest', '**/coverage']),
   {
@@ -127,26 +189,8 @@ export default defineConfig([
     files: ['packages/web/src/**/*.{ts,tsx}'],
     extends: [reactHooks.configs.flat.recommended, reactRefresh.configs.vite()],
     languageOptions: { globals: globals.browser },
-    rules: {
-      // The web app uses the API's route types (Hono RPC) but never its runtime code.
-      '@typescript-eslint/no-restricted-imports': [
-        'error',
-        {
-          paths: [
-            {
-              name: '@yi/api',
-              allowTypeImports: true,
-              message: 'Import only types from @yi/api (`import type`).',
-            },
-          ],
-          patterns: [
-            {
-              group: ['@yi/api/*', '**/api/src/**'],
-              message: 'Import API types from @yi/api only.',
-            },
-          ],
-        },
-      ],
-    },
+    rules: { '@typescript-eslint/no-restricted-imports': webImportRestrictions() },
   },
+  ...atomicLevelConfigs,
+  atomTextConfig,
 ]);
