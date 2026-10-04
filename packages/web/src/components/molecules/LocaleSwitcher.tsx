@@ -3,20 +3,20 @@ import { htmlLang, localeName, LOCALES, pathWithoutLocale } from '../../i18n/loc
 import { useLocale } from '../../i18n/useLocale';
 import { useMessages } from '../../i18n/useMessages';
 import { LocalizedLink } from '../atoms/LocalizedLink';
-import styles from './LanguageSwitcher.module.css';
+import styles from './LocaleSwitcher.module.css';
 
 /**
  * Links to the current page, with its query and hash, in each locale. Each
- * language is named in itself; the current one is marked as the current page.
+ * locale is named in itself; the current one is marked as the current page.
  * `className` is for the parent's placement only.
  */
-export function LanguageSwitcher({ className }: { className?: string }) {
+export function LocaleSwitcher({ className }: { className?: string }) {
   const currentLocale = useLocale();
   const { pathname, search, hash } = useLocation();
   const currentPage = `${pathWithoutLocale(pathname)}${search}${hash}`;
 
   return (
-    <nav aria-label={useMessages().languageSwitcher.nav} className={className}>
+    <nav aria-label={useMessages().localeSwitcher.nav} className={className}>
       <ul className={styles.list}>
         {LOCALES.map((locale) => (
           <li key={locale}>

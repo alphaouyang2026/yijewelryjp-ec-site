@@ -9,7 +9,7 @@ export const en: Messages = {
     categoriesNav: 'Categories',
     cart: 'Cart',
   },
-  languageSwitcher: {
+  localeSwitcher: {
     nav: 'Language',
   },
   categoryNav: {

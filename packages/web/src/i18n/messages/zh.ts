@@ -9,7 +9,7 @@ export const zh: Messages = {
     categoriesNav: '商品分类',
     cart: '购物车',
   },
-  languageSwitcher: {
+  localeSwitcher: {
     nav: '语言',
   },
   categoryNav: {

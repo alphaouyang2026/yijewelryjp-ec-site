@@ -42,7 +42,7 @@ packages/api/src/
 packages/web/src/
 ├── components/
 │   ├── atoms/        Logo、Icon、Label、LocalizedLink
-│   ├── molecules/    NavLinkList、SectionHeading、LanguageSwitcher
+│   ├── molecules/    NavLinkList、SectionHeading、LocaleSwitcher
 │   ├── organisms/    AnnouncementBar、SiteHeader、SiteFooter
 │   ├── templates/    StoreLayout
 │   └── pages/        路由对应的页面，及其 loader 和测试

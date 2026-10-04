@@ -56,7 +56,7 @@ const interfaceText = [
   },
 ];
 
-test.each(interfaceText)('$path shows the home page in its language', async (text) => {
+test.each(interfaceText)('$path shows the home page in its locale', async (text) => {
   renderRoute(text.path);
 
   const newArrivals = await screen.findByRole('region', { name: text.newArrivalsSection });
@@ -100,7 +100,7 @@ test('links on a /zh/ page stay in Chinese', async () => {
   ]);
 });
 
-test('the home page asks the API for its data in the page’s language', async () => {
+test('the home page asks the API for its data in the page’s locale', async () => {
   server.use(
     mockApi.homeByLocale({
       ja: { ...emptyHomeData, categories: [{ slug: 'ring', name: 'リング' }] },
@@ -115,24 +115,24 @@ test('the home page asks the API for its data in the page’s language', async (
   expect(within(categories).getAllByRole('link').map((link) => link.textContent)).toEqual(['New Arrivals', 'Rings']);
 });
 
-test('the header’s language switcher links to this page in each language and marks the current one', async () => {
+test('the header’s locale switcher links to this page in each locale and marks the current one', async () => {
   renderRoute('/en/?utm_source=line');
 
   const header = await screen.findByRole('banner');
-  const languages = within(header).getByRole('navigation', { name: 'Language' });
-  expect(within(languages).getByRole('link', { name: '日本語' })).toHaveAttribute('href', '/?utm_source=line');
-  expect(within(languages).getByRole('link', { name: '中文' })).toHaveAttribute('href', '/zh/?utm_source=line');
-  const english = within(languages).getByRole('link', { name: 'English' });
+  const switcher = within(header).getByRole('navigation', { name: 'Language' });
+  expect(within(switcher).getByRole('link', { name: '日本語' })).toHaveAttribute('href', '/?utm_source=line');
+  expect(within(switcher).getByRole('link', { name: '中文' })).toHaveAttribute('href', '/zh/?utm_source=line');
+  const english = within(switcher).getByRole('link', { name: 'English' });
   expect(english).toHaveAttribute('href', '/en/?utm_source=line');
   expect(english).toHaveAttribute('aria-current', 'page');
 });
 
-test('switching the language stays on the same page', async () => {
+test('switching the locale stays on the same page', async () => {
   const user = userEvent.setup();
   renderRoute('/zh/');
-  const languages = within(await screen.findByRole('banner')).getByRole('navigation', { name: '语言' });
+  const switcher = within(await screen.findByRole('banner')).getByRole('navigation', { name: '语言' });
 
-  await user.click(within(languages).getByRole('link', { name: 'English' }));
+  await user.click(within(switcher).getByRole('link', { name: 'English' }));
 
   const newArrivals = await screen.findByRole('region', { name: 'New Arrivals' });
   expect(within(newArrivals).getByText('New pieces are coming soon.')).toBeInTheDocument();

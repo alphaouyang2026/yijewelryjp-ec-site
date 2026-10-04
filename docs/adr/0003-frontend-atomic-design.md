@@ -1,6 +1,6 @@
 # 前端按 Atomic Design 组织组件
 
-`packages/web/src/components` 分五层：atoms（Logo、Icon、Label、LocalizedLink 等最小元素）、molecules（NavLinkList、SectionHeading、LanguageSwitcher 等小单元）、organisms（AnnouncementBar、SiteHeader、SiteFooter 等完整区块）、templates（StoreLayout 等只管布局的骨架）、pages（路由对应的页面）。同一套组件要在前台、后台和不同页面之间复用，分层让"在哪里取数据、在哪里放文字、在哪里定外观"都有固定答案：
+`packages/web/src/components` 分五层：atoms（Logo、Icon、Label、LocalizedLink 等最小元素）、molecules（NavLinkList、SectionHeading、LocaleSwitcher 等小单元）、organisms（AnnouncementBar、SiteHeader、SiteFooter 等完整区块）、templates（StoreLayout 等只管布局的骨架）、pages（路由对应的页面）。同一套组件要在前台、后台和不同页面之间复用，分层让"在哪里取数据、在哪里放文字、在哪里定外观"都有固定答案：
 
 - 依赖只能向下：低层不能引用高层。
 - 只有 pages 调用 API（React Router 的 loader 加 Hono RPC），其他层只通过 props 拿数据，可以使用 API 的类型。

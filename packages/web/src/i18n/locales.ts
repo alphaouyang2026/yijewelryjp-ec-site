@@ -7,7 +7,7 @@ type LocaleSettings = {
   pathPrefix: string;
   /** The `<html lang>` value. Simplified Chinese is zh-Hans, so browsers pick Simplified glyphs. */
   htmlLang: string;
-  /** The locale's name in its own language, the same in every locale, for the language switcher. */
+  /** The locale's name in itself, the same in every locale, for the locale switcher. */
   name: string;
 };
 
@@ -18,7 +18,7 @@ const LOCALE_SETTINGS = {
   en: { pathPrefix: '/en', htmlLang: 'en', name: 'English' },
 } satisfies Record<Locale, LocaleSettings>;
 
-/** The site's locales, in the language switcher's order. */
+/** The site's locales, in the locale switcher's order. */
 export const LOCALES = Object.keys(LOCALE_SETTINGS) as Locale[];
 
 /** The locale of unprefixed paths. */

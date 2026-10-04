@@ -14,7 +14,7 @@ export const ja = {
     categoriesNav: 'カテゴリー',
     cart: 'カート',
   },
-  languageSwitcher: {
+  localeSwitcher: {
     nav: '言語',
   },
   categoryNav: {
