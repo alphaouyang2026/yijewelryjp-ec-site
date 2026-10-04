@@ -1,14 +1,15 @@
 import { Link } from 'react-router';
 import type { Category } from '../api';
 import { BRAND_NAME, logoUrl } from '../brand';
+import { paths } from '../paths';
 import { categoryLinks } from './categoryLinks';
 import styles from './SiteFooter.module.css';
 
 const guideLinks = [
-  { to: '/shipping-returns', label: '配送・返品について' },
-  { to: '/tokushoho', label: '特定商取引法に基づく表記' },
-  { to: '/privacy', label: 'プライバシーポリシー' },
-  { to: '/terms', label: '利用規約' },
+  { to: paths.shippingReturns, label: '配送・返品について' },
+  { to: paths.tokushoho, label: '特定商取引法に基づく表記' },
+  { to: paths.privacy, label: 'プライバシーポリシー' },
+  { to: paths.terms, label: '利用規約' },
 ];
 
 export function SiteFooter({ categories }: { categories: Category[] }) {

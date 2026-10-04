@@ -1,6 +1,7 @@
 import { Link } from 'react-router';
 import type { Category } from '../api';
 import { BRAND_NAME, logoUrl } from '../brand';
+import { paths } from '../paths';
 import { categoryLinks } from './categoryLinks';
 import styles from './SiteHeader.module.css';
 
@@ -8,10 +9,10 @@ export function SiteHeader({ categories }: { categories: Category[] }) {
   return (
     <header className={styles.header}>
       <div className={styles.top}>
-        <Link to="/" className={styles.logoLink}>
+        <Link to={paths.home} className={styles.logoLink}>
           <img src={logoUrl} alt={BRAND_NAME} width={88} height={88} className={styles.logo} />
         </Link>
-        <Link to="/cart" aria-label="カート" className={styles.cart}>
+        <Link to={paths.cart} aria-label="カート" className={styles.cart}>
           <BagIcon />
         </Link>
       </div>
