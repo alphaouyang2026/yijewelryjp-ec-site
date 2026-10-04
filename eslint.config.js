@@ -117,8 +117,9 @@ const apiSharedConfigs = [
 // src/components has five levels, atoms <- molecules <- organisms <- templates
 // <- pages, and a level uses only the levels below it. Only pages call the API;
 // the other levels get data through props (they may use the API's types).
-// Atoms contain no fixed text. Non-UI code (paths, the API client, brand
-// constants, i18n) lives outside src/components.
+// Atoms contain no fixed text. Links go through the LocalizedLink atom. Non-UI
+// code (paths, the API client, brand constants, i18n) lives outside
+// src/components.
 // ---------------------------------------------------------------------------
 
 const ATOMIC_LEVELS = ['atoms', 'molecules', 'organisms', 'templates', 'pages'];
@@ -141,7 +142,9 @@ function webImportRestrictions(extra = {}) {
   ];
 }
 
-const atomicLevelConfigs = ATOMIC_LEVELS.map((level, index) => {
+/** What a level may not import: higher levels, and (below pages) the API client at runtime. */
+function atomicLevelPatterns(level) {
+  const index = ATOMIC_LEVELS.indexOf(level);
   const higher = ATOMIC_LEVELS.slice(index + 1);
   const patterns = [];
   if (higher.length > 0) {
@@ -154,11 +157,35 @@ const atomicLevelConfigs = ATOMIC_LEVELS.map((level, index) => {
       }),
     );
   }
-  return {
+  return patterns;
+}
+
+/** Router links would drop the visitor's locale; the LocalizedLink atom keeps it. */
+const ROUTER_LINKS = {
+  name: 'react-router',
+  importNames: ['Link', 'NavLink'],
+  message: 'Use the LocalizedLink atom, so links keep the current locale.',
+};
+
+const LOCALIZED_LINK = 'packages/web/src/components/atoms/LocalizedLink.tsx';
+
+const atomicLevelConfigs = [
+  ...ATOMIC_LEVELS.map((level) => ({
     files: [`packages/web/src/components/${level}/**/*.{ts,tsx}`],
-    rules: { '@typescript-eslint/no-restricted-imports': webImportRestrictions({ patterns }) },
-  };
-});
+    rules: {
+      '@typescript-eslint/no-restricted-imports': webImportRestrictions({
+        paths: [ROUTER_LINKS],
+        patterns: atomicLevelPatterns(level),
+      }),
+    },
+  })),
+  {
+    files: [LOCALIZED_LINK],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': webImportRestrictions({ patterns: atomicLevelPatterns('atoms') }),
+    },
+  },
+];
 
 const NO_FIXED_TEXT = 'Atoms contain no fixed text: take it from props.';
 

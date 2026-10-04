@@ -74,3 +74,33 @@ test.each(interfaceText)('$path shows the home page in its language', async (tex
 
   expect(document.documentElement).toHaveAttribute('lang', text.lang);
 });
+
+test('links on a /zh/ page stay in Chinese', async () => {
+  server.use(mockApi.home({ ...emptyHomeData, categories: [{ slug: 'ring', name: '戒指' }] }));
+
+  renderRoute('/zh/');
+
+  const header = await screen.findByRole('banner');
+  expect(within(header).getByRole('link', { name: 'Y&I Jewelry' })).toHaveAttribute('href', '/zh/');
+  expect(within(header).getByRole('link', { name: '购物车' })).toHaveAttribute('href', '/zh/cart');
+  const categories = within(header).getByRole('navigation', { name: '商品分类' });
+  expect(hrefs(categories)).toEqual(['/zh/products', '/zh/categories/ring']);
+
+  const footer = screen.getByRole('contentinfo');
+  expect(hrefs(within(footer).getByRole('navigation', { name: '购物指南' }))).toEqual([
+    '/zh/shipping-returns',
+    '/zh/tokushoho',
+    '/zh/privacy',
+    '/zh/terms',
+  ]);
+  expect(hrefs(within(footer).getByRole('navigation', { name: '商品分类（页脚）' }))).toEqual([
+    '/zh/products',
+    '/zh/categories/ring',
+  ]);
+});
+
+function hrefs(container: HTMLElement) {
+  return within(container)
+    .getAllByRole('link')
+    .map((link) => link.getAttribute('href'));
+}

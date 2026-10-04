@@ -1,7 +1,7 @@
-import { Link } from 'react-router';
+import { LocalizedLink } from '../atoms/LocalizedLink';
 import styles from './NavLinkList.module.css';
 
-/** One entry of a navigation list: the page's path and the link text. */
+/** One entry of a navigation list: the page's path (from paths.ts) and the link text. */
 export type NavLinkItem = { to: string; label: string };
 
 /**
@@ -13,9 +13,9 @@ export function NavLinkList({ links, variant }: { links: NavLinkItem[]; variant:
     <ul className={styles[variant]}>
       {links.map((link) => (
         <li key={link.to}>
-          <Link to={link.to} className={styles.link}>
+          <LocalizedLink to={link.to} className={styles.link}>
             {link.label}
-          </Link>
+          </LocalizedLink>
         </li>
       ))}
     </ul>

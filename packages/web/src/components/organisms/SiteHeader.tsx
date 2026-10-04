@@ -1,9 +1,9 @@
-import { Link } from 'react-router';
 import type { Category } from '../../api';
 import { BRAND_NAME } from '../../brand';
 import { useMessages } from '../../i18n/useMessages';
 import { paths } from '../../paths';
 import { Icon } from '../atoms/Icon';
+import { LocalizedLink } from '../atoms/LocalizedLink';
 import { Logo } from '../atoms/Logo';
 import { NavLinkList } from '../molecules/NavLinkList';
 import styles from './SiteHeader.module.css';
@@ -16,12 +16,12 @@ export function SiteHeader({ categories }: { categories: Category[] }) {
   return (
     <header className={styles.header}>
       <div className={styles.top}>
-        <Link to={paths.home} className={styles.logoLink}>
+        <LocalizedLink to={paths.home} className={styles.logoLink}>
           <Logo alt={BRAND_NAME} size="header" />
-        </Link>
-        <Link to={paths.cart} aria-label={text.cart} className={styles.cart}>
+        </LocalizedLink>
+        <LocalizedLink to={paths.cart} aria-label={text.cart} className={styles.cart}>
           <Icon name="bag" />
-        </Link>
+        </LocalizedLink>
       </div>
       <nav aria-label={text.categoriesNav} className={styles.nav}>
         <NavLinkList links={categoryLinks} variant="header" />
