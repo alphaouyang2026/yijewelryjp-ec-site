@@ -67,6 +67,8 @@
   --line-width: 1px;
   --focus-ring-width: 2px;
   --focus-ring-offset: 2px;
+  --icon-size: 22px;
+  --icon-stroke-width: 1.2; /* in the icons' 24-unit grid */
   --logo-header: 88px;
   --logo-footer: 96px;
   --footer-brand-width: 260px; /* preferred widths; the footer columns wrap below them */

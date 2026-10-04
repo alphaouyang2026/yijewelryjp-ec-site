@@ -1,0 +1,9 @@
+/* Line icons in the spec's style: thin strokes in the current text color. */
+.icon {
+  width: var(--icon-size);
+  height: var(--icon-size);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: var(--icon-stroke-width);
+  stroke-linejoin: round;
+}
