@@ -2,6 +2,7 @@ import { screen, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { beforeEach, expect, test } from 'vitest';
 import { emptyHomeData, mockApi } from '../../../test/api-mocks';
+import { linkHrefs, linkTexts } from '../../../test/queries';
 import { renderRoute } from '../../../test/render';
 import { server } from '../../../test/server';
 
@@ -9,20 +10,8 @@ beforeEach(() => {
   server.use(mockApi.home(emptyHomeData));
 });
 
+// The Japanese home page, at /, is home.test.tsx's subject.
 const interfaceText = [
-  {
-    path: '/',
-    lang: 'ja',
-    announcement: '¥[金額]以上のご購入で、国内送料無料',
-    categoriesNav: 'カテゴリー',
-    newArrivalsLink: '新作',
-    cart: 'カート',
-    guideNav: 'ショッピングガイド',
-    guideLinks: ['配送・返品について', '特定商取引法に基づく表記', 'プライバシーポリシー', '利用規約'],
-    contact: '[メールアドレス]',
-    newArrivalsSection: '新作',
-    noNewArrivals: 'ただいま新作を準備中です。',
-  },
   {
     path: '/zh/',
     lang: 'zh-Hans',
@@ -70,7 +59,7 @@ test.each(interfaceText)('$path shows the home page in its locale', async (text)
 
   const footer = screen.getByRole('contentinfo');
   const guide = within(footer).getByRole('navigation', { name: text.guideNav });
-  expect(within(guide).getAllByRole('link').map((link) => link.textContent)).toEqual(text.guideLinks);
+  expect(linkTexts(guide)).toEqual(text.guideLinks);
   expect(within(footer).getByText(text.contact)).toBeInTheDocument();
 
   expect(document.documentElement).toHaveAttribute('lang', text.lang);
@@ -85,16 +74,16 @@ test('links on a /zh/ page stay in Chinese', async () => {
   expect(within(header).getByRole('link', { name: 'Y&I Jewelry' })).toHaveAttribute('href', '/zh/');
   expect(within(header).getByRole('link', { name: '购物车' })).toHaveAttribute('href', '/zh/cart');
   const categories = within(header).getByRole('navigation', { name: '商品分类' });
-  expect(hrefs(categories)).toEqual(['/zh/products', '/zh/categories/ring']);
+  expect(linkHrefs(categories)).toEqual(['/zh/products', '/zh/categories/ring']);
 
   const footer = screen.getByRole('contentinfo');
-  expect(hrefs(within(footer).getByRole('navigation', { name: '购物指南' }))).toEqual([
+  expect(linkHrefs(within(footer).getByRole('navigation', { name: '购物指南' }))).toEqual([
     '/zh/shipping-returns',
     '/zh/tokushoho',
     '/zh/privacy',
     '/zh/terms',
   ]);
-  expect(hrefs(within(footer).getByRole('navigation', { name: '商品分类（页脚）' }))).toEqual([
+  expect(linkHrefs(within(footer).getByRole('navigation', { name: '商品分类（页脚）' }))).toEqual([
     '/zh/products',
     '/zh/categories/ring',
   ]);
@@ -112,7 +101,7 @@ test('the home page asks the API for its data in the page’s locale', async () 
   renderRoute('/en/');
 
   const categories = await screen.findByRole('navigation', { name: 'Categories' });
-  expect(within(categories).getAllByRole('link').map((link) => link.textContent)).toEqual(['New Arrivals', 'Rings']);
+  expect(linkTexts(categories)).toEqual(['New Arrivals', 'Rings']);
 });
 
 test('the header’s locale switcher links to this page in each locale and marks the current one', async () => {
@@ -138,9 +127,3 @@ test('switching the locale stays on the same page', async () => {
   expect(within(newArrivals).getByText('New pieces are coming soon.')).toBeInTheDocument();
   expect(document.documentElement).toHaveAttribute('lang', 'en');
 });
-
-function hrefs(container: HTMLElement) {
-  return within(container)
-    .getAllByRole('link')
-    .map((link) => link.getAttribute('href'));
-}

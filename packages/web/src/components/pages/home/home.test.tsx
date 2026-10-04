@@ -1,11 +1,19 @@
 import { screen, within } from '@testing-library/react';
 import { beforeEach, expect, test } from 'vitest';
 import { emptyHomeData, mockApi } from '../../../test/api-mocks';
+import { linkTexts } from '../../../test/queries';
 import { renderRoute } from '../../../test/render';
 import { server } from '../../../test/server';
 
 beforeEach(() => {
   server.use(mockApi.home(emptyHomeData));
+});
+
+test('/ is the home page in Japanese', async () => {
+  renderRoute('/');
+
+  expect(await screen.findByRole('region', { name: '新作' })).toBeInTheDocument();
+  expect(document.documentElement).toHaveAttribute('lang', 'ja');
 });
 
 test('header shows the Y&I Jewelry logo, linking to the home page', async () => {
@@ -31,11 +39,7 @@ test('header navigation lists new arrivals and the categories from the API', asy
   renderRoute('/');
 
   const nav = await screen.findByRole('navigation', { name: 'カテゴリー' });
-  expect(within(nav).getAllByRole('link').map((link) => link.textContent)).toEqual([
-    '新作',
-    'リング',
-    'ネックレス',
-  ]);
+  expect(linkTexts(nav)).toEqual(['新作', 'リング', 'ネックレス']);
   expect(within(nav).getByRole('link', { name: 'リング' })).toHaveAttribute('href', '/categories/ring');
 });
 
@@ -47,14 +51,14 @@ test('footer shows the logo, links to the shopping guide and categories, and the
   const footer = await screen.findByRole('contentinfo');
   expect(within(footer).getByRole('img', { name: 'Y&I Jewelry' })).toBeInTheDocument();
   const guide = within(footer).getByRole('navigation', { name: 'ショッピングガイド' });
-  expect(within(guide).getAllByRole('link').map((link) => link.textContent)).toEqual([
+  expect(linkTexts(guide)).toEqual([
     '配送・返品について',
     '特定商取引法に基づく表記',
     'プライバシーポリシー',
     '利用規約',
   ]);
   const categories = within(footer).getByRole('navigation', { name: 'カテゴリー（フッター）' });
-  expect(within(categories).getAllByRole('link').map((link) => link.textContent)).toEqual(['新作', 'リング']);
+  expect(linkTexts(categories)).toEqual(['新作', 'リング']);
   expect(within(footer).getByText('[メールアドレス]')).toBeInTheDocument();
 });
 
