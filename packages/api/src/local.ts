@@ -7,7 +7,8 @@ import { createApp } from './app';
 import { systemClock } from './clock';
 import { localDynamoClient, tableDefinition, type Database } from './db';
 
-const port = Number(process.env.API_PORT ?? 8787);
+// packages/web/vite.config.ts proxies /api to this port.
+const port = 8787;
 const db: Database = {
   client: localDynamoClient(),
   tableName: process.env.TABLE_NAME ?? 'yijewelry-local',
