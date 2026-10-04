@@ -17,9 +17,11 @@ const forbid = (regex, message, options = {}) => ({ regex, message, caseSensitiv
 // Each bounded context, and the operations module, has the layers
 // domain <- application <- interface, with infrastructure implementing the
 // domain's interfaces. Contexts use each other only through the other
-// context's application layer. The composition root (app.ts,
-// dynamodb-adapters.ts) and the entry points (local.ts, lambda.ts) sit outside
-// the layers and may import anything.
+// context's application layer. Beside them: the shared kernel (shared domain
+// concepts), interface (parts every interface layer shares) and platform
+// (technical building blocks for infrastructure). The composition root
+// (app.ts, dynamodb-adapters.ts) and the entry points (local.ts, lambda.ts) sit
+// outside the layers and may import anything.
 // ---------------------------------------------------------------------------
 
 const API_CONTEXTS = ['catalog', 'ordering', 'store', 'identity'];
@@ -54,7 +56,7 @@ const apiLayerRules = {
   ],
   interface: [
     forbid(segment('domain', 'infrastructure'), 'The interface layer calls the application layer only.'),
-    forbid('^@aws-sdk/|(^|/)platform/dynamodb$', 'AWS calls belong in the infrastructure layer.'),
+    forbid(`^@aws-sdk/|${segment('platform')}`, 'AWS calls and the table belong in the infrastructure layer.'),
   ],
 };
 
@@ -97,7 +99,7 @@ const apiSharedConfigs = [
         'error',
         {
           patterns: [
-            forbid(segment(...API_MODULES, 'platform'), 'The shared kernel depends on nothing else in the API.'),
+            forbid(segment(...API_MODULES, 'interface', 'platform'), 'The shared kernel depends on nothing else in the API.'),
             forbid(FRAMEWORKS, 'The shared kernel uses no framework, validation library or AWS SDK.'),
             COMPOSITION_ROOT,
             DYNAMODB_LOCAL,
@@ -107,6 +109,24 @@ const apiSharedConfigs = [
     },
   },
   {
+    // The interface layer's shared parts, such as the locale query's validation.
+    files: ['packages/api/src/interface/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            forbid(segment(...API_MODULES), 'The shared interface parts know nothing of the contexts.'),
+            forbid(`^@aws-sdk/|${segment('platform')}`, 'AWS calls and the table belong in the infrastructure layer.'),
+            COMPOSITION_ROOT,
+            DYNAMODB_LOCAL,
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // Technical building blocks for the infrastructure layer, such as the single table.
     files: ['packages/api/src/platform/**/*.ts'],
     rules: {
       'no-restricted-imports': [
@@ -114,6 +134,7 @@ const apiSharedConfigs = [
         {
           patterns: [
             forbid(segment(...API_MODULES), 'Technical building blocks know nothing of the contexts.'),
+            forbid('^(hono|zod)(/|$)|^@hono/', 'HTTP and request validation belong in the interface layer.'),
             COMPOSITION_ROOT,
             DYNAMODB_LOCAL,
           ],

@@ -16,12 +16,13 @@ npm workspaces 的 monorepo：
 ```
 packages/api/src/
 ├── shared-kernel/    共享内核：金额（Money）、语言（Locale）、多语言文本（LocalizedText）、时钟（Clock）
+├── interface/        各上下文接口层共用的部件：locale 查询参数的 Zod 校验
 ├── catalog/          商品目录 ┐
 ├── ordering/         订单     │ 限界上下文，各有四层：
 ├── store/            店铺     │   domain/ application/ infrastructure/ interface/
 ├── identity/         店主身份 ┘
 ├── operations/       健康检查（不是上下文，按同样的方式分层）
-├── platform/         技术部件：DynamoDB 单表、locale 查询参数的校验；dynamodb-local.ts 只供本地开发和测试使用
+├── platform/         基础设施层用的技术部件：DynamoDB 单表；dynamodb-local.ts 只供本地开发和测试使用
 ├── app.ts            createApp：把注入的适配器交给各用例，挂上各模块的路由
 ├── dynamodb-adapters.ts  DynamoDB 上的仓储和表探测
 ├── local.ts          本地入口（Node.js + DynamoDB Local）
@@ -32,8 +33,8 @@ packages/api/src/
 分层规则（`npm run lint` 检查）：
 
 - 依赖方向：接口层 → 应用层 → 领域层；基础设施层实现领域层定义的接口。
-- 领域层和应用层不使用 Hono、Zod、AWS SDK 和 `platform`；接口层不调用 AWS SDK。
-- 上下文之间只通过对方的应用层交互；共享内核和 `platform` 不引用任何上下文。
+- 领域层和应用层不使用 Hono、Zod、AWS SDK 和 `platform`；Hono 路由和 Zod 校验只在接口层（包括共用的 `interface`），AWS SDK 调用和 `platform` 只在基础设施层。
+- 上下文之间只通过对方的应用层交互；共享内核、`interface` 和 `platform` 不引用任何上下文。
 - 入口负责组装：选择适配器（DynamoDB 仓储、时钟），通过 `createApp` 注入应用层。测试用同样的方式注入。
 
 ### 前端：Atomic Design（[ADR 0003](docs/adr/0003-frontend-atomic-design.md)）

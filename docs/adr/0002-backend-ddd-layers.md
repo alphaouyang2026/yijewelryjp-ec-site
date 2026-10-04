@@ -9,5 +9,5 @@ API 按限界上下文组织：商品目录（`catalog`）、订单（`ordering`
 - 入口（`src/local.ts`、`src/lambda.ts`）负责组装：选择适配器（DynamoDB 仓储、时钟，以后还有 Stripe、SES、Cognito），通过 `createApp` 注入应用层。API 测试用同样的方式注入，只是换成测试时钟和每个测试文件一张的 DynamoDB Local 表。
 - 仓储只有 DynamoDB 一种实现，测试也用它跑在 DynamoDB Local 上，不写内存版仓储。只有我们无法控制的外部服务（Payments、Mailer、AdminIdentity、Clock）有测试替身。
 - 领域层和应用层不单独设测试接缝，都通过 API 的 HTTP 接口测试。
-- 健康检查不属于任何上下文，放在 `operations` 模块，按同样的分层：表探测在基础设施层，接口层不调用 AWS SDK。各上下文共用的技术部件（单表定义、`locale` 查询参数的校验）放在 `platform`，领域层和应用层不能使用。
+- 健康检查不属于任何上下文，放在 `operations` 模块，按同样的分层：表探测在基础设施层，接口层不调用 AWS SDK。各上下文共用的技术部件（单表定义）放在 `platform`，只给基础设施层使用；各上下文的接口层共用的部件（`locale` 查询参数的 Zod 校验）放在 `interface`，它本身也属于接口层。
 - 下单时既要创建订单（订单）又要锁定库存（商品目录），跨两个上下文；这由应用层的事务单元（Unit of Work）在一个 DynamoDB 事务里一起提交，而不是让一个上下文直接写另一个上下文的数据。

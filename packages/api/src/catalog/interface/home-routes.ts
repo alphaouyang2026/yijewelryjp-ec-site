@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { localeQuery } from '../../platform/locale-query';
+import { localeQuery } from '../../interface/locale-query';
 import type { GetHomeData } from '../application/get-home-data';
 
 export function homeRoutes(getHomeData: GetHomeData) {
