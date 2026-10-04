@@ -9,6 +9,9 @@ export const zh: Messages = {
     categoriesNav: '商品分类',
     cart: '购物车',
   },
+  languageSwitcher: {
+    nav: '语言',
+  },
   categoryNav: {
     newArrivals: '新品',
   },

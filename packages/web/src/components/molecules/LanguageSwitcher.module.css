@@ -1,0 +1,25 @@
+/* No gaps: on a 390px phone the three names just fit beside the logo; narrower screens wrap them. */
+.list {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--tap-target);
+  min-height: var(--tap-target);
+  color: var(--color-linen);
+  font-size: var(--text-caption);
+  letter-spacing: var(--tracking-caption);
+  text-decoration: none;
+}
+
+.link:hover,
+.link[aria-current='page'] {
+  color: var(--color-brand-gold);
+}

@@ -5,6 +5,7 @@ import { paths } from '../../paths';
 import { Icon } from '../atoms/Icon';
 import { LocalizedLink } from '../atoms/LocalizedLink';
 import { Logo } from '../atoms/Logo';
+import { LanguageSwitcher } from '../molecules/LanguageSwitcher';
 import { NavLinkList } from '../molecules/NavLinkList';
 import styles from './SiteHeader.module.css';
 import { useCategoryLinks } from './useCategoryLinks';
@@ -16,6 +17,7 @@ export function SiteHeader({ categories }: { categories: Category[] }) {
   return (
     <header className={styles.header}>
       <div className={styles.top}>
+        <LanguageSwitcher className={styles.languages} />
         <LocalizedLink to={paths.home} className={styles.logoLink}>
           <Logo alt={BRAND_NAME} size="header" />
         </LocalizedLink>

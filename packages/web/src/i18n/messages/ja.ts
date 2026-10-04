@@ -14,6 +14,9 @@ export const ja = {
     categoriesNav: 'カテゴリー',
     cart: 'カート',
   },
+  languageSwitcher: {
+    nav: '言語',
+  },
   categoryNav: {
     newArrivals: '新作',
   },

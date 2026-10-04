@@ -1,4 +1,5 @@
 import { screen, within } from '@testing-library/react';
+import { userEvent } from '@testing-library/user-event';
 import { beforeEach, expect, test } from 'vitest';
 import { emptyHomeData, mockApi } from '../../../test/api-mocks';
 import { renderRoute } from '../../../test/render';
@@ -112,6 +113,30 @@ test('the home page asks the API for its data in the page’s language', async (
 
   const categories = await screen.findByRole('navigation', { name: 'Categories' });
   expect(within(categories).getAllByRole('link').map((link) => link.textContent)).toEqual(['New Arrivals', 'Rings']);
+});
+
+test('the header’s language switcher links to this page in each language and marks the current one', async () => {
+  renderRoute('/en/?utm_source=line');
+
+  const header = await screen.findByRole('banner');
+  const languages = within(header).getByRole('navigation', { name: 'Language' });
+  expect(within(languages).getByRole('link', { name: '日本語' })).toHaveAttribute('href', '/?utm_source=line');
+  expect(within(languages).getByRole('link', { name: '中文' })).toHaveAttribute('href', '/zh/?utm_source=line');
+  const english = within(languages).getByRole('link', { name: 'English' });
+  expect(english).toHaveAttribute('href', '/en/?utm_source=line');
+  expect(english).toHaveAttribute('aria-current', 'page');
+});
+
+test('switching the language stays on the same page', async () => {
+  const user = userEvent.setup();
+  renderRoute('/zh/');
+  const languages = within(await screen.findByRole('banner')).getByRole('navigation', { name: '语言' });
+
+  await user.click(within(languages).getByRole('link', { name: 'English' }));
+
+  const newArrivals = await screen.findByRole('region', { name: 'New Arrivals' });
+  expect(within(newArrivals).getByText('New pieces are coming soon.')).toBeInTheDocument();
+  expect(document.documentElement).toHaveAttribute('lang', 'en');
 });
 
 function hrefs(container: HTMLElement) {

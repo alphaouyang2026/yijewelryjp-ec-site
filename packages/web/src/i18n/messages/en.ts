@@ -9,6 +9,9 @@ export const en: Messages = {
     categoriesNav: 'Categories',
     cart: 'Cart',
   },
+  languageSwitcher: {
+    nav: 'Language',
+  },
   categoryNav: {
     newArrivals: 'New Arrivals',
   },
