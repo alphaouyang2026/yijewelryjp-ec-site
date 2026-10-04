@@ -16,7 +16,7 @@
   color: var(--color-deep-gold);
   font-family: var(--font-latin);
   font-size: var(--text-label);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
   letter-spacing: var(--tracking-label);
   text-transform: uppercase;
 }
@@ -24,9 +24,9 @@
 .title {
   font-family: var(--font-mincho);
   font-size: var(--text-section-title);
-  font-weight: 500;
-  line-height: 1.5;
-  letter-spacing: 0.12em;
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-tight);
+  letter-spacing: var(--tracking-heading);
 }
 
 .empty {

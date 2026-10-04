@@ -1,6 +1,7 @@
 /*
- * Design tokens: the only place colors, fonts and spacing are defined.
- * Source: spec #1 "视觉设计". Components use these through CSS Modules.
+ * Design tokens: the only place colors, fonts, type settings, spacing and
+ * layout sizes are defined. Source: spec #1 "视觉设计". Components use these
+ * through CSS Modules and never hard-code such values.
  */
 :root {
   /* Colors. Dark areas: onyx ground with gold accents. Light areas: porcelain ground. */
@@ -20,6 +21,7 @@
   --font-latin: 'Cormorant Garamond', 'Times New Roman', serif; /* English labels, prices */
   --font-mincho: 'Shippori Mincho', 'Hiragino Mincho ProN', serif; /* Japanese headings, product names */
   --font-gothic: 'Zen Kaku Gothic New', 'Hiragino Sans', sans-serif; /* body, buttons, navigation, forms */
+  --font-weight-medium: 500; /* English labels, Japanese headings */
 
   /* Type scale */
   --text-display: clamp(30px, 3.4vw, 50px);
@@ -34,9 +36,12 @@
   --text-price-detail: 28px;
   --text-tax-note: 11px;
   --line-height-body: 2;
+  --line-height-tight: 1.5; /* headings, one-line bars */
   --tracking-body: 0.06em;
-  --tracking-label: 0.34em;
-  --tracking-nav: 0.16em;
+  --tracking-caption: 0.08em; /* small text: footer links, tagline, fine print */
+  --tracking-heading: 0.12em; /* Japanese headings */
+  --tracking-nav: 0.16em; /* navigation, announcement bar */
+  --tracking-label: 0.34em; /* English labels */
 
   /* Spacing, on an 8px base: --space-N is N × 8px */
   --space-1: 8px;
@@ -54,10 +59,15 @@
   --gutter: var(--space-3);
   --section-spacing: var(--space-15);
   --tap-target: 44px;
+  --nav-gap: clamp(var(--space-2), 3vw, var(--space-5)); /* between navigation links */
   --button-height: 52px;
   --line-width: 1px;
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
   --logo-header: 88px;
   --logo-footer: 96px;
+  --footer-brand-width: 260px; /* preferred widths; the footer columns wrap below them */
+  --footer-column-width: 220px;
 }
 
 @media (max-width: 767px) {

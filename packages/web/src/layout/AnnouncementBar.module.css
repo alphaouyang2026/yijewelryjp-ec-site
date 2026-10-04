@@ -4,7 +4,7 @@
   border-bottom: var(--line-width) solid var(--color-bronze-line);
   color: var(--color-brand-gold);
   font-size: var(--text-caption);
-  line-height: 1.6;
-  letter-spacing: 0.14em;
+  line-height: var(--line-height-tight);
+  letter-spacing: var(--tracking-nav);
   text-align: center;
 }
