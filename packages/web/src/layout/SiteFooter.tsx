@@ -1,5 +1,5 @@
 import type { Category } from '../api';
-import { BRAND_NAME, logoUrl } from '../brand';
+import { BRAND_NAME, LOGO_FILE_SIZE, logoUrl } from '../brand';
 import { paths } from '../paths';
 import { categoryLinks } from './categoryLinks';
 import { NavLinks, type NavLinkItem } from './NavLinks';
@@ -17,7 +17,13 @@ export function SiteFooter({ categories }: { categories: Category[] }) {
     <footer className={styles.footer}>
       <div className={styles.columns}>
         <div className={styles.brand}>
-          <img src={logoUrl} alt={BRAND_NAME} width={96} height={96} className={styles.logo} />
+          <img
+            src={logoUrl}
+            alt={BRAND_NAME}
+            width={LOGO_FILE_SIZE.width}
+            height={LOGO_FILE_SIZE.height}
+            className={styles.logo}
+          />
           <p className={styles.tagline}>[ブランドの一言紹介]</p>
         </div>
         <nav aria-label="ショッピングガイド" className={styles.column}>

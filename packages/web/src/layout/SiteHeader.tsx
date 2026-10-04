@@ -1,6 +1,6 @@
 import { Link } from 'react-router';
 import type { Category } from '../api';
-import { BRAND_NAME, logoUrl } from '../brand';
+import { BRAND_NAME, LOGO_FILE_SIZE, logoUrl } from '../brand';
 import { paths } from '../paths';
 import { categoryLinks } from './categoryLinks';
 import { NavLinks } from './NavLinks';
@@ -11,7 +11,13 @@ export function SiteHeader({ categories }: { categories: Category[] }) {
     <header className={styles.header}>
       <div className={styles.top}>
         <Link to={paths.home} className={styles.logoLink}>
-          <img src={logoUrl} alt={BRAND_NAME} width={88} height={88} className={styles.logo} />
+          <img
+            src={logoUrl}
+            alt={BRAND_NAME}
+            width={LOGO_FILE_SIZE.width}
+            height={LOGO_FILE_SIZE.height}
+            className={styles.logo}
+          />
         </Link>
         <Link to={paths.cart} aria-label="カート" className={styles.cart}>
           <BagIcon />
