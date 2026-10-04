@@ -1,0 +1,8 @@
+name: yijewelryjp-ec-site
+
+services:
+  dynamodb:
+    image: amazon/dynamodb-local:latest
+    # The image's default command runs DynamoDB Local in memory.
+    ports:
+      - "8100:8000"

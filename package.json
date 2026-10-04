@@ -1,0 +1,27 @@
+{
+  "name": "yijewelryjp-ec-site",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/api",
+    "packages/web"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "concurrently --names db,api,web --prefix-colors gray,blue,magenta \"docker compose up dynamodb\" \"npm run dev -w @yi/api\" \"npm run dev -w @yi/web\"",
+    "db:start": "docker compose up --detach dynamodb",
+    "db:stop": "docker compose down",
+    "typecheck": "tsc --build",
+    "lint": "eslint .",
+    "test": "npm run test:api && npm run test:web",
+    "test:api": "npm run test -w @yi/api",
+    "test:web": "npm run test -w @yi/web",
+    "build": "npm run build -w @yi/web"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5",
+    "typescript": "~6.0.3"
+  }
+}
