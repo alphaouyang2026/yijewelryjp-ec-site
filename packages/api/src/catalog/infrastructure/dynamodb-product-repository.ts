@@ -1,6 +1,5 @@
-import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import { queryPartition, type Database } from '../../platform/dynamodb';
 import type { LocalizedText } from '../../shared-kernel/localized-text';
-import type { Database } from '../../platform/dynamodb';
 import type { Product, ProductRepository } from '../domain/product';
 
 /**
@@ -17,20 +16,10 @@ export type NewArrivalItem = {
 };
 
 export function dynamoDbProductRepository(db: Database): ProductRepository {
-  const documents = DynamoDBDocumentClient.from(db.client);
-
   return {
     async listNewArrivals(limit) {
-      const { Items = [] } = await documents.send(
-        new QueryCommand({
-          TableName: db.tableName,
-          KeyConditionExpression: 'pk = :pk',
-          ExpressionAttributeValues: { ':pk': 'NEW_ARRIVAL' },
-          ScanIndexForward: false,
-          Limit: limit,
-        }),
-      );
-      return (Items as NewArrivalItem[]).map(toProduct);
+      const items = await queryPartition<NewArrivalItem>(db, 'NEW_ARRIVAL', { descending: true, limit });
+      return items.map(toProduct);
     },
   };
 }
