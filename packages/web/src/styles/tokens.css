@@ -1,0 +1,68 @@
+/*
+ * Design tokens: the only place colors, fonts and spacing are defined.
+ * Source: spec #1 "视觉设计". Components use these through CSS Modules.
+ */
+:root {
+  /* Colors. Dark areas: onyx ground with gold accents. Light areas: porcelain ground. */
+  --color-onyx: #111111; /* dark-area ground, light-area primary button, body text */
+  --color-brand-gold: #d4be72; /* from the logo; on dark grounds only */
+  --color-deep-gold: #7a6630; /* gold text and icons on light grounds */
+  --color-charcoal: #1f1e1b; /* photo ground in dark areas */
+  --color-bronze-line: #4a3f28; /* dividers on dark grounds */
+  --color-smoke: #b8b2a8; /* secondary text on dark grounds */
+  --color-porcelain: #fafaf9; /* light-area ground */
+  --color-mist: #f1efec; /* light-area block ground */
+  --color-linen: #e9e5df; /* photo ground in light areas, disabled buttons */
+  --color-hairline: #dcd8d2; /* dividers and borders on light grounds */
+  --color-graphite: #5c5a57; /* secondary text on light grounds */
+
+  /* Font families */
+  --font-latin: 'Cormorant Garamond', 'Times New Roman', serif; /* English labels, prices */
+  --font-mincho: 'Shippori Mincho', 'Hiragino Mincho ProN', serif; /* Japanese headings, product names */
+  --font-gothic: 'Zen Kaku Gothic New', 'Hiragino Sans', sans-serif; /* body, buttons, navigation, forms */
+
+  /* Type scale */
+  --text-display: clamp(30px, 3.4vw, 50px);
+  --text-section-title: 30px;
+  --text-product-name: 15px;
+  --text-body: 14px;
+  --text-nav: 13px;
+  --text-caption: 12px;
+  --text-label: 14px;
+  --text-price: 20px;
+  --text-price-detail: 28px;
+  --text-tax-note: 11px;
+  --line-height-body: 2;
+  --tracking-body: 0.06em;
+  --tracking-label: 0.34em;
+  --tracking-nav: 0.16em;
+
+  /* Spacing, on an 8px base: --space-N is N × 8px */
+  --space-1: 8px;
+  --space-2: 16px;
+  --space-3: 24px;
+  --space-4: 32px;
+  --space-5: 40px;
+  --space-6: 48px;
+  --space-7: 56px;
+  --space-9: 72px;
+  --space-15: 120px;
+
+  /* Layout */
+  --content-max-width: 1200px;
+  --gutter: var(--space-3);
+  --section-spacing: var(--space-15);
+  --tap-target: 44px;
+  --button-height: 52px;
+  --line-width: 1px;
+  --logo-header: 88px;
+  --logo-footer: 96px;
+}
+
+@media (max-width: 767px) {
+  :root {
+    --gutter: var(--space-2);
+    --section-spacing: var(--space-9);
+    --logo-header: 72px;
+  }
+}
