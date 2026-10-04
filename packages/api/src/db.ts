@@ -24,12 +24,10 @@ export function tableDefinition(tableName: string): CreateTableCommandInput {
   };
 }
 
-export const DEFAULT_LOCAL_ENDPOINT = 'http://localhost:8100';
-
-/** A client for DynamoDB Local, which accepts any credentials. */
-export function localDynamoClient(endpoint = process.env.DYNAMODB_ENDPOINT ?? DEFAULT_LOCAL_ENDPOINT) {
+/** A client for DynamoDB Local at DYNAMODB_ENDPOINT (default http://localhost:8100), which accepts any credentials. */
+export function localDynamoClient() {
   return new DynamoDBClient({
-    endpoint,
+    endpoint: process.env.DYNAMODB_ENDPOINT ?? 'http://localhost:8100',
     region: 'ap-northeast-1',
     credentials: { accessKeyId: 'local', secretAccessKey: 'local' },
   });
