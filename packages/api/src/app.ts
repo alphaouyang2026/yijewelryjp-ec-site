@@ -3,7 +3,8 @@ import { getHomeData } from './catalog/application/get-home-data';
 import type { CategoryRepository } from './catalog/domain/category';
 import type { ProductRepository } from './catalog/domain/product';
 import { homeRoutes } from './catalog/interface/home-routes';
-import { checkHealth, type DatabaseProbe } from './operations/application/check-health';
+import { checkHealth } from './operations/application/check-health';
+import type { DatabaseProbe } from './operations/domain/database-probe';
 import { healthRoutes } from './operations/interface/health-routes';
 import type { Clock } from './shared-kernel/clock';
 

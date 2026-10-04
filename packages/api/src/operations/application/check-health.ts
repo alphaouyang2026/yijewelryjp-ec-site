@@ -1,10 +1,5 @@
 import type { Clock } from '../../shared-kernel/clock';
-
-/** The API's database, as the health check sees it. */
-export interface DatabaseProbe {
-  /** Resolves if the database answers and the API's table exists; rejects otherwise. */
-  check(): Promise<void>;
-}
+import type { DatabaseProbe } from '../domain/database-probe';
 
 export type Health = { status: 'ok'; time: string } | { status: 'unavailable' };
 

@@ -16,8 +16,8 @@ const forbid = (regex, message, options = {}) => ({ regex, message, caseSensitiv
 //
 // Each bounded context, and the operations module, has the layers
 // domain <- application <- interface, with infrastructure implementing the
-// domain's (or application's) interfaces. Contexts use each other only through
-// the other context's application layer. The composition root (app.ts,
+// domain's interfaces. Contexts use each other only through the other
+// context's application layer. The composition root (app.ts,
 // dynamodb-adapters.ts) and the entry points (local.ts, lambda.ts) sit outside
 // the layers and may import anything.
 // ---------------------------------------------------------------------------
@@ -45,7 +45,7 @@ const apiLayerRules = {
     forbid(FRAMEWORKS, 'The application layer uses no framework, validation library or AWS SDK.'),
   ],
   infrastructure: [
-    forbid(segment('interface'), 'Infrastructure implements interfaces from the domain or application layer.'),
+    forbid(segment('application', 'interface'), 'Infrastructure implements interfaces from the domain layer.'),
     forbid('^(hono|zod)(/|$)|^@hono/', 'HTTP and request validation belong in the interface layer.'),
   ],
   interface: [
