@@ -4,6 +4,9 @@ import styles from './NavLinkList.module.css';
 /** One entry of a navigation list: the page's path (from paths.ts) and the link text. */
 export type NavLinkItem = { to: string; label: string };
 
+/** The links' look in each list. */
+const LINK_VARIANT = { header: 'nav', footer: 'caption' } as const;
+
 /**
  * The entries as a list of links on a dark ground, in order: a centred,
  * wrapping row for the header or a column for the footer.
@@ -13,7 +16,7 @@ export function NavLinkList({ links, variant }: { links: NavLinkItem[]; variant:
     <ul className={styles[variant]}>
       {links.map((link) => (
         <li key={link.to}>
-          <LocalizedLink to={link.to} className={styles.link}>
+          <LocalizedLink to={link.to} variant={LINK_VARIANT[variant]}>
             {link.label}
           </LocalizedLink>
         </li>

@@ -26,6 +26,7 @@ export function LocaleSwitcher({ className }: { className?: string }) {
               lang={htmlLang(locale)}
               hrefLang={htmlLang(locale)}
               aria-current={locale === currentLocale ? 'page' : undefined}
+              variant="caption"
               className={styles.link}
             >
               {localeName(locale)}

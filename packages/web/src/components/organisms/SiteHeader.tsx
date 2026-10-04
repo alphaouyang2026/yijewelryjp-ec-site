@@ -21,7 +21,7 @@ export function SiteHeader({ categories }: { categories: Category[] }) {
         <LocalizedLink to={paths.home} className={styles.logoLink}>
           <Logo alt={BRAND_NAME} size="header" />
         </LocalizedLink>
-        <LocalizedLink to={paths.cart} aria-label={text.cart} className={styles.cart}>
+        <LocalizedLink to={paths.cart} aria-label={text.cart} variant="icon" className={styles.cart}>
           <Icon name="bag" />
         </LocalizedLink>
       </div>

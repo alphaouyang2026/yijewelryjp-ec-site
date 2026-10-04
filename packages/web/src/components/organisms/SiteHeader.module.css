@@ -26,16 +26,6 @@
 .cart {
   grid-column: 3;
   justify-self: end;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: var(--tap-target);
-  min-height: var(--tap-target);
-  color: var(--color-linen);
-}
-
-.cart:hover {
-  color: var(--color-brand-gold);
 }
 
 .nav {

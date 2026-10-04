@@ -7,19 +7,8 @@
   list-style: none;
 }
 
+/* Each name centred in at least a tap target's width. */
 .link {
-  display: flex;
-  align-items: center;
   justify-content: center;
   min-width: var(--tap-target);
-  min-height: var(--tap-target);
-  color: var(--color-linen);
-  font-size: var(--text-caption);
-  letter-spacing: var(--tracking-caption);
-  text-decoration: none;
-}
-
-.link:hover,
-.link[aria-current='page'] {
-  color: var(--color-brand-gold);
 }
