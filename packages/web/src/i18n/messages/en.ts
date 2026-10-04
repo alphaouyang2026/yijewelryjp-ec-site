@@ -27,6 +27,7 @@ export const en: Messages = {
     categoriesLabel: 'CATEGORY',
     contactLabel: 'CONTACT',
     contactEmail: '[email address]',
+    copyrightSign: '©',
     pricesIncludeTax: 'All prices include tax',
   },
   home: {

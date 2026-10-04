@@ -47,7 +47,7 @@ export function SiteFooter({ categories }: { categories: Category[] }) {
       </div>
       <div className={styles.bottomWrap}>
         <div className={styles.bottom}>
-          <span>© {BRAND_NAME}</span>
+          <span>{text.copyrightSign} {BRAND_NAME}</span>
           <span>{text.pricesIncludeTax}</span>
         </div>
       </div>

@@ -27,6 +27,7 @@ export const zh: Messages = {
     categoriesLabel: 'CATEGORY',
     contactLabel: 'CONTACT',
     contactEmail: '[邮箱地址]',
+    copyrightSign: '©',
     pricesIncludeTax: '所示价格均为含税价格',
   },
   home: {

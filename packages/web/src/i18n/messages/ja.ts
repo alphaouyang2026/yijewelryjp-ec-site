@@ -32,6 +32,7 @@ export const ja = {
     categoriesLabel: 'CATEGORY',
     contactLabel: 'CONTACT',
     contactEmail: '[メールアドレス]',
+    copyrightSign: '©',
     pricesIncludeTax: '表示価格はすべて税込です',
   },
   home: {
