@@ -1,10 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import { CreateTableCommand, DeleteTableCommand } from '@aws-sdk/client-dynamodb';
 import { hc } from 'hono/client';
 import { CookieJar } from 'tough-cookie';
 import { afterAll, beforeAll, beforeEach } from 'vitest';
 import { createApp, type AppType } from '../../src/app';
-import { localDynamoClient, tableDefinition } from '../../src/db';
+import { createTable, deleteTable, localDynamoClient } from '../../src/db';
 import { createTestClock } from './test-clock';
 
 // Requests never leave the process; the origin only gives cookies a domain to live on.
@@ -18,17 +17,17 @@ const DEFAULT_NOW = new Date('2026-01-01T00:00:00+09:00');
  * block): a fresh DynamoDB Local table, created before its tests and deleted
  * after, and a clock the tests control.
  */
-export function useTestApi({ createTable = true }: { createTable?: boolean } = {}) {
+export function useTestApi({ withTable = true }: { withTable?: boolean } = {}) {
   const db = { client: localDynamoClient(), tableName: `test-${randomUUID()}` };
   const clock = createTestClock(DEFAULT_NOW);
   const app = createApp({ db, clock });
 
   beforeAll(async () => {
-    if (createTable) await db.client.send(new CreateTableCommand(tableDefinition(db.tableName)));
+    if (withTable) await createTable(db);
   });
 
   afterAll(async () => {
-    if (createTable) await db.client.send(new DeleteTableCommand({ TableName: db.tableName }));
+    if (withTable) await deleteTable(db);
     db.client.destroy();
   });
 

@@ -1,7 +1,6 @@
-import { DescribeTableCommand } from '@aws-sdk/client-dynamodb';
 import { Hono } from 'hono';
 import type { Clock } from './clock';
-import type { Database } from './db';
+import { checkTable, type Database } from './db';
 
 export type Category = { slug: string; name: string };
 export type ProductSummary = { slug: string; name: string };
@@ -17,7 +16,7 @@ export function createApp({ db, clock }: AppDeps) {
     .basePath('/api')
     .get('/health', async (c) => {
       try {
-        await db.client.send(new DescribeTableCommand({ TableName: db.tableName }));
+        await checkTable(db);
       } catch (error) {
         console.error('Health check could not reach the database table', error);
         return c.json({ status: 'unavailable' }, 503);

@@ -1,11 +1,10 @@
 // Local development server: the API on Node.js, backed by DynamoDB Local.
-import { CreateTableCommand, ResourceInUseException } from '@aws-sdk/client-dynamodb';
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { logger } from 'hono/logger';
 import { createApp } from './app';
 import { systemClock } from './clock';
-import { localDynamoClient, tableDefinition, type Database } from './db';
+import { createTable, localDynamoClient, type Database } from './db';
 
 // packages/web/vite.config.ts proxies /api to this port.
 const port = 8787;
@@ -23,14 +22,13 @@ serve({ fetch: server.fetch, port, hostname: '127.0.0.1' }, (info) => {
 void ensureTable(db);
 
 /** Creates the table in DynamoDB Local, retrying while the container is still starting. */
-async function ensureTable({ client, tableName }: Database) {
+async function ensureTable(db: Database) {
   for (let attempt = 1; attempt <= 30; attempt++) {
     try {
-      await client.send(new CreateTableCommand(tableDefinition(tableName)));
-      console.log(`Created table ${tableName} in DynamoDB Local`);
+      await createTable(db);
+      console.log(`Table ${db.tableName} is ready in DynamoDB Local`);
       return;
-    } catch (error) {
-      if (error instanceof ResourceInUseException) return;
+    } catch {
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   }

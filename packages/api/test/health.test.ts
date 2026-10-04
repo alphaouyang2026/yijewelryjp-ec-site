@@ -15,7 +15,7 @@ describe('with its database table in place', () => {
 });
 
 describe('without its database table', () => {
-  const api = useTestApi({ createTable: false });
+  const api = useTestApi({ withTable: false });
 
   test('health check reports the API as unavailable', async () => {
     const res = await api.client().api.health.$get();
