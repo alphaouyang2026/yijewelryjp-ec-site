@@ -7,6 +7,7 @@ import { afterAll, beforeAll, beforeEach } from 'vitest';
 import { createApp, type AppDeps } from '../../src/app';
 import { dynamoDbAdapters } from '../../src/dynamodb-adapters';
 import { createTable, deleteTable, localDynamoClient } from '../../src/platform/dynamodb-local';
+import { catalogSeed } from './catalog-seed';
 import { createTestClock } from './test-clock';
 
 // Requests never leave the process; the origin only gives cookies a domain to live on.
@@ -37,7 +38,8 @@ type TestApp = ReturnType<typeof createTestApp>;
  * Builds the API the way its entry points do, with test adapters, for the
  * enclosing test file (or describe block): the DynamoDB adapters on a fresh
  * DynamoDB Local table, created before its tests and deleted after, and a
- * clock the tests control. The test-only routes are mounted too.
+ * clock the tests control. The test-only routes are mounted too, and `seed`
+ * puts data the API cannot create yet into the table.
  */
 export function useTestApi({ withTable = true }: { withTable?: boolean } = {}) {
   const db = { client: localDynamoClient(), tableName: `test-${randomUUID()}` };
@@ -59,6 +61,7 @@ export function useTestApi({ withTable = true }: { withTable?: boolean } = {}) {
 
   return {
     clock,
+    seed: { catalog: catalogSeed(db) },
     /** A new client with its own cookie jar, like a fresh browser. */
     client() {
       return hc<TestApp>(ORIGIN, { fetch: fetchWithCookies(app, new CookieJar()) });

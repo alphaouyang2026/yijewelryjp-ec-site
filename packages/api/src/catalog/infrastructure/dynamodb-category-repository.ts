@@ -4,10 +4,11 @@ import type { Database } from '../../platform/dynamodb';
 import type { Category, CategoryRepository } from '../domain/category';
 
 /**
- * A category's item. Provisional: nothing writes categories yet, and the
- * catalog's own ticket settles the item layout together with its writers.
+ * A category's item. Provisional: nothing writes categories yet, and ticket #7
+ * confirms or replaces this layout. Until then the API tests seed it directly
+ * (test/support/catalog-seed.ts).
  */
-type CategoryItem = {
+export type CategoryItem = {
   pk: 'CATEGORY';
   sk: string; // the slug
   name: LocalizedText;

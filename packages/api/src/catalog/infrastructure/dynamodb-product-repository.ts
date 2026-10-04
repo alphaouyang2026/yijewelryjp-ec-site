@@ -5,10 +5,11 @@ import type { Product, ProductRepository } from '../domain/product';
 
 /**
  * The item that puts a listed product in the new arrivals, sorted by when it
- * was listed. Provisional: nothing lists products yet, and the catalog's own
- * ticket settles the item layout together with its writers.
+ * was listed. Provisional: nothing lists products yet, and ticket #7 confirms
+ * or replaces this layout. Until then the API tests seed it directly
+ * (test/support/catalog-seed.ts).
  */
-type NewArrivalItem = {
+export type NewArrivalItem = {
   pk: 'NEW_ARRIVAL';
   sk: string; // `${listedAt ISO 8601}#${slug}`
   slug: string;
