@@ -5,7 +5,7 @@ import type { PagePath } from '../../paths';
 import styles from './LocalizedLink.module.css';
 
 type LocalizedLinkProps = Omit<LinkProps, 'to' | 'className'> & {
-  /** The page to link to, from paths.ts. */
+  /** The page to link to, without a locale prefix. */
   to: PagePath;
   /** The locale to link to; the current page's unless switching locales. */
   locale?: Locale;
