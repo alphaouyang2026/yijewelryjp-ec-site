@@ -13,9 +13,9 @@ const db: Database = {
   tableName: process.env.TABLE_NAME ?? 'yijewelry-local',
 };
 
-const server = new Hono().use(logger()).route('/', createApp({ db, clock: systemClock }));
+const app = new Hono().use(logger()).route('/', createApp({ db, clock: systemClock }));
 
-serve({ fetch: server.fetch, port, hostname: '127.0.0.1' }, (info) => {
+serve({ fetch: app.fetch, port, hostname: '127.0.0.1' }, (info) => {
   console.log(`API listening on http://127.0.0.1:${info.port}`);
 });
 
