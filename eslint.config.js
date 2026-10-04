@@ -36,6 +36,14 @@ const DYNAMODB_LOCAL = forbid(
   '(^|/)dynamodb-local$',
   'DynamoDB Local is for local development and tests only; production code never loads it.',
 );
+const HTTP_OUTSIDE_INTERFACE = forbid(
+  '^(hono|zod)(/|$)|^@hono/',
+  'HTTP and request validation belong in the interface layer.',
+);
+const AWS_OUTSIDE_INFRASTRUCTURE = forbid(
+  `^@aws-sdk/|${segment('platform')}`,
+  'AWS calls and the table belong in the infrastructure layer.',
+);
 
 const apiLayerRules = {
   domain: [
@@ -52,11 +60,11 @@ const apiLayerRules = {
   ],
   infrastructure: [
     forbid(segment('application', 'interface'), 'Infrastructure implements interfaces from the domain layer.'),
-    forbid('^(hono|zod)(/|$)|^@hono/', 'HTTP and request validation belong in the interface layer.'),
+    HTTP_OUTSIDE_INTERFACE,
   ],
   interface: [
     forbid(segment('domain', 'infrastructure'), 'The interface layer calls the application layer only.'),
-    forbid(`^@aws-sdk/|${segment('platform')}`, 'AWS calls and the table belong in the infrastructure layer.'),
+    AWS_OUTSIDE_INFRASTRUCTURE,
   ],
 };
 
@@ -99,7 +107,10 @@ const apiSharedConfigs = [
         'error',
         {
           patterns: [
-            forbid(segment(...API_MODULES, 'interface', 'platform'), 'The shared kernel depends on nothing else in the API.'),
+            forbid(
+              segment(...API_MODULES, 'interface', 'platform'),
+              'The shared kernel depends on nothing else in the API.',
+            ),
             forbid(FRAMEWORKS, 'The shared kernel uses no framework, validation library or AWS SDK.'),
             COMPOSITION_ROOT,
             DYNAMODB_LOCAL,
@@ -117,7 +128,7 @@ const apiSharedConfigs = [
         {
           patterns: [
             forbid(segment(...API_MODULES), 'The shared interface parts know nothing of the contexts.'),
-            forbid(`^@aws-sdk/|${segment('platform')}`, 'AWS calls and the table belong in the infrastructure layer.'),
+            AWS_OUTSIDE_INFRASTRUCTURE,
             COMPOSITION_ROOT,
             DYNAMODB_LOCAL,
           ],
@@ -134,7 +145,7 @@ const apiSharedConfigs = [
         {
           patterns: [
             forbid(segment(...API_MODULES), 'Technical building blocks know nothing of the contexts.'),
-            forbid('^(hono|zod)(/|$)|^@hono/', 'HTTP and request validation belong in the interface layer.'),
+            HTTP_OUTSIDE_INTERFACE,
             COMPOSITION_ROOT,
             DYNAMODB_LOCAL,
           ],
