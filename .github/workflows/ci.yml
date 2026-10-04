@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   check:
-    name: Typecheck, lint, test and build
+    name: Typecheck, lint, test, build and synth
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -50,3 +50,23 @@ jobs:
 
       - name: Frontend build
         run: npm run build
+
+      # Synthesizes every stack the way a deploy would (the shop stacks upload
+      # the frontend build above), without AWS credentials.
+      - name: CDK synth (staging, production)
+        run: |
+          npm run synth -w @yi/infra -- -c stage=staging
+          npm run synth -w @yi/infra -- -c stage=production
+
+      - name: CDK synth with a custom domain
+        env:
+          CDK_DEFAULT_ACCOUNT: '123456789012'
+          DOMAIN_NAME: shop.example.com
+          HOSTED_ZONE_ID: Z0000000000EXAMPLE
+          HOSTED_ZONE_NAME: example.com
+        run: npm run synth -w @yi/infra -- -c stage=production
+
+      - name: CDK synth of the deploy access stack
+        env:
+          CDK_DEFAULT_ACCOUNT: '123456789012'
+        run: npm run synth -w @yi/infra -- -c deployAccess=true

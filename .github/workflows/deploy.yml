@@ -1,0 +1,94 @@
+name: Deploy
+
+# Merging to main deploys staging; production follows once someone approves
+# the production environment. See README "部署（AWS）" for the one-time setup
+# (AWS account, CDK bootstrap, deploy role, GitHub environments and variables).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # GitHub OIDC token, exchanged for the deploy role's short-lived credentials
+
+# One deploy at a time; a newer run waits instead of cancelling one in progress.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  staging:
+    name: Deploy staging
+    # Repository variable DEPLOY_ENABLED=true turns deploys on once AWS is set up.
+    if: vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment:
+      name: staging
+      url: ${{ steps.deploy.outputs.site-url }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Frontend build
+        run: npm run build
+
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ap-northeast-1
+
+      - name: CDK deploy
+        id: deploy
+        env:
+          DOMAIN_NAME: ${{ vars.DOMAIN_NAME }}
+          HOSTED_ZONE_ID: ${{ vars.HOSTED_ZONE_ID }}
+          HOSTED_ZONE_NAME: ${{ vars.HOSTED_ZONE_NAME }}
+        run: |
+          npm run deploy -w @yi/infra -- -c stage=staging --outputs-file cdk-outputs.json
+          echo "site-url=$(node -p "require('./packages/infra/cdk-outputs.json')['YiJewelry-staging'].SiteUrl")" >> "$GITHUB_OUTPUT"
+
+  production:
+    name: Deploy production
+    needs: staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    # Required reviewers on this environment make the deploy wait for approval.
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.site-url }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Frontend build
+        run: npm run build
+
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ap-northeast-1
+
+      - name: CDK deploy
+        id: deploy
+        env:
+          DOMAIN_NAME: ${{ vars.DOMAIN_NAME }}
+          HOSTED_ZONE_ID: ${{ vars.HOSTED_ZONE_ID }}
+          HOSTED_ZONE_NAME: ${{ vars.HOSTED_ZONE_NAME }}
+        run: |
+          npm run deploy -w @yi/infra -- -c stage=production --outputs-file cdk-outputs.json
+          echo "site-url=$(node -p "require('./packages/infra/cdk-outputs.json')['YiJewelry-production'].SiteUrl")" >> "$GITHUB_OUTPUT"

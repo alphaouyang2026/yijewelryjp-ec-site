@@ -10,6 +10,7 @@ npm workspaces 的 monorepo：
 | --- | --- | --- |
 | `@yi/api` | `packages/api` | Hono JSON API。本地用 Node.js 运行，部署时作为 Lambda 处理 API Gateway HTTP API 的请求（`src/lambda.ts`）。 |
 | `@yi/web` | `packages/web` | React 单页应用（Vite、React Router）。通过 Hono RPC 客户端调用 API，只从 `@yi/api` 导入类型。 |
+| `@yi/infra` | `packages/infra` | AWS CDK（TypeScript）：DynamoDB、S3、Lambda、API Gateway HTTP API、CloudFront，以及部署用的 GitHub OIDC 角色。见下面的"部署（AWS）"。 |
 
 ### API：DDD 分层（[ADR 0002](docs/adr/0002-backend-ddd-layers.md)）
 
@@ -122,6 +123,7 @@ npm run db:stop    # 停止并删除容器
 | `npm run typecheck` | 类型检查（`tsc --build`，前端使用 API 的类型声明） |
 | `npm run lint` | ESLint，包括上面的分层规则 |
 | `npm run build` | 构建前端，产物在 `packages/web/dist` |
+| `npm run synth -w @yi/infra -- -c stage=staging` | 合成 CloudFormation 模板（需要先 `npm run build`；不需要 AWS 凭证） |
 
 ## 环境变量
 
@@ -132,4 +134,72 @@ npm run db:stop    # 停止并删除容器
 
 ## CI
 
-`.github/workflows/ci.yml`：每个 pull request 运行类型检查、lint、API 测试（DynamoDB Local 作为 service container）、前端测试和前端构建。
+`.github/workflows/ci.yml`：每个 pull request 运行类型检查、lint、API 测试（DynamoDB Local 作为 service container）、前端测试、前端构建，以及 `cdk synth`（staging、production、带自定义域名的 production、部署权限栈）。
+
+## 部署（AWS）
+
+### 架构
+
+每个阶段（`staging`、`production`）是一个 CloudFormation 栈 `YiJewelry-<stage>`，部署在东京（ap-northeast-1）：
+
+```text
+CloudFront（一个域名）
+├── /api/*      → API Gateway HTTP API → Lambda（packages/api，Node.js 24，arm64）→ DynamoDB 单表（按需、PITR）
+├── /assets/*   → S3（Vite 带哈希的文件，缓存一年）
+├── /images/*   → S3（商品图片）
+└── 其他路径     → S3 的 index.html（React 的 HTML 外壳，no-cache；由前端路由处理）
+```
+
+- **API 的缓存：** CloudFront 只按 API 返回的 `Cache-Control` 缓存（`packages/api/src/interface/cache-control.ts`）：公开的目录数据约 60 秒，过期后先返回旧内容再刷新；其他所有响应都是 `no-store`。
+- **前端上传：** 部署时先上传带哈希的文件，再上传 `index.html` 并使 CloudFront 上的旧版本失效，所以新版本立即生效。旧的哈希文件和商品图片不会被删除。
+- **两个阶段的区别：** 同一套代码，资源名由 CDK 自动生成，互不冲突。production 的表和存储桶在删除栈时保留，表开启删除保护；staging 的会一起删除。
+- **自定义域名（可选）：** 设置了 `DOMAIN_NAME`、`HOSTED_ZONE_ID`、`HOSTED_ZONE_NAME` 时，会在 us-east-1 多部署一个证书栈 `YiJewelryCertificate-<stage>`，并在 Route 53 加上 A / AAAA 别名记录。不设置时使用 CloudFront 的默认域名（`*.cloudfront.net`）。
+
+### 一次性准备（店主）
+
+以下步骤需要 AWS 账号的管理员凭证，在本地执行一次（对应 #3）。
+
+1. **CDK bootstrap**（两个区域都要）：
+
+   ```sh
+   npx -w @yi/infra cdk bootstrap aws://<账号ID>/ap-northeast-1 aws://<账号ID>/us-east-1
+   ```
+
+2. **部署权限栈**（GitHub OIDC 提供方和部署角色）：
+
+   ```sh
+   npm run build
+   npx -w @yi/infra cdk deploy YiJewelryDeployAccess -c deployAccess=true
+   ```
+
+   如果账号里已经有 GitHub 的 OIDC 提供方，加上 `-c githubOidcProviderArn=<它的 ARN>`。部署完成后，输出里的 `DeployRoleArn` 就是下面要用的角色 ARN。这个角色只能被本仓库的 `staging`、`production` 环境使用，并且只能转而使用 CDK bootstrap 创建的角色。
+
+3. **GitHub 设置**（仓库的 Settings）：
+   - **Environments：** 创建 `staging` 和 `production`。给 `production` 设置 Required reviewers，部署前需要人工批准。
+   - **每个环境的 Variables：**
+
+     | 变量 | 内容 |
+     | --- | --- |
+     | `AWS_DEPLOY_ROLE_ARN` | 第 2 步输出的 `DeployRoleArn` |
+     | `DOMAIN_NAME` | 可选。网站的域名，如 `staging.example.com`、`example.com` |
+     | `HOSTED_ZONE_ID` | 可选。该域名所在的 Route 53 托管区 ID |
+     | `HOSTED_ZONE_NAME` | 可选。托管区的名称，如 `example.com` |
+
+     三个域名变量要么都设置，要么都不设置。
+   - **仓库级别的 Variable：** `DEPLOY_ENABLED` = `true`。在设置之前，部署 workflow 会直接跳过。
+
+### 自动部署
+
+`.github/workflows/deploy.yml`：合并到 `main` 后部署 staging；staging 成功后，production 的部署会等待 `production` 环境的审批。也可以在 Actions 页面手动运行（workflow_dispatch）。部署只通过 OIDC 换取的临时凭证访问 AWS，GitHub 里不保存长期密钥。
+
+### 手动部署
+
+本地有 AWS 凭证时：
+
+```sh
+npm run build
+npm run diff -w @yi/infra -- -c stage=staging     # 查看变更
+npm run deploy -w @yi/infra -- -c stage=staging   # 部署（证书栈也一起部署）
+```
+
+使用自定义域名时，先设置 `DOMAIN_NAME`、`HOSTED_ZONE_ID`、`HOSTED_ZONE_NAME` 这三个环境变量。部署完成后，输出里的 `SiteUrl` 就是网站地址。
