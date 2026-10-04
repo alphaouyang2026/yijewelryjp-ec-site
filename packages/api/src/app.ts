@@ -1,32 +1,29 @@
 import { Hono } from 'hono';
-import type { Clock } from './clock';
-import { checkTable, type Database } from './db';
+import { getHomeData } from './catalog/application/get-home-data';
+import type { CategoryRepository } from './catalog/domain/category';
+import type { ProductRepository } from './catalog/domain/product';
+import { homeRoutes } from './catalog/interface/home-routes';
+import { checkHealth, type DatabaseProbe } from './operations/application/check-health';
+import { healthRoutes } from './operations/interface/health-routes';
+import type { Clock } from './shared-kernel/clock';
 
-export type Category = { slug: string; name: string };
-export type ProductSummary = { slug: string; name: string };
-export type HomeData = { newArrivals: ProductSummary[]; categories: Category[] };
-
+/**
+ * The adapters the API runs on. Each entry point (local, Lambda) chooses them,
+ * and so does each test; `createApp` injects them into the application layer.
+ */
 export type AppDeps = {
-  db: Database;
+  categories: CategoryRepository;
+  products: ProductRepository;
+  database: DatabaseProbe;
   clock: Clock;
 };
 
-export function createApp({ db, clock }: AppDeps) {
+/** The API: each module's routes, wired to its use cases. */
+export function createApp(deps: AppDeps) {
   return new Hono()
     .basePath('/api')
-    .get('/health', async (c) => {
-      try {
-        await checkTable(db);
-      } catch (error) {
-        console.error('Health check could not reach the database table', error);
-        return c.json({ status: 'unavailable' }, 503);
-      }
-      return c.json({ status: 'ok', time: clock.now().toISOString() }, 200);
-    })
-    .get('/home', (c) => {
-      const home: HomeData = { newArrivals: [], categories: [] };
-      return c.json(home, 200);
-    });
+    .route('/health', healthRoutes(checkHealth(deps)))
+    .route('/home', homeRoutes(getHomeData(deps)));
 }
 
 export type AppType = ReturnType<typeof createApp>;

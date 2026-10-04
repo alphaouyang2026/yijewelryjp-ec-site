@@ -3,8 +3,9 @@ import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { logger } from 'hono/logger';
 import { createApp } from './app';
-import { systemClock } from './clock';
-import { createTable, localDynamoClient, waitForDynamoDbLocal, type Database } from './db';
+import { dynamoDbAdapters } from './dynamodb-adapters';
+import { createTable, localDynamoClient, waitForDynamoDbLocal, type Database } from './platform/dynamodb';
+import { systemClock } from './shared-kernel/clock';
 
 // packages/web/vite.config.ts proxies /api to this port.
 const port = 8787;
@@ -13,7 +14,7 @@ const db: Database = {
   tableName: process.env.TABLE_NAME ?? 'yijewelry-local',
 };
 
-const app = new Hono().use(logger()).route('/', createApp({ db, clock: systemClock }));
+const app = new Hono().use(logger()).route('/', createApp({ ...dynamoDbAdapters(db), clock: systemClock }));
 
 serve({ fetch: app.fetch, port, hostname: '127.0.0.1' }, (info) => {
   console.log(`API listening on http://127.0.0.1:${info.port}`);

@@ -1,4 +1,4 @@
-import type { Clock } from '../../src/clock';
+import type { Clock } from '../../src/shared-kernel/clock';
 
 export type TestClock = Clock & {
   set(date: Date): void;

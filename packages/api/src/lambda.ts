@@ -2,13 +2,14 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { handle } from 'hono/aws-lambda';
 import { createApp } from './app';
-import { systemClock } from './clock';
+import { dynamoDbAdapters } from './dynamodb-adapters';
+import { systemClock } from './shared-kernel/clock';
 
 const tableName = process.env.TABLE_NAME;
 if (!tableName) throw new Error('TABLE_NAME must be set');
 
 const app = createApp({
-  db: { client: new DynamoDBClient({}), tableName },
+  ...dynamoDbAdapters({ client: new DynamoDBClient({}), tableName }),
   clock: systemClock,
 });
 

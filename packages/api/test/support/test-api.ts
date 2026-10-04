@@ -5,7 +5,8 @@ import { setCookie } from 'hono/cookie';
 import { CookieJar } from 'tough-cookie';
 import { afterAll, beforeAll, beforeEach } from 'vitest';
 import { createApp, type AppDeps } from '../../src/app';
-import { createTable, deleteTable, localDynamoClient } from '../../src/db';
+import { dynamoDbAdapters } from '../../src/dynamodb-adapters';
+import { createTable, deleteTable, localDynamoClient } from '../../src/platform/dynamodb';
 import { createTestClock } from './test-clock';
 
 // Requests never leave the process; the origin only gives cookies a domain to live on.
@@ -33,14 +34,15 @@ function createTestApp(deps: AppDeps) {
 type TestApp = ReturnType<typeof createTestApp>;
 
 /**
- * Builds the API with test adapters for the enclosing test file (or describe
- * block): a fresh DynamoDB Local table, created before its tests and deleted
- * after, and a clock the tests control. The test-only routes are mounted too.
+ * Builds the API the way its entry points do, with test adapters, for the
+ * enclosing test file (or describe block): the DynamoDB adapters on a fresh
+ * DynamoDB Local table, created before its tests and deleted after, and a
+ * clock the tests control. The test-only routes are mounted too.
  */
 export function useTestApi({ withTable = true }: { withTable?: boolean } = {}) {
   const db = { client: localDynamoClient(), tableName: `test-${randomUUID()}` };
   const clock = createTestClock(DEFAULT_NOW);
-  const app = createTestApp({ db, clock });
+  const app = createTestApp({ ...dynamoDbAdapters(db), clock });
 
   beforeAll(async () => {
     if (withTable) await createTable(db);
