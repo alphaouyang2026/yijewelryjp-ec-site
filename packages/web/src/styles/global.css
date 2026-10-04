@@ -13,7 +13,7 @@ body {
   margin: 0;
   background: var(--color-porcelain);
   color: var(--color-onyx);
-  font-family: var(--font-gothic);
+  font-family: var(--font-body);
   font-size: var(--text-body);
   line-height: var(--line-height-body);
   letter-spacing: var(--tracking-body);

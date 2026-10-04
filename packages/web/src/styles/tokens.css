@@ -17,11 +17,14 @@
   --color-hairline: #dcd8d2; /* dividers and borders on light grounds */
   --color-graphite: #5c5a57; /* secondary text on light grounds */
 
-  /* Font families */
+  /*
+   * Font families, by role. Headings and body text follow <html lang> (see the
+   * :lang() rules below); English labels and prices use --font-latin in every locale.
+   */
   --font-latin: 'Cormorant Garamond', 'Times New Roman', serif; /* English labels, prices */
-  --font-mincho: 'Shippori Mincho', 'Hiragino Mincho ProN', serif; /* Japanese headings, product names */
-  --font-gothic: 'Zen Kaku Gothic New', 'Hiragino Sans', sans-serif; /* body, buttons, navigation, forms */
-  --font-weight-medium: 500; /* English labels, Japanese headings */
+  --font-heading: 'Shippori Mincho', 'Hiragino Mincho ProN', serif; /* headings, product names */
+  --font-body: 'Zen Kaku Gothic New', 'Hiragino Sans', sans-serif; /* body, buttons, navigation, forms */
+  --font-weight-medium: 500; /* English labels, headings */
 
   /* Type scale */
   --text-display: clamp(30px, 3.4vw, 50px);
@@ -68,6 +71,17 @@
   --logo-footer: 96px;
   --footer-brand-width: 260px; /* preferred widths; the footer columns wrap below them */
   --footer-column-width: 220px;
+}
+
+/* Simplified Chinese: Japanese fonts lack many Simplified glyphs. src/i18n/fonts.ts loads these on zh pages only. */
+:root:lang(zh) {
+  --font-heading: 'Noto Serif SC', 'Songti SC', serif;
+  --font-body: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+/* English: Cormorant Garamond headings; the body keeps Zen Kaku Gothic New's Latin glyphs. */
+:root:lang(en) {
+  --font-heading: var(--font-latin);
 }
 
 @media (max-width: 767px) {
