@@ -38,13 +38,15 @@
   flex-direction: column;
 }
 
+/* English label (spec #1): 14px, 0.34em tracking, all caps. */
 .columnTitle {
   padding-bottom: var(--space-1);
   color: var(--color-brand-gold);
   font-family: var(--font-latin);
-  font-size: var(--text-nav);
+  font-size: var(--text-label);
   font-weight: 500;
-  letter-spacing: 0.3em;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
 }
 
 .link,
