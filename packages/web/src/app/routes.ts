@@ -1,4 +1,5 @@
 import type { RouteObject } from 'react-router';
+import { AdminErrorPage } from '../components/pages/admin/AdminErrorPage';
 import { HomePage } from '../components/pages/home/HomePage';
 import { homeLoader } from '../components/pages/home/homeLoader';
 import { ProductDetailPage } from '../components/pages/product/ProductDetailPage';
@@ -22,12 +23,14 @@ const pageWithData = (route: RouteObject): RouteObject => ({
 /**
  * The admin, under /admin in each locale. Its code loads only when an admin
  * page is opened (a separate chunk), so the storefront never downloads it.
+ * Its error page is the exception: it must show even when loading that chunk
+ * fails.
  */
 function adminPages(): RouteObject {
   return {
     path: 'admin',
     HydrateFallback: BlankHydrateFallback,
-    ErrorBoundary: StoreRouteError,
+    ErrorBoundary: AdminErrorPage,
     lazy: async () => {
       const [{ AdminFramePage }, { adminSessionLoader }] = await Promise.all([
         import('../components/pages/admin/AdminFramePage'),
@@ -59,6 +62,7 @@ function signInFailedPage(): RouteObject {
   return {
     path: 'admin/sign-in-failed',
     HydrateFallback: BlankHydrateFallback,
+    ErrorBoundary: AdminErrorPage,
     lazy: async () => ({ Component: (await import('../components/pages/admin/SignInFailedPage')).SignInFailedPage }),
   };
 }

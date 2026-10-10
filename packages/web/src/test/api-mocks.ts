@@ -51,6 +51,10 @@ export const mockApi = {
       session ? HttpResponse.json(session) : HttpResponse.json(unauthorized, { status: 401 }),
     ),
 
+  /** Answers admin session requests with a server error, as when the API is unavailable. */
+  adminSessionFails: () =>
+    http.get(api.admin.session.$url().href, () => HttpResponse.json({ error: 'internal' }, { status: 500 })),
+
   /**
    * Answers sign-out requests with `signedOut`, or 401 when it is null (the
    * session had already ended). `requests` collects each request, so a test

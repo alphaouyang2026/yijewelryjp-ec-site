@@ -166,3 +166,18 @@ test.each([
   expect(signIn.pathname).toBe('/api/admin/auth/sign-in');
   expect(Object.fromEntries(signIn.searchParams)).toEqual(text.signIn);
 });
+
+test.each([
+  { path: '/admin/orders', heading: '管理画面を表示できませんでした', home: '管理画面のトップへ', href: '/admin' },
+  { path: '/en/admin', heading: 'The admin could not be shown', home: 'Back to the admin home', href: '/en/admin' },
+])('$path shows the admin’s own error page when the admin cannot be shown', async (text) => {
+  server.use(mockApi.adminSessionFails());
+
+  renderRoute(text.path);
+
+  expect(await screen.findByRole('heading', { level: 1, name: text.heading })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: text.home })).toHaveAttribute('href', text.href);
+  expect(screen.getByText('Admin')).toBeInTheDocument();
+  // Not the storefront's frame: no store header or footer.
+  expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
+});
