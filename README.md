@@ -174,6 +174,8 @@ CloudFront（一个域名）
 
    如果账号里已经有 GitHub 的 OIDC 提供方，加上 `-c githubOidcProviderArn=<它的 ARN>`。部署完成后，输出里的 `DeployRoleArn` 就是下面要用的角色 ARN。这个角色只能被本仓库的 `staging`、`production` 环境使用，并且只能转而使用 CDK bootstrap 创建的角色。
 
+   角色按 OIDC 令牌的主体（`sub`）识别本仓库。本仓库使用 GitHub 的不可变主体格式，带用户和仓库的数字 ID（`repo:alphaouyang2026@315845291/yijewelryjp-ec-site@1403220842`），这样仓库被删除后即使有人用同名重建，也无法冒用。这个前缀写在 `packages/infra/bin/app.ts`，可以用 `gh api repos/<owner>/<repo>/actions/oidc/customization/sub` 的 `sub_claim_prefix` 确认，也可以用 `-c githubSubjectPrefix=<前缀>` 覆盖。
+
 3. **GitHub 设置**（仓库的 Settings）：
    - **Environments：** 创建 `staging` 和 `production`。给 `production` 设置 Required reviewers，部署前需要人工批准。
    - **每个环境的 Variables：**

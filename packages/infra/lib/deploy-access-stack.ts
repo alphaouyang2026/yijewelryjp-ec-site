@@ -6,8 +6,13 @@ import { STAGES } from './config';
 const GITHUB_OIDC_ISSUER = 'token.actions.githubusercontent.com';
 
 type DeployAccessStackProps = StackProps & {
-  /** `owner/name` of the GitHub repository whose workflows may deploy. */
-  githubRepository: string;
+  /**
+   * How GitHub starts the OIDC subject (`sub`) of this repository's tokens,
+   * e.g. `repo:owner@123/name@456` with immutable subjects (owner and repository
+   * IDs) or `repo:owner/name` without. GitHub reports it:
+   * `gh api repos/<owner>/<name>/actions/oidc/customization/sub` → `sub_claim_prefix`.
+   */
+  githubSubjectPrefix: string;
   /** The account's GitHub OIDC provider, if it already has one (an account can have only one per issuer). */
   existingOidcProviderArn?: string;
 };
@@ -22,7 +27,7 @@ type DeployAccessStackProps = StackProps & {
  * (`-c deployAccess=true`, see README); never by the deploy workflow.
  */
 export class DeployAccessStack extends Stack {
-  constructor(scope: Construct, id: string, { githubRepository, existingOidcProviderArn, ...props }: DeployAccessStackProps) {
+  constructor(scope: Construct, id: string, { githubSubjectPrefix, existingOidcProviderArn, ...props }: DeployAccessStackProps) {
     super(scope, id, props);
 
     const provider = existingOidcProviderArn
@@ -33,12 +38,13 @@ export class DeployAccessStack extends Stack {
         });
 
     const role = new Role(this, 'GitHubDeployRole', {
-      description: `Deploys ${githubRepository} from GitHub Actions`,
+      description: `Deploys the shop from GitHub Actions (${githubSubjectPrefix})`,
       maxSessionDuration: Duration.hours(1),
       assumedBy: new WebIdentityPrincipal(provider.oidcProviderArn, {
-        StringEquals: { [`${GITHUB_OIDC_ISSUER}:aud`]: 'sts.amazonaws.com' },
-        StringLike: {
-          [`${GITHUB_OIDC_ISSUER}:sub`]: STAGES.map((stage) => `repo:${githubRepository}:environment:${stage}`),
+        StringEquals: {
+          [`${GITHUB_OIDC_ISSUER}:aud`]: 'sts.amazonaws.com',
+          // Exactly this repository's staging and production environments.
+          [`${GITHUB_OIDC_ISSUER}:sub`]: STAGES.map((stage) => `${githubSubjectPrefix}:environment:${stage}`),
         },
       }),
     });

@@ -11,7 +11,11 @@ import { ShopStack } from '../lib/shop-stack';
 const SHOP_REGION = 'ap-northeast-1';
 // CloudFront accepts certificates from this region only.
 const CERTIFICATE_REGION = 'us-east-1';
-const GITHUB_REPOSITORY = 'alphaouyang2026/yijewelryjp-ec-site';
+// The start of this repository's GitHub OIDC subject. The repository uses
+// immutable subjects (owner and repository IDs), so a deleted and recreated
+// repository of the same name cannot deploy. From
+// `gh api repos/alphaouyang2026/yijewelryjp-ec-site/actions/oidc/customization/sub`.
+const GITHUB_SUBJECT_PREFIX = 'repo:alphaouyang2026@315845291/yijewelryjp-ec-site@1403220842';
 
 const app = new App();
 const account = process.env.CDK_DEFAULT_ACCOUNT;
@@ -20,7 +24,7 @@ Tags.of(app).add('project', 'yijewelryjp-ec-site');
 if (app.node.tryGetContext('deployAccess') === 'true') {
   new DeployAccessStack(app, 'YiJewelryDeployAccess', {
     env: { account, region: SHOP_REGION },
-    githubRepository: app.node.tryGetContext('githubRepository') ?? GITHUB_REPOSITORY,
+    githubSubjectPrefix: app.node.tryGetContext('githubSubjectPrefix') ?? GITHUB_SUBJECT_PREFIX,
     existingOidcProviderArn: app.node.tryGetContext('githubOidcProviderArn'),
   });
 } else {
