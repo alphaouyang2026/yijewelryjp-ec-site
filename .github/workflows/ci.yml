@@ -64,6 +64,7 @@ jobs:
           DOMAIN_NAME: shop.example.com
           HOSTED_ZONE_ID: Z0000000000EXAMPLE
           HOSTED_ZONE_NAME: example.com
+          REDIRECT_DOMAIN_NAMES: www.shop.example.com
         run: npm run synth -w @yi/infra -- -c stage=production
 
       - name: CDK synth of the deploy access stack
