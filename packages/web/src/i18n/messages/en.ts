@@ -92,4 +92,29 @@ export const en: Messages = {
     text: 'Please try again in a moment.',
     home: 'Back to the home page',
   },
+  admin: {
+    label: 'Admin',
+    title: 'Admin',
+    nav: 'Admin menu',
+    sections: {
+      products: 'Products',
+      categories: 'Categories',
+      orders: 'Orders',
+      settings: 'Store settings',
+    },
+    welcome: 'Choose what to manage from the menu.',
+    comingSoon: 'This page is coming soon.',
+    signedInAs: 'Signed in as',
+    signOut: 'Sign out',
+    signInFailed: {
+      title: 'Signing in did not complete',
+      text: 'You were not signed in. This also happens if you cancelled on the sign-in page or took too long.',
+      retry: 'Sign in again',
+    },
+    error: {
+      title: 'The admin could not be shown',
+      text: 'Please try again in a moment.',
+      home: 'Back to the admin home',
+    },
+  },
 };

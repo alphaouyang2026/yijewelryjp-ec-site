@@ -1,0 +1,37 @@
+/* Buttons (spec #1): 52px tall, square, 1px border. These are the light-ground ones. */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--button-height);
+  padding: 0 var(--space-5);
+  border: var(--line-width) solid var(--color-onyx);
+  border-radius: 0;
+  font-family: var(--font-body);
+  font-size: var(--text-nav);
+  letter-spacing: var(--tracking-nav);
+  cursor: pointer;
+}
+
+.primary {
+  composes: button;
+  background: var(--color-onyx);
+  color: var(--color-porcelain);
+}
+
+.secondary {
+  composes: button;
+  background: transparent;
+  color: var(--color-onyx);
+}
+
+.button:hover:not(:disabled) {
+  opacity: var(--hover-opacity);
+}
+
+.button:disabled {
+  border-color: var(--color-linen);
+  background: var(--color-linen);
+  color: var(--color-graphite);
+  cursor: default;
+}
