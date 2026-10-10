@@ -32,9 +32,11 @@ const COMPOSITION_ROOT = forbid(
   '^(\\.\\./)+(app|dynamodb-adapters|local|lambda|index)$',
   'Only the entry points assemble the API; layers never import the composition root.',
 );
-const DYNAMODB_LOCAL = forbid(
-  '(^|/)dynamodb-local$',
-  'DynamoDB Local is for local development and tests only; production code never loads it.',
+// DynamoDB Local and the dev identity (signs anyone in as an owner, without
+// Cognito) exist for local development, and DynamoDB Local for tests too.
+const LOCAL_ONLY = forbid(
+  '(^|/)(dynamodb-local|dev-admin-identity)$',
+  'For local development (and tests) only: only src/local.ts loads it, production code never does.',
 );
 const HTTP_OUTSIDE_INTERFACE = forbid(
   '^(hono|zod)(/|$)|^@hono/',
@@ -87,7 +89,7 @@ const apiLayerConfigs = API_MODULES.flatMap((module) =>
     rules: {
       'no-restricted-imports': [
         'error',
-        { patterns: [...rules, ...otherModuleRules(module, layer), COMPOSITION_ROOT, DYNAMODB_LOCAL] },
+        { patterns: [...rules, ...otherModuleRules(module, layer), COMPOSITION_ROOT, LOCAL_ONLY] },
       ],
     },
   })),
@@ -95,10 +97,10 @@ const apiLayerConfigs = API_MODULES.flatMap((module) =>
 
 const apiSharedConfigs = [
   {
-    // The composition root and the Lambda entry point; local.ts may use DynamoDB Local.
+    // The composition root and the Lambda entry point; local.ts may use the local-only modules.
     files: ['packages/api/src/*.ts'],
     ignores: ['packages/api/src/local.ts'],
-    rules: { 'no-restricted-imports': ['error', { patterns: [DYNAMODB_LOCAL] }] },
+    rules: { 'no-restricted-imports': ['error', { patterns: [LOCAL_ONLY] }] },
   },
   {
     files: ['packages/api/src/shared-kernel/**/*.ts'],
@@ -113,7 +115,7 @@ const apiSharedConfigs = [
             ),
             forbid(FRAMEWORKS, 'The shared kernel uses no framework, validation library or AWS SDK.'),
             COMPOSITION_ROOT,
-            DYNAMODB_LOCAL,
+            LOCAL_ONLY,
           ],
         },
       ],
@@ -130,7 +132,7 @@ const apiSharedConfigs = [
             forbid(segment(...API_MODULES), 'The shared interface parts know nothing of the contexts.'),
             AWS_OUTSIDE_INFRASTRUCTURE,
             COMPOSITION_ROOT,
-            DYNAMODB_LOCAL,
+            LOCAL_ONLY,
           ],
         },
       ],
@@ -147,7 +149,7 @@ const apiSharedConfigs = [
             forbid(segment(...API_MODULES), 'Technical building blocks know nothing of the contexts.'),
             HTTP_OUTSIDE_INTERFACE,
             COMPOSITION_ROOT,
-            DYNAMODB_LOCAL,
+            LOCAL_ONLY,
           ],
         },
       ],

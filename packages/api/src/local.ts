@@ -4,6 +4,8 @@ import { Hono } from 'hono';
 import { logger } from 'hono/logger';
 import { createApp } from './app';
 import { dynamoDbAdapters } from './dynamodb-adapters';
+import { adminReturnUrls } from './identity/infrastructure/admin-urls';
+import { devAdminIdentity } from './identity/infrastructure/dev-admin-identity';
 import type { Database } from './platform/dynamodb';
 import { createTable, localDynamoClient, waitForDynamoDbLocal } from './platform/dynamodb-local';
 import { systemClock } from './shared-kernel/clock';
@@ -15,7 +17,20 @@ const db: Database = {
   tableName: process.env.TABLE_NAME ?? 'yijewelry-local',
 };
 
-const app = new Hono().use(logger()).route('/', createApp({ ...dynamoDbAdapters(db), clock: systemClock }));
+// Signing in to the admin needs no Cognito locally: the dev identity signs
+// everyone in as this owner at once (README "本地登录后台").
+const devOwner = { id: 'local-owner', email: process.env.DEV_OWNER_EMAIL ?? 'owner@localhost' };
+
+const app = new Hono().use(logger()).route(
+  '/',
+  createApp({
+    ...dynamoDbAdapters(db),
+    clock: systemClock,
+    // Relative URLs: the browser stays on the Vite dev server, which proxies /api here.
+    adminIdentity: devAdminIdentity({ owner: devOwner, returnUrls: adminReturnUrls('') }),
+    sessionSecret: process.env.SESSION_SECRET ?? 'local-development-session-secret',
+  }),
+);
 
 serve({ fetch: app.fetch, port, hostname: '127.0.0.1' }, (info) => {
   console.log(`API listening on http://127.0.0.1:${info.port}`);
