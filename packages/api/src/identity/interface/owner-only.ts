@@ -1,7 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { createMiddleware } from 'hono/factory';
 import { SESSION_IDLE_TIMEOUT_MS, type AdminSession, type ResumeSession } from '../application/resume-session';
-import { clearSession, readSession, writeSession } from './session-cookie';
+import { clearSession, readSession, setsSessionCookie, writeSession } from './session-cookie';
 
 /**
  * The guard's answers when it refuses a request: 401 without a session, 403
@@ -41,9 +41,10 @@ export function ownerOnly({ resumeSession, sessionSecret }: { resumeSession: Res
       return c.json<AdminInvalidCsrfToken>({ error: 'invalid_csrf_token' }, 403);
     }
 
-    await writeSession(c, sessionSecret, session, SESSION_IDLE_TIMEOUT_MS / 1000);
     c.set('session', session);
     await next();
+    // Unless the route ended the session (signing out), the cookie carries the new activity time.
+    if (!setsSessionCookie(c.res)) await writeSession(c, sessionSecret, session, SESSION_IDLE_TIMEOUT_MS / 1000);
   });
 }
 

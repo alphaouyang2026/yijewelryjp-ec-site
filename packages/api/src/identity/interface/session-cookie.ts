@@ -46,6 +46,11 @@ export async function writeSession(c: Context, secret: string, session: AdminSes
   await setSignedCookie(c, SESSION_COOKIE, JSON.stringify(cookie), secret, { ...COOKIE_OPTIONS, maxAge: maxAgeSeconds });
 }
 
+/** Whether `response` already sets (or deletes) the session cookie. */
+export function setsSessionCookie(response: Response): boolean {
+  return response.headers.getSetCookie().some((cookie) => cookie.startsWith(`__Host-${SESSION_COOKIE}=`));
+}
+
 export function clearSession(c: Context) {
   deleteCookie(c, SESSION_COOKIE, COOKIE_OPTIONS);
 }
