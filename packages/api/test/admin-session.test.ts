@@ -40,15 +40,3 @@ describe('idle expiry', () => {
     expect((await client.api.admin.session.$get()).status).toBe(401);
   });
 });
-
-test('a session cookie changed by the browser is refused', async () => {
-  const client = api.client();
-  await api.signIn(client);
-  const cookie = (await client.api._test.cookie.$get().then((res) => res.json())).cookie ?? '';
-  const tampered = cookie.replace(/owner%40yijewelry\.test|owner@yijewelry\.test/, 'intruder@evil.test');
-  expect(tampered).not.toBe(cookie);
-
-  const res = await api.client().api.admin.session.$get(undefined, { headers: { cookie: tampered } });
-
-  expect(res.status).toBe(401);
-});

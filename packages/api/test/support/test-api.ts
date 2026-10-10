@@ -4,8 +4,10 @@ import { hc } from 'hono/client';
 import { setCookie } from 'hono/cookie';
 import { CookieJar } from 'tough-cookie';
 import { afterAll, beforeAll, beforeEach } from 'vitest';
+import * as z from 'zod';
 import { createApp, type AppDeps } from '../../src/app';
 import { dynamoDbAdapters } from '../../src/dynamodb-adapters';
+import { signedCookies, type SignedCookies } from '../../src/interface/signed-cookies';
 import { createTable, deleteTable, localDynamoClient } from '../../src/platform/dynamodb-local';
 import { catalogSeed } from './catalog-seed';
 import type { Owner } from '../../src/identity/domain/owner';
@@ -15,25 +17,34 @@ import { createTestClock } from './test-clock';
 // Requests never leave the process; the origin only gives cookies a domain to live on.
 const ORIGIN = 'https://shop.test';
 
-const TEST_SESSION_SECRET = 'test-session-secret';
+const TEST_COOKIE_SECRET = 'test-cookie-secret';
 
 // Every test starts at this instant unless it sets the clock itself.
 const DEFAULT_NOW = new Date('2026-01-01T00:00:00+09:00');
 
 /**
- * Routes that exist only in tests, under /api/_test, so tests can check the
- * test client itself. POST sets a cookie; GET answers with the Cookie header
- * the request carried.
+ * Routes that exist only in tests, under /api/_test. POST /cookie sets a
+ * cookie and GET /cookie answers with the Cookie header the request carried,
+ * so tests can check the test client itself. POST /session-cookie sets the
+ * session cookie to the JSON body, signed with the session cookie's key
+ * whatever its shape, as only someone with the signing secret could.
  */
-const testOnlyRoutes = new Hono()
-  .post('/cookie', (c) => {
-    setCookie(c, 'probe', 'set-by-api');
-    return c.body(null, 204);
-  })
-  .get('/cookie', (c) => c.json({ cookie: c.req.header('cookie') ?? null }, 200));
+function testOnlyRoutes(cookies: SignedCookies) {
+  const anySessionCookie = cookies.cookie('yi_admin_session', z.unknown());
+  return new Hono()
+    .post('/cookie', (c) => {
+      setCookie(c, 'probe', 'set-by-api');
+      return c.body(null, 204);
+    })
+    .get('/cookie', (c) => c.json({ cookie: c.req.header('cookie') ?? null }, 200))
+    .post('/session-cookie', async (c) => {
+      await anySessionCookie.write(c, await c.req.json(), 60);
+      return c.body(null, 204);
+    });
+}
 
 function createTestApp(deps: AppDeps) {
-  return createApp(deps).route('/_test', testOnlyRoutes);
+  return createApp(deps).route('/_test', testOnlyRoutes(deps.signedCookies));
 }
 
 type TestApp = ReturnType<typeof createTestApp>;
@@ -50,7 +61,12 @@ export function useTestApi({ withTable = true }: { withTable?: boolean } = {}) {
   const db = { client: localDynamoClient(), tableName: `test-${randomUUID()}` };
   const clock = createTestClock(DEFAULT_NOW);
   const adminIdentity = createInMemoryAdminIdentity();
-  const app = createTestApp({ ...dynamoDbAdapters(db), clock, adminIdentity, sessionSecret: TEST_SESSION_SECRET });
+  const app = createTestApp({
+    ...dynamoDbAdapters(db),
+    clock,
+    adminIdentity,
+    signedCookies: signedCookies(TEST_COOKIE_SECRET),
+  });
 
   beforeAll(async () => {
     if (withTable) await createTable(db);

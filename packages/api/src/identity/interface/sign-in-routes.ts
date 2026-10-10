@@ -2,10 +2,9 @@ import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
 import * as z from 'zod';
 import { localeQueryWith } from '../../interface/locale-query';
-import { SESSION_IDLE_TIMEOUT_MS } from '../application/resume-session';
 import type { BeginSignIn, FinishSignIn } from '../application/sign-in';
-import { clearPendingSignIn, readPendingSignIn, writePendingSignIn } from './sign-in-cookie';
-import { writeSession } from './session-cookie';
+import type { SessionCookie } from './session-cookie';
+import type { SignInCookie } from './sign-in-cookie';
 
 /**
  * A path on this site (never another host, so the sign-in cannot be used to
@@ -30,22 +29,24 @@ const callbackQuery = zValidator(
 export function signInRoutes({
   beginSignIn,
   finishSignIn,
-  sessionSecret,
+  signInCookie,
+  sessionCookie,
 }: {
   beginSignIn: BeginSignIn;
   finishSignIn: FinishSignIn;
-  sessionSecret: string;
+  signInCookie: SignInCookie;
+  sessionCookie: SessionCookie;
 }) {
   return new Hono()
     .get('/sign-in', signInQuery, async (c) => {
       const { signInUrl, pending } = beginSignIn(c.req.valid('query'));
-      await writePendingSignIn(c, sessionSecret, pending);
+      await signInCookie.write(c, pending);
       return c.redirect(signInUrl, 302);
     })
     .get('/callback', callbackQuery, async (c) => {
       const { code, state, error } = c.req.valid('query');
-      const pending = await readPendingSignIn(c, sessionSecret);
-      clearPendingSignIn(c);
+      const pending = await signInCookie.read(c);
+      signInCookie.clear(c);
 
       const signedIn = code && state && !error ? await finishSignIn({ code, state, pending }) : undefined;
       if (!signedIn) {
@@ -53,7 +54,7 @@ export function signInRoutes({
         return c.json({ error: 'sign_in_failed' as const }, 400);
       }
 
-      await writeSession(c, sessionSecret, signedIn.session, SESSION_IDLE_TIMEOUT_MS / 1000);
+      await sessionCookie.write(c, signedIn.session);
       return c.redirect(signedIn.returnTo, 302);
     });
 }

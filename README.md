@@ -130,7 +130,7 @@ npm run db:stop    # 停止并删除容器
 1. 进入后台页面时，前端向 `GET /api/admin/session` 查询会话。未登录（401）时，浏览器转到 API 的 `GET /api/admin/auth/sign-in?locale=…&returnTo=…`。
 2. API 生成随机的 `state`，和要返回的后台页面一起存进一个签名 cookie（10 分钟有效），再把浏览器转到 Cognito 托管登录页（授权码流程，页面语言跟后台一致）。
 3. 登录后 Cognito 把浏览器带回 `GET /api/admin/auth/callback?code=…&state=…`。API 核对 `state`，用授权码和应用客户端密钥向 Cognito 换取令牌，按用户池的 JWKS 验证 ID 令牌，然后发放会话 cookie 并跳回原来的后台页面。令牌只在 API 里用这一次，不保存，也不交给浏览器。
-4. 会话 cookie（`__Host-yi_admin_session`）是 HTTP-only、Secure、SameSite=Lax 的签名 cookie，签名密钥在 Secrets Manager 里。每次后台请求都把闲置时间重新算起，闲置 2 小时后过期。
+4. 会话 cookie（`__Host-yi_admin_session`）是 HTTP-only、Secure、SameSite=Lax 的签名 cookie。API 的签名 cookie 都由 `packages/api/src/interface/signed-cookies.ts` 读写：每个 cookie 用自己的密钥签名（由 Secrets Manager 里的签名密钥和 cookie 名派生），所以一个 cookie 的值不能冒充另一个 cookie；读取时还用 Zod 检查内容，不符合的当作没有 cookie。每次后台请求都把闲置时间重新算起，闲置 2 小时后过期。
 5. 登出（`POST /api/admin/sign-out`）清除会话 cookie，再把浏览器转到 Cognito 的登出页，结束 Cognito 自己的登录状态（否则一小时内再登录不用输密码），最后回到当前语言的网站首页。
 
 ### 权限检查

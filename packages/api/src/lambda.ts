@@ -6,6 +6,7 @@ import { createApp } from './app';
 import { dynamoDbAdapters } from './dynamodb-adapters';
 import { adminReturnUrls } from './identity/infrastructure/admin-urls';
 import { cognitoAdminIdentity } from './identity/infrastructure/cognito-admin-identity';
+import { signedCookies } from './interface/signed-cookies';
 import { readSecretString } from './platform/secrets-manager';
 import { systemClock } from './shared-kernel/clock';
 
@@ -37,7 +38,7 @@ const app = createApp({
     clientSecret,
     returnUrls: adminReturnUrls(env.SITE_URL),
   }),
-  sessionSecret,
+  signedCookies: signedCookies(sessionSecret),
 });
 
 export const handler = handle(app);

@@ -20,9 +20,13 @@ export function startSession(owner: Owner, now: Date): AdminSession {
   return { owner, csrfToken: randomToken(), lastActiveAt: now };
 }
 
-/** Whether the session went idle for longer than the timeout before `now`. */
+/**
+ * Whether the session went idle for longer than the timeout before `now`. A
+ * session without a valid activity time is expired too.
+ */
 export function isExpired(session: AdminSession, now: Date): boolean {
-  return now.getTime() - session.lastActiveAt.getTime() >= SESSION_IDLE_TIMEOUT_MS;
+  const idle = now.getTime() - session.lastActiveAt.getTime();
+  return !Number.isFinite(idle) || idle >= SESSION_IDLE_TIMEOUT_MS;
 }
 
 /** The session after a request at `now`: idle expiry slides forward. */

@@ -6,6 +6,7 @@ import { createApp } from './app';
 import { dynamoDbAdapters } from './dynamodb-adapters';
 import { adminReturnUrls } from './identity/infrastructure/admin-urls';
 import { devAdminIdentity } from './identity/infrastructure/dev-admin-identity';
+import { signedCookies } from './interface/signed-cookies';
 import type { Database } from './platform/dynamodb';
 import { createTable, localDynamoClient, waitForDynamoDbLocal } from './platform/dynamodb-local';
 import { systemClock } from './shared-kernel/clock';
@@ -28,7 +29,7 @@ const app = new Hono().use(logger()).route(
     clock: systemClock,
     // Relative URLs: the browser stays on the Vite dev server, which proxies /api here.
     adminIdentity: devAdminIdentity({ owner: devOwner, returnUrls: adminReturnUrls('') }),
-    sessionSecret: process.env.SESSION_SECRET ?? 'local-development-session-secret',
+    signedCookies: signedCookies(process.env.SESSION_SECRET ?? 'local-development-session-secret'),
   }),
 );
 

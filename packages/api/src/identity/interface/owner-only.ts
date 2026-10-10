@@ -1,7 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { createMiddleware } from 'hono/factory';
-import { SESSION_IDLE_TIMEOUT_MS, type AdminSession, type ResumeSession } from '../application/resume-session';
-import { clearSession, readSession, setsSessionCookie, writeSession } from './session-cookie';
+import type { AdminSession, ResumeSession } from '../application/resume-session';
+import type { SessionCookie } from './session-cookie';
 
 /**
  * The guard's answers when it refuses a request: 401 without a session, 403
@@ -30,11 +30,11 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
  *   browser send the session cookie, but cannot read the token.
  * Each accepted request keeps the session alive for another idle period.
  */
-export function ownerOnly({ resumeSession, sessionSecret }: { resumeSession: ResumeSession; sessionSecret: string }) {
+export function ownerOnly({ resumeSession, sessionCookie }: { resumeSession: ResumeSession; sessionCookie: SessionCookie }) {
   return createMiddleware<OwnerEnv>(async (c, next) => {
-    const session = resumeSession(await readSession(c, sessionSecret));
+    const session = resumeSession(await sessionCookie.read(c));
     if (!session) {
-      clearSession(c);
+      sessionCookie.clear(c);
       return c.json<AdminUnauthorized>({ error: 'unauthorized' }, 401);
     }
     if (!SAFE_METHODS.has(c.req.method) && !sameToken(c.req.header(CSRF_HEADER), session.csrfToken)) {
@@ -44,12 +44,13 @@ export function ownerOnly({ resumeSession, sessionSecret }: { resumeSession: Res
     c.set('session', session);
     await next();
     // Unless the route ended the session (signing out), the cookie carries the new activity time.
-    if (!setsSessionCookie(c.res)) await writeSession(c, sessionSecret, session, SESSION_IDLE_TIMEOUT_MS / 1000);
+    if (!sessionCookie.isSetIn(c.res)) await sessionCookie.write(c, session);
   });
 }
 
-function sameToken(sent: string | undefined, expected: string): boolean {
-  if (sent === undefined) return false;
+/** Whether the request sent the session's token; never throws, whatever it sent. */
+function sameToken(sent: unknown, expected: unknown): boolean {
+  if (typeof sent !== 'string' || typeof expected !== 'string' || expected === '') return false;
   const a = Buffer.from(sent);
   const b = Buffer.from(expected);
   return a.length === b.length && timingSafeEqual(a, b);

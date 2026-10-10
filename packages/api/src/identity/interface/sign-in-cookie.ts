@@ -1,34 +1,32 @@
 import type { Context } from 'hono';
-import { deleteCookie, getSignedCookie, setSignedCookie } from 'hono/cookie';
+import * as z from 'zod';
+import type { SignedCookies } from '../../interface/signed-cookies';
 import { SIGN_IN_TIMEOUT_MS, type PendingSignIn } from '../application/sign-in';
-import { COOKIE_OPTIONS } from './session-cookie';
 
-// A sign-in in progress, from the sign-in route to the callback. Signed like
-// the session cookie. SameSite=Lax still sends it on the provider's redirect
-// back, a top-level GET.
-const SIGN_IN_COOKIE = 'yi_admin_sign_in';
+/**
+ * A sign-in in progress, from the sign-in route to the callback
+ * (__Host-yi_admin_sign_in). SameSite=Lax still sends it on the provider's
+ * redirect back, a top-level GET.
+ */
+export type SignInCookie = {
+  read(c: Context): Promise<PendingSignIn | undefined>;
+  write(c: Context, pending: PendingSignIn): Promise<void>;
+  clear(c: Context): void;
+};
 
-type SignInCookie = { state: string; returnTo: string; started: number };
+const content = z.object({ state: z.string().min(1), returnTo: z.string(), started: z.number() });
 
-export async function readPendingSignIn(c: Context, secret: string): Promise<PendingSignIn | undefined> {
-  const value = await getSignedCookie(c, secret, SIGN_IN_COOKIE, 'host');
-  if (!value) return undefined;
-  try {
-    const cookie = JSON.parse(value) as SignInCookie;
-    return { state: cookie.state, returnTo: cookie.returnTo, startedAt: new Date(cookie.started) };
-  } catch {
-    return undefined;
-  }
-}
-
-export async function writePendingSignIn(c: Context, secret: string, pending: PendingSignIn) {
-  const cookie: SignInCookie = { state: pending.state, returnTo: pending.returnTo, started: pending.startedAt.getTime() };
-  await setSignedCookie(c, SIGN_IN_COOKIE, JSON.stringify(cookie), secret, {
-    ...COOKIE_OPTIONS,
-    maxAge: SIGN_IN_TIMEOUT_MS / 1000,
-  });
-}
-
-export function clearPendingSignIn(c: Context) {
-  deleteCookie(c, SIGN_IN_COOKIE, COOKIE_OPTIONS);
+export function signInCookie(cookies: SignedCookies): SignInCookie {
+  const cookie = cookies.cookie('yi_admin_sign_in', content);
+  return {
+    async read(c) {
+      const pending = await cookie.read(c);
+      return pending && { state: pending.state, returnTo: pending.returnTo, startedAt: new Date(pending.started) };
+    },
+    async write(c, pending) {
+      const value = { state: pending.state, returnTo: pending.returnTo, started: pending.startedAt.getTime() };
+      await cookie.write(c, value, SIGN_IN_TIMEOUT_MS / 1000);
+    },
+    clear: (c) => cookie.clear(c),
+  };
 }
