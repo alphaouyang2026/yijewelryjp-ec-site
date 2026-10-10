@@ -37,10 +37,21 @@ test('the session cookie is HTTP-only, Secure and SameSite=Lax', async () => {
   expect(sessionCookie).toMatch(/; Path=\//);
 });
 
-describe('a sign-in that does not come back as it started gives no session', () => {
-  async function startSignIn(client: ReturnType<typeof api.client>) {
-    const start = await client.api.admin.auth['sign-in'].$get({ query: { locale: 'ja', returnTo: '/admin' } });
+// A failed sign-in sends the browser to the admin's page that says so, in the
+// locale the sign-in started in: a page open without a session, from which the
+// owner can try again.
+describe('a sign-in that does not come back as it started gives no session, and says so', () => {
+  type Locale = 'ja' | 'zh' | 'en';
+
+  async function startSignIn(client: ReturnType<typeof api.client>, locale: Locale = 'ja') {
+    const start = await client.api.admin.auth['sign-in'].$get({ query: { locale, returnTo: '/admin' } });
     return new URL(start.headers.get('location') ?? '').searchParams.get('state') ?? '';
+  }
+
+  function expectSentToSignInFailed(res: Response, page = '/admin/sign-in-failed') {
+    expect(res.status).toBe(302);
+    expect(res.headers.get('location')).toBe(page);
+    expect(res.headers.getSetCookie().some((cookie) => cookie.startsWith('__Host-yi_admin_session='))).toBe(false);
   }
 
   async function expectSignedOut(client: ReturnType<typeof api.client>) {
@@ -49,24 +60,23 @@ describe('a sign-in that does not come back as it started gives no session', () 
 
   test('a callback with another state', async () => {
     const client = api.client();
-    await startSignIn(client);
+    await startSignIn(client, 'zh');
 
     const res = await client.api.admin.auth.callback.$get({
       query: { code: api.identity.issueCode(owner), state: 'forged-state' },
     });
 
-    expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({ error: 'sign_in_failed' });
+    expectSentToSignInFailed(res, '/zh/admin/sign-in-failed');
     await expectSignedOut(client);
   });
 
-  test('a callback in a browser that never started signing in', async () => {
-    const state = await startSignIn(api.client());
+  test('a callback in a browser that never started signing in, which goes to the page in Japanese', async () => {
+    const state = await startSignIn(api.client(), 'en');
     const otherBrowser = api.client();
 
     const res = await otherBrowser.api.admin.auth.callback.$get({ query: { code: api.identity.issueCode(owner), state } });
 
-    expect(res.status).toBe(400);
+    expectSentToSignInFailed(res, '/admin/sign-in-failed');
     await expectSignedOut(otherBrowser);
   });
 
@@ -76,37 +86,62 @@ describe('a sign-in that does not come back as it started gives no session', () 
     await client.api.admin.auth.callback.$get({ query: { code, state: await startSignIn(client) } });
     const another = api.client();
 
-    const reused = await another.api.admin.auth.callback.$get({ query: { code, state: await startSignIn(another) } });
+    const reused = await another.api.admin.auth.callback.$get({
+      query: { code, state: await startSignIn(another, 'en') },
+    });
     const unknown = await another.api.admin.auth.callback.$get({
-      query: { code: 'made-up', state: await startSignIn(another) },
+      query: { code: 'made-up', state: await startSignIn(another, 'en') },
     });
 
-    expect(reused.status).toBe(400);
-    expect(unknown.status).toBe(400);
+    expectSentToSignInFailed(reused, '/en/admin/sign-in-failed');
+    expectSentToSignInFailed(unknown, '/en/admin/sign-in-failed');
     await expectSignedOut(another);
   });
 
-  test('a callback reporting an error from the provider, such as a cancelled sign-in', async () => {
+  test('a callback reporting that the owner cancelled signing in (access_denied)', async () => {
     const client = api.client();
-    const state = await startSignIn(client);
+    const state = await startSignIn(client, 'zh');
 
     const res = await client.api.admin.auth.callback.$get({ query: { error: 'access_denied', state } });
 
-    expect(res.status).toBe(400);
+    expectSentToSignInFailed(res, '/zh/admin/sign-in-failed');
+    await expectSignedOut(client);
+  });
+
+  test('a callback reporting another error from the provider, with a code', async () => {
+    const client = api.client();
+    const state = await startSignIn(client);
+
+    const res = await client.api.admin.auth.callback.$get({
+      query: { error: 'server_error', code: api.identity.issueCode(owner), state },
+    });
+
+    expectSentToSignInFailed(res);
+    await expectSignedOut(client);
+  });
+
+  test('a callback with nothing in it', async () => {
+    const client = api.client();
+    await startSignIn(client, 'en');
+
+    const res = await client.api.admin.auth.callback.$get({ query: {} });
+
+    expectSentToSignInFailed(res, '/en/admin/sign-in-failed');
     await expectSignedOut(client);
   });
 
   test('a callback more than 10 minutes after the sign-in started', async () => {
     const client = api.client();
     api.clock.set(new Date('2026-10-01T10:00:00+09:00'));
-    const state = await startSignIn(client);
+    const state = await startSignIn(client, 'zh');
 
     api.clock.set(new Date('2026-10-01T10:10:00+09:00'));
     const res = await client.api.admin.auth.callback.$get({ query: { code: api.identity.issueCode(owner), state } });
 
-    expect(res.status).toBe(400);
+    expectSentToSignInFailed(res, '/zh/admin/sign-in-failed');
     await expectSignedOut(client);
   });
+
 });
 
 describe('signing in comes back only to an admin page', () => {
@@ -160,4 +195,11 @@ test('signing in needs a supported locale for the provider’s pages', async () 
 
   expect(res.status).toBe(400);
   expect(await res.json()).toEqual({ error: 'unsupported_locale', supportedLocales: ['ja', 'zh', 'en'] });
+});
+
+test('a callback with repeated parameters fails like any other that does not sign in', async () => {
+  const res = await api.request('/api/admin/auth/callback?code=a&code=b&state=s&state=t');
+
+  expect(res.status).toBe(302);
+  expect(res.headers.get('location')).toBe('/admin/sign-in-failed');
 });

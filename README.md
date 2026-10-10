@@ -129,7 +129,7 @@ npm run db:stop    # 停止并删除容器
 
 1. 进入后台页面时，前端向 `GET /api/admin/session` 查询会话。未登录（401）时，浏览器转到 API 的 `GET /api/admin/auth/sign-in?locale=…&returnTo=…`。
 2. API 生成随机的 `state`，和要返回的后台页面（只能是 `/admin`、`/zh/admin`、`/en/admin` 及其下的页面，其他的一律换成当前语言的后台首页）一起存进一个签名 cookie（10 分钟有效），再把浏览器转到 Cognito 托管登录页（授权码流程，页面语言跟后台一致）。
-3. 登录后 Cognito 把浏览器带回 `GET /api/admin/auth/callback?code=…&state=…`。API 核对 `state`，用授权码和应用客户端密钥向 Cognito 换取令牌，按用户池的 JWKS 验证 ID 令牌，然后发放会话 cookie 并跳回原来的后台页面。令牌只在 API 里用这一次，不保存，也不交给浏览器。
+3. 登录后 Cognito 把浏览器带回 `GET /api/admin/auth/callback?code=…&state=…`。API 核对 `state`，用授权码和应用客户端密钥向 Cognito 换取令牌，按用户池的 JWKS 验证 ID 令牌，然后发放会话 cookie 并跳回原来的后台页面。令牌只在 API 里用这一次，不保存，也不交给浏览器。登录没有完成时（`state` 不符或超过 10 分钟、授权码无效或已用过、Cognito 报告错误，比如店主在登录页取消），API 把浏览器转到登录时语言的 `/admin/sign-in-failed`（`/zh/admin/sign-in-failed`、`/en/admin/sign-in-failed`）：这个页面不需要会话，说明登录失败，并可以重新登录。
 4. 会话 cookie（`__Host-yi_admin_session`）是 HTTP-only、Secure、SameSite=Lax 的签名 cookie。API 的签名 cookie 都由 `packages/api/src/interface/signed-cookies.ts` 读写：每个 cookie 用自己的密钥签名（由 Secrets Manager 里的签名密钥和 cookie 名派生），所以一个 cookie 的值不能冒充另一个 cookie；读取时还用 Zod 检查内容，不符合的当作没有 cookie。每次后台请求都把闲置时间重新算起，闲置 2 小时后过期；无论是否一直在用，登录 12 小时后也会过期，需要重新登录。API 只在登录时向 Cognito 确认店主身份，这个上限保证停用的店主不会一直保持登录。
 5. 登出（`POST /api/admin/sign-out`）清除会话 cookie，再把浏览器转到 Cognito 的登出页，结束 Cognito 自己的登录状态（否则一小时内再登录不用输密码），最后回到当前语言的网站首页。
 

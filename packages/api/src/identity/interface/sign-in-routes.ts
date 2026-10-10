@@ -10,11 +10,11 @@ import type { SignInCookie } from './sign-in-cookie';
 // first page for anything else (the sign-in use case decides).
 const signInQuery = localeQueryWith({ returnTo: z.string().optional() });
 
-// The provider sends back a code and the state, or an error (e.g. the owner cancelled).
-const callbackQuery = zValidator(
-  'query',
-  z.object({ code: z.string().optional(), state: z.string().optional(), error: z.string().optional() }),
-);
+// The provider sends back a code and the state, or an error (e.g. the owner
+// cancelled). Whatever else comes (a repeated parameter, say) counts as
+// missing, so every callback that does not sign in ends on the failed page.
+const optionalText = z.string().optional().catch(undefined);
+const callbackQuery = zValidator('query', z.object({ code: optionalText, state: optionalText, error: optionalText }));
 
 /**
  * The owner's sign-in, open to everyone: the browser starts here and the
@@ -43,13 +43,14 @@ export function signInRoutes({
       const pending = await signInCookie.read(c);
       signInCookie.clear(c);
 
-      const signedIn = code && state && !error ? await finishSignIn({ code, state, pending }) : undefined;
-      if (!signedIn) {
+      // A provider error (e.g. access_denied when the owner cancels) means no code, whatever else came with it.
+      const result = await finishSignIn({ code: error === undefined ? code : undefined, state, pending });
+      if (!result.signedIn) {
         console.warn('Admin sign-in failed', { providerError: error ?? null, pending: Boolean(pending) });
-        return c.json({ error: 'sign_in_failed' as const }, 400);
+        return c.redirect(result.failedPage, 302);
       }
 
-      await sessionCookie.write(c, signedIn.session);
-      return c.redirect(signedIn.returnTo, 302);
+      await sessionCookie.write(c, result.session);
+      return c.redirect(result.returnTo, 302);
     });
 }

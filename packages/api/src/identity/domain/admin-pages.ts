@@ -18,6 +18,14 @@ export function adminHome(locale: Locale): string {
   return `${prefix(locale)}/admin`;
 }
 
+/**
+ * The admin's page saying that signing in failed, in `locale`, from which the
+ * owner can try again. Unlike the admin's other pages, it needs no session.
+ */
+export function signInFailedPage(locale: Locale): string {
+  return `${adminHome(locale)}/sign-in-failed`;
+}
+
 /** Whether `path` is one of the admin's pages (in any locale), maybe with a query. */
 export function isAdminPage(path: string): boolean {
   const pathname = path.split('?', 1)[0] ?? '';

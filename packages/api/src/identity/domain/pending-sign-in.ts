@@ -8,11 +8,13 @@ export const SIGN_IN_TIMEOUT_MS = 10 * 60 * 1000;
 /**
  * A sign-in the browser started and has not finished: the `state` the
  * identity provider must send back (so a callback the owner's browser did not
- * start is refused), and the admin page to go back to.
+ * start is refused), the admin page to go back to, and the locale the owner
+ * signs in in.
  */
 export type PendingSignIn = {
   readonly state: string;
   readonly returnTo: string;
+  readonly locale: Locale;
   readonly startedAt: Date;
 };
 
@@ -25,6 +27,7 @@ export function startSignIn({ returnTo, locale }: { returnTo?: string; locale: L
   return {
     state: randomToken(),
     returnTo: returnTo !== undefined && isAdminPage(returnTo) ? returnTo : adminHome(locale),
+    locale,
     startedAt: now,
   };
 }
