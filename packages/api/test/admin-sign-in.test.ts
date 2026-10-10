@@ -109,15 +109,50 @@ describe('a sign-in that does not come back as it started gives no session', () 
   });
 });
 
-test.each(['https://evil.test/admin', '//evil.test/admin', '/\\evil.test', 'admin'])(
-  'signing in refuses to come back to %s, which is not a path on this site',
-  async (returnTo) => {
-    const res = await api.client().api.admin.auth['sign-in'].$get({ query: { locale: 'ja', returnTo } });
+describe('signing in comes back only to an admin page', () => {
+  /** Where the browser lands after signing in, having asked to come back to `returnTo`. */
+  async function cameBackTo(query: { locale: 'ja' | 'zh' | 'en'; returnTo?: string }) {
+    const client = api.client();
+    const start = await client.api.admin.auth['sign-in'].$get({ query });
+    expect(start.status).toBe(302);
+    const state = new URL(start.headers.get('location') ?? '').searchParams.get('state') ?? '';
+    const callback = await client.api.admin.auth.callback.$get({
+      query: { code: api.identity.issueCode(owner), state },
+    });
+    expect(callback.status).toBe(302);
+    return callback.headers.get('location');
+  }
 
-    expect(res.status).toBe(400);
-    expect(res.headers.get('location')).toBeNull();
-  },
-);
+  test.each(['/admin', '/admin/orders', '/zh/admin', '/zh/admin/orders?status=paid', '/en/admin/products/ring-1'])(
+    '%s, an admin page, is where the owner comes back to',
+    async (returnTo) => {
+      expect(await cameBackTo({ locale: 'ja', returnTo })).toBe(returnTo);
+    },
+  );
+
+  test.each([
+    'https://evil.test/admin',
+    '//evil.test/admin',
+    '/\\evil.test/admin',
+    'admin',
+    '/',
+    '/products',
+    '/zh/cart',
+    '/administrator',
+    '/fr/admin',
+    '/admin/../products',
+    '/admin/%2e%2e/products',
+    '/api/admin/session',
+  ])('%s, not an admin page, gives way to the admin’s first page in the sign-in’s locale', async (returnTo) => {
+    expect(await cameBackTo({ locale: 'ja', returnTo })).toBe('/admin');
+    expect(await cameBackTo({ locale: 'zh', returnTo })).toBe('/zh/admin');
+    expect(await cameBackTo({ locale: 'en', returnTo })).toBe('/en/admin');
+  });
+
+  test('without a page to come back to, the owner lands on the admin’s first page', async () => {
+    expect(await cameBackTo({ locale: 'en' })).toBe('/en/admin');
+  });
+});
 
 test('signing in needs a supported locale for the provider’s pages', async () => {
   // @ts-expect-error The client's types allow only supported locales; send another one, as a hand-written URL would.

@@ -1,3 +1,5 @@
+import type { Locale } from '../../shared-kernel/locale';
+import { adminHome, isAdminPage } from './admin-pages';
 import { randomToken } from './random-token';
 
 /** A sign-in must come back from the identity provider within this long of starting. */
@@ -14,8 +16,17 @@ export type PendingSignIn = {
   readonly startedAt: Date;
 };
 
-export function startSignIn(returnTo: string, now: Date): PendingSignIn {
-  return { state: randomToken(), returnTo, startedAt: now };
+/**
+ * A sign-in started at `now`, in `locale`, to come back to the admin page
+ * `returnTo`. Signing in leads only into the admin: for any other page, or
+ * none, it comes back to the admin's first page in `locale`.
+ */
+export function startSignIn({ returnTo, locale }: { returnTo?: string; locale: Locale }, now: Date): PendingSignIn {
+  return {
+    state: randomToken(),
+    returnTo: returnTo !== undefined && isAdminPage(returnTo) ? returnTo : adminHome(locale),
+    startedAt: now,
+  };
 }
 
 /** Whether a callback with `state` at `now` finishes this sign-in. */

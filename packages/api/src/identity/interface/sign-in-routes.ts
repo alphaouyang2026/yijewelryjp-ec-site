@@ -6,14 +6,9 @@ import type { BeginSignIn, FinishSignIn } from '../application/sign-in';
 import type { SessionCookie } from './session-cookie';
 import type { SignInCookie } from './sign-in-cookie';
 
-/**
- * A path on this site (never another host, so the sign-in cannot be used to
- * send the browser elsewhere): starts with one slash, no backslashes or
- * whitespace.
- */
-const sitePath = z.string().regex(/^\/(?![/\\])[^\s\\]*$/);
-
-const signInQuery = localeQueryWith({ returnTo: sitePath });
+// Any text: signing in comes back only to an admin page, and to the admin's
+// first page for anything else (the sign-in use case decides).
+const signInQuery = localeQueryWith({ returnTo: z.string().optional() });
 
 // The provider sends back a code and the state, or an error (e.g. the owner cancelled).
 const callbackQuery = zValidator(

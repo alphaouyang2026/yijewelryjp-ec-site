@@ -9,17 +9,20 @@ export { SIGN_IN_TIMEOUT_MS };
 
 type Deps = { adminIdentity: AdminIdentity; clock: Clock };
 
-export type BeginSignIn = (request: { locale: Locale; returnTo: string }) => {
+export type BeginSignIn = (request: { locale: Locale; returnTo?: string }) => {
   /** Where the browser goes to sign in. */
   signInUrl: string;
   /** What the browser keeps until it comes back to the callback. */
   pending: PendingSignIn;
 };
 
-/** Use case: an owner starts signing in, to come back to the admin page `returnTo`. */
+/**
+ * Use case: an owner starts signing in, in `locale`, to come back to the admin
+ * page `returnTo` (or the admin's first page, if it is not an admin page).
+ */
 export function beginSignIn(deps: Deps): BeginSignIn {
   return ({ locale, returnTo }) => {
-    const pending = startSignIn(returnTo, deps.clock.now());
+    const pending = startSignIn({ returnTo, locale }, deps.clock.now());
     return { signInUrl: deps.adminIdentity.signInUrl({ state: pending.state, locale }), pending };
   };
 }
