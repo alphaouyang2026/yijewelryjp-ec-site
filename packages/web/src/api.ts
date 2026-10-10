@@ -1,4 +1,4 @@
-import type { AppType } from '@yi/api';
+import type { AppType, CsrfHeader } from '@yi/api';
 import { hc, type InferRequestType, type InferResponseType } from 'hono/client';
 
 /** Typed client for the API, which is served under /api on the site's own origin. */
@@ -17,3 +17,8 @@ export type ProductSort = NonNullable<InferRequestType<typeof api.products.$get>
 export type ProductPage = InferResponseType<(typeof api.products)[':slug']['$get'], 200>;
 export type ProductDetail = ProductPage['product'];
 export type Variant = ProductDetail['variants'][number];
+
+export type AdminSession = InferResponseType<typeof api.admin.session.$get, 200>;
+
+/** The header the admin's data-changing requests carry the session's CSRF token in. */
+export const CSRF_HEADER: CsrfHeader = 'X-CSRF-Token';

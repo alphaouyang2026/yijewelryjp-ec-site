@@ -8,7 +8,7 @@ import type { Database } from './platform/dynamodb';
  * Every adapter backed by the single DynamoDB table. Repositories have only
  * this implementation: tests run it against DynamoDB Local.
  */
-export function dynamoDbAdapters(db: Database): Omit<AppDeps, 'clock'> {
+export function dynamoDbAdapters(db: Database): Pick<AppDeps, 'categories' | 'products' | 'databaseProbe'> {
   return {
     categories: dynamoDbCategoryRepository(db),
     products: dynamoDbProductRepository(db),

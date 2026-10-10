@@ -92,4 +92,29 @@ export const zh: Messages = {
     text: '请稍后再试。',
     home: '返回首页',
   },
+  admin: {
+    label: 'Admin',
+    title: '后台',
+    nav: '后台菜单',
+    sections: {
+      products: '商品',
+      categories: '类别',
+      orders: '订单',
+      settings: '店铺设置',
+    },
+    welcome: '请从菜单中选择要管理的内容。',
+    comingSoon: '此页面正在准备中。',
+    signedInAs: '当前登录',
+    signOut: '退出登录',
+    signInFailed: {
+      title: '登录未成功',
+      text: '登录没有完成。在登录页面取消登录、或等待时间过长时，也会显示此页面。',
+      retry: '重新登录',
+    },
+    error: {
+      title: '无法显示后台页面',
+      text: '请稍后再试。',
+      home: '返回后台首页',
+    },
+  },
 };

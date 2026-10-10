@@ -98,6 +98,31 @@ export const ja = {
     text: '時間をおいて、もう一度お試しください。',
     home: 'トップページへ戻る',
   },
+  admin: {
+    label: 'Admin',
+    title: '管理画面',
+    nav: '管理メニュー',
+    sections: {
+      products: '商品',
+      categories: 'カテゴリー',
+      orders: '注文',
+      settings: 'ショップ設定',
+    },
+    welcome: 'メニューから管理する項目を選んでください。',
+    comingSoon: 'この画面は準備中です。',
+    signedInAs: 'ログイン中',
+    signOut: 'ログアウト',
+    signInFailed: {
+      title: 'ログインできませんでした',
+      text: 'ログインが完了しませんでした。ログイン画面でキャンセルした場合や、時間がたちすぎた場合もこの画面になります。',
+      retry: 'もう一度ログインする',
+    },
+    error: {
+      title: '管理画面を表示できませんでした',
+      text: '時間をおいて、もう一度お試しください。',
+      home: '管理画面のトップへ',
+    },
+  },
 };
 
 export type Messages = typeof ja;

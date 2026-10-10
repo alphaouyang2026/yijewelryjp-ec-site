@@ -27,6 +27,16 @@ import {
   type BehaviorOptions,
 } from 'aws-cdk-lib/aws-cloudfront';
 import { HttpOrigin, S3BucketOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
+import {
+  AccountRecovery,
+  CfnManagedLoginBranding,
+  FeaturePlan,
+  ManagedLoginVersion,
+  Mfa,
+  OAuthScope,
+  UserPool,
+  UserPoolClientIdentityProvider,
+} from 'aws-cdk-lib/aws-cognito';
 import { AttributeType, BillingMode, Table } from 'aws-cdk-lib/aws-dynamodb';
 import { Architecture, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { NodejsFunction, OutputFormat } from 'aws-cdk-lib/aws-lambda-nodejs';
@@ -35,6 +45,7 @@ import { AaaaRecord, ARecord, HostedZone, RecordTarget } from 'aws-cdk-lib/aws-r
 import { CloudFrontTarget } from 'aws-cdk-lib/aws-route53-targets';
 import { BlockPublicAccess, Bucket, BucketEncryption } from 'aws-cdk-lib/aws-s3';
 import { BucketDeployment, CacheControl, Source } from 'aws-cdk-lib/aws-s3-deployment';
+import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import type { Construct } from 'constructs';
 import type { DeployConfig } from './config';
 
@@ -103,7 +114,8 @@ type ShopStackProps = StackProps & {
 /**
  * One stage of the shop: the API on Lambda behind API Gateway HTTP API, the
  * single DynamoDB table, the bucket with the React build and product images,
- * and the CloudFront distribution that serves all of them on one domain.
+ * the CloudFront distribution that serves all of them on one domain, and the
+ * Cognito user pool owners sign in to the admin with.
  */
 export class ShopStack extends Stack {
   constructor(scope: Construct, id: string, { config, certificate, ...props }: ShopStackProps) {
@@ -325,9 +337,104 @@ export class ShopStack extends Stack {
       }
     }
 
-    new CfnOutput(this, 'SiteUrl', {
-      value: `https://${config.domain?.domainName ?? distribution.distributionDomainName}`,
+    // --- Owner sign-in (Cognito) ----------------------------------------------
+
+    // The site's own URL, where Cognito sends the browser back to. With a
+    // custom domain it is a plain string. Without one it is the distribution's
+    // default domain, known only once CloudFormation creates the distribution;
+    // that does not form a cycle, because nothing the distribution depends on
+    // (the HTTP API and the bucket) depends on the Lambda function or the user
+    // pool: the order is HTTP API -> distribution -> app client -> secret ->
+    // the function's environment and policy, with the integration (HTTP API ->
+    // function) created last. CloudFormation creates the app client once the
+    // distribution exists.
+    const siteUrl = `https://${config.domain?.domainName ?? distribution.distributionDomainName}`;
+
+    // Owner accounts only: no self sign-up (the owner creates accounts, see
+    // README), email as the user name, and a TOTP app as the required second
+    // factor. The Essentials plan (free up to 10,000 monthly active users)
+    // is what managed login and its Japanese and Chinese pages need.
+    const ownerPool = new UserPool(this, 'OwnerPool', {
+      selfSignUpEnabled: false,
+      signInAliases: { email: true },
+      standardAttributes: { email: { required: true, mutable: true } },
+      mfa: Mfa.REQUIRED,
+      mfaSecondFactor: { otp: true, sms: false, email: false },
+      passwordPolicy: { minLength: 12, tempPasswordValidity: Duration.days(3) },
+      accountRecovery: AccountRecovery.EMAIL_ONLY,
+      featurePlan: FeaturePlan.ESSENTIALS,
+      // Production keeps the owners' accounts (and their TOTP set-up).
+      deletionProtection: isProduction,
+      removalPolicy,
     });
+
+    // Cognito's managed login pages, on a prefix of amazoncognito.com. The
+    // prefix must be unique across all of AWS; the stage and account make it so.
+    const managedLogin = ownerPool.addDomain('ManagedLogin', {
+      cognitoDomain: { domainPrefix: `yijewelry-${config.stage}-${this.account}` },
+      managedLoginVersion: ManagedLoginVersion.NEWER_MANAGED_LOGIN,
+    });
+
+    // The API is a confidential client: it alone exchanges authorization codes
+    // (with the client secret) at the token endpoint, on its callback route.
+    // The callback and sign-out URLs below are written out a second time in
+    // packages/api/src/identity/infrastructure/admin-urls.ts (adminReturnUrls),
+    // which builds the URLs the API sends to Cognito; infra cannot import the
+    // API's runtime code, so a URL or locale changed in one place must be
+    // changed in the other too, or Cognito refuses the redirect.
+    const adminClient = ownerPool.addClient('AdminClient', {
+      generateSecret: true,
+      oAuth: {
+        flows: { authorizationCodeGrant: true },
+        scopes: [OAuthScope.OPENID, OAuthScope.EMAIL],
+        callbackUrls: [`${siteUrl}/api/admin/auth/callback`],
+        // After signing out, the store's home page in the admin's locale.
+        logoutUrls: [`${siteUrl}/`, `${siteUrl}/zh/`, `${siteUrl}/en/`],
+      },
+      supportedIdentityProviders: [UserPoolClientIdentityProvider.COGNITO],
+      preventUserExistenceErrors: true,
+      // The API reads the ID token once, at the callback, and keeps no tokens;
+      // the admin session (2 hours idle, 12 hours at most) is its own cookie.
+      idTokenValidity: Duration.minutes(5),
+      accessTokenValidity: Duration.minutes(5),
+      refreshTokenValidity: Duration.hours(1),
+    });
+
+    // Managed login shows a client's pages only once it has a style; this is Cognito's default look.
+    new CfnManagedLoginBranding(this, 'ManagedLoginStyle', {
+      userPoolId: ownerPool.userPoolId,
+      clientId: adminClient.userPoolClientId,
+      useCognitoProvidedValues: true,
+    });
+
+    // Secrets the API reads when a Lambda instance starts: the app client's
+    // secret (copied from Cognito) and the key that signs the owner's session
+    // cookie (generated here; replacing it signs every owner out).
+    const adminClientSecret = new Secret(this, 'AdminClientSecret', {
+      description: `Y&I Jewelry (${config.stage}): the Cognito app client secret the API signs owners in with`,
+      secretStringValue: adminClient.userPoolClientSecret,
+      removalPolicy: RemovalPolicy.DESTROY,
+    });
+    const sessionSecret = new Secret(this, 'SessionSecret', {
+      description: `Y&I Jewelry (${config.stage}): the key that signs the admin session cookie`,
+      generateSecretString: { passwordLength: 64, excludePunctuation: true },
+      removalPolicy: RemovalPolicy.DESTROY,
+    });
+
+    // Reading the two secrets is all the function needs: exchanging codes and
+    // fetching the user pool's signing keys are public HTTPS endpoints.
+    adminClientSecret.grantRead(api);
+    sessionSecret.grantRead(api);
+    api.addEnvironment('SITE_URL', siteUrl);
+    api.addEnvironment('COGNITO_DOMAIN_URL', managedLogin.baseUrl());
+    api.addEnvironment('COGNITO_USER_POOL_ID', ownerPool.userPoolId);
+    api.addEnvironment('COGNITO_CLIENT_ID', adminClient.userPoolClientId);
+    api.addEnvironment('COGNITO_CLIENT_SECRET_ARN', adminClientSecret.secretArn);
+    api.addEnvironment('SESSION_SECRET_ARN', sessionSecret.secretArn);
+
+    new CfnOutput(this, 'SiteUrl', { value: siteUrl });
+    new CfnOutput(this, 'AdminUrl', { value: `${siteUrl}/admin` });
+    new CfnOutput(this, 'OwnerUserPoolId', { value: ownerPool.userPoolId });
     new CfnOutput(this, 'DistributionId', { value: distribution.distributionId });
     new CfnOutput(this, 'TableName', { value: table.tableName });
   }
