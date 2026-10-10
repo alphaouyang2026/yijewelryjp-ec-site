@@ -15,3 +15,8 @@
 .text {
   color: var(--color-graphite);
 }
+
+.link {
+  align-self: flex-start;
+  margin-top: var(--space-2);
+}

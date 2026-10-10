@@ -7,20 +7,20 @@ import { LocalizedLink } from '../atoms/LocalizedLink';
 import { LocaleSwitcher } from '../molecules/LocaleSwitcher';
 import styles from './AdminHeader.module.css';
 
-/**
- * The admin's header, on a light ground: the brand (linking to the admin's
- * first page), who is signed in, the locale switcher and the sign-out button.
- */
-export function AdminHeader({
-  ownerEmail,
-  onSignOut,
-  signingOut,
-}: {
-  ownerEmail: string;
+/** The signed-in owner, as the admin's header shows them. */
+export type AdminHeaderOwner = {
+  email: string;
   onSignOut: () => void;
   /** While signing out, the button cannot be pressed again. */
   signingOut: boolean;
-}) {
+};
+
+/**
+ * The admin's header, on a light ground: the brand (linking to the admin's
+ * first page) and the locale switcher; in an owner's session, also who is
+ * signed in and the sign-out button.
+ */
+export function AdminHeader({ owner }: { owner?: AdminHeaderOwner }) {
   const text = useMessages().admin;
 
   return (
@@ -31,13 +31,17 @@ export function AdminHeader({
           <Label ground="light">{text.label}</Label>
         </LocalizedLink>
         <div className={styles.tools}>
-          <p className={styles.owner}>
-            <span className={styles.ownerLabel}>{text.signedInAs}</span> <span>{ownerEmail}</span>
-          </p>
+          {owner && (
+            <p className={styles.owner}>
+              <span className={styles.ownerLabel}>{text.signedInAs}</span> <span>{owner.email}</span>
+            </p>
+          )}
           <LocaleSwitcher ground="light" />
-          <Button variant="secondary" onClick={onSignOut} disabled={signingOut}>
-            {text.signOut}
-          </Button>
+          {owner && (
+            <Button variant="secondary" onClick={owner.onSignOut} disabled={owner.signingOut}>
+              {text.signOut}
+            </Button>
+          )}
         </div>
       </div>
     </header>

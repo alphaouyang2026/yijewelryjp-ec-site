@@ -130,3 +130,39 @@ test('signing out after the session already ended goes to the store’s home pag
 
   await waitFor(() => expect(leaveFor).toHaveBeenCalledWith('/en/'));
 });
+
+test.each([
+  {
+    path: '/admin/sign-in-failed',
+    heading: 'ログインできませんでした',
+    retry: 'もう一度ログインする',
+    admin: '/admin',
+    signIn: { locale: 'ja', returnTo: '/admin' },
+  },
+  {
+    path: '/zh/admin/sign-in-failed',
+    heading: '登录未成功',
+    retry: '重新登录',
+    admin: '/zh/admin',
+    signIn: { locale: 'zh', returnTo: '/zh/admin' },
+  },
+])('$path says that signing in failed, without a session, and the owner can try again', async (text) => {
+  server.use(mockApi.adminSession(null));
+  const leaveFor = watchBrowserLeaving();
+  const user = userEvent.setup();
+
+  renderRoute(text.path);
+
+  expect(await screen.findByRole('heading', { level: 1, name: text.heading })).toBeInTheDocument();
+  expect(screen.queryByRole('navigation', { name: /管理メニュー|后台菜单/ })).not.toBeInTheDocument();
+  expect(leaveFor).not.toHaveBeenCalled();
+  const retry = screen.getByRole('link', { name: text.retry });
+  expect(retry).toHaveAttribute('href', text.admin);
+
+  await user.click(retry);
+
+  await waitFor(() => expect(leaveFor).toHaveBeenCalledOnce());
+  const signIn = new URL(leaveFor.mock.calls[0]?.[0] ?? '', 'https://shop.test');
+  expect(signIn.pathname).toBe('/api/admin/auth/sign-in');
+  expect(Object.fromEntries(signIn.searchParams)).toEqual(text.signIn);
+});

@@ -106,5 +106,10 @@ export const zh: Messages = {
     comingSoon: '此页面正在准备中。',
     signedInAs: '当前登录',
     signOut: '退出登录',
+    signInFailed: {
+      title: '登录未成功',
+      text: '登录没有完成。在登录页面取消登录、或等待时间过长时，也会显示此页面。',
+      retry: '重新登录',
+    },
   },
 };

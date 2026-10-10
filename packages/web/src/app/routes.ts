@@ -50,10 +50,24 @@ function adminPages(): RouteObject {
   };
 }
 
+/**
+ * The page saying that signing in to the admin failed. It is outside the
+ * admin's frame, which needs a session: without one, the frame would send the
+ * browser to sign in again at once.
+ */
+function signInFailedPage(): RouteObject {
+  return {
+    path: 'admin/sign-in-failed',
+    HydrateFallback: BlankHydrateFallback,
+    lazy: async () => ({ Component: (await import('../components/pages/admin/SignInFailedPage')).SignInFailedPage }),
+  };
+}
+
 /** The storefront's pages, relative to a locale's root (the paths match paths.ts). */
 function storePages(): RouteObject[] {
   return [
     adminPages(),
+    signInFailedPage(),
     pageWithData({ index: true, loader: homeLoader, Component: HomePage }),
     pageWithData({ path: 'products', loader: productListLoader, Component: ProductListPage }),
     pageWithData({ path: 'categories/:slug', loader: productListLoader, Component: ProductListPage }),

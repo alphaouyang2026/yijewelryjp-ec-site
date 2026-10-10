@@ -106,5 +106,10 @@ export const en: Messages = {
     comingSoon: 'This page is coming soon.',
     signedInAs: 'Signed in as',
     signOut: 'Sign out',
+    signInFailed: {
+      title: 'Signing in did not complete',
+      text: 'You were not signed in. This also happens if you cancelled on the sign-in page or took too long.',
+      retry: 'Sign in again',
+    },
   },
 };

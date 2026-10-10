@@ -33,7 +33,7 @@ export function AdminFramePage() {
   }
 
   return (
-    <AdminLayout ownerEmail={session.owner.email} onSignOut={signOut} signingOut={signingOut}>
+    <AdminLayout owner={{ email: session.owner.email, onSignOut: signOut, signingOut }}>
       <title>{`${text.title} | ${BRAND_NAME}`}</title>
       <meta name="robots" content="noindex" />
       <Outlet />
