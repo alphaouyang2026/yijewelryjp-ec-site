@@ -1,0 +1,36 @@
+.band {
+  background: var(--color-mist);
+}
+
+.items {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(var(--service-min-width), 1fr));
+  gap: var(--space-5) var(--space-6);
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  padding: var(--space-8) var(--gutter);
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.icon {
+  color: var(--color-deep-gold);
+}
+
+.title {
+  font-family: var(--font-heading);
+  font-size: var(--text-product-name);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: var(--tracking-caption);
+}
+
+.body {
+  margin-top: var(--space-1);
+  color: var(--color-graphite);
+  font-size: var(--text-nav);
+}

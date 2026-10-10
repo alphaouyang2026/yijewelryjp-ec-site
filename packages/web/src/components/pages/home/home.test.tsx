@@ -1,7 +1,7 @@
 import { screen, within } from '@testing-library/react';
 import { beforeEach, expect, test } from 'vitest';
 import { emptyHomeData, mockApi } from '../../../test/api-mocks';
-import { linkTexts } from '../../../test/queries';
+import { linkHrefs, linkTexts } from '../../../test/queries';
 import { renderRoute } from '../../../test/render';
 import { server } from '../../../test/server';
 
@@ -67,6 +67,80 @@ test('new arrivals section shows an empty state while there are no products', as
 
   const newArrivals = await screen.findByRole('region', { name: '新作' });
   expect(within(newArrivals).getByText('ただいま新作を準備中です。')).toBeInTheDocument();
+});
+
+test('new arrivals show each product with its price and stock, and link to every product', async () => {
+  server.use(
+    mockApi.home({
+      ...emptyHomeData,
+      newArrivals: [
+        { slug: 'crescent-ring', name: '三日月のリング', priceYen: 24_000, priceVaries: true, stockStatus: 'in_stock' },
+        { slug: 'pearl-earrings', name: 'パールピアス', priceYen: 28_000, priceVaries: false, stockStatus: 'sold_out' },
+      ],
+    }),
+  );
+
+  renderRoute('/');
+
+  const newArrivals = await screen.findByRole('region', { name: '新作' });
+  const items = within(newArrivals).getAllByRole('listitem');
+  expect(items.map((item) => within(item).getByRole('heading').textContent)).toEqual(['三日月のリング', 'パールピアス']);
+  expect(within(items[0]!).getByRole('link')).toHaveAttribute('href', '/products/crescent-ring');
+  expect(within(items[0]!).getByText('¥24,000〜').parentElement).toHaveTextContent('¥24,000〜（税込）');
+  expect(within(items[1]!).getByText('SOLD OUT')).toBeInTheDocument();
+  expect(within(newArrivals).getByRole('link', { name: 'すべての新作を見る' })).toHaveAttribute('href', '/products');
+});
+
+test('the featured product is picked up with its description, details and a link to its page', async () => {
+  server.use(
+    mockApi.home({
+      ...emptyHomeData,
+      featured: {
+        slug: 'crescent-ring',
+        name: '三日月のリング',
+        priceYen: 24_000,
+        priceVaries: true,
+        stockStatus: 'in_stock',
+        description: '細い三日月をかたどったリングです。',
+        materials: 'K18イエローゴールド',
+        variantLabels: ['7号', '9号', '11号'],
+      },
+    }),
+  );
+
+  renderRoute('/');
+
+  const featured = await screen.findByRole('region', { name: '三日月のリング' });
+  expect(within(featured).getByText('Pick Up')).toBeInTheDocument();
+  expect(within(featured).getByText('細い三日月をかたどったリングです。')).toBeInTheDocument();
+  expect(within(featured).getByText('素材').nextElementSibling).toHaveTextContent('K18イエローゴールド');
+  expect(within(featured).getByText('サイズ').nextElementSibling).toHaveTextContent('7号 / 9号 / 11号');
+  expect(within(featured).getByRole('link', { name: '詳しく見る' })).toHaveAttribute('href', '/products/crescent-ring');
+});
+
+test('without a featured product, nothing is picked up', async () => {
+  renderRoute('/');
+
+  await screen.findByRole('region', { name: '新作' });
+  expect(screen.queryByText('Pick Up')).not.toBeInTheDocument();
+});
+
+test('the categories are offered as links to their pages', async () => {
+  server.use(
+    mockApi.home({
+      ...emptyHomeData,
+      categories: [
+        { slug: 'rings', name: 'リング' },
+        { slug: 'necklaces', name: 'ネックレス' },
+      ],
+    }),
+  );
+
+  renderRoute('/');
+
+  const categories = await screen.findByRole('region', { name: 'カテゴリーから探す' });
+  expect(linkTexts(categories)).toEqual(['リング', 'ネックレス']);
+  expect(linkHrefs(categories)).toEqual(['/categories/rings', '/categories/necklaces']);
 });
 
 test('announces the free shipping threshold above the header', async () => {

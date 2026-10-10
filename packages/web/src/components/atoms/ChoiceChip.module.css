@@ -1,0 +1,45 @@
+/* Size choices (spec #1): chosen = double onyx line; sold out = linen ground, struck through, not choosable. */
+.chip {
+  display: inline-flex;
+}
+
+/* The radio button stays in the page for keyboards and screen readers, drawn as the face next to it. */
+.input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.face {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--choice-min-width);
+  min-height: var(--choice-height);
+  padding: 0 var(--space-2);
+  border: var(--line-width) solid var(--color-hairline);
+  background: var(--color-porcelain);
+  font-size: var(--text-nav);
+  letter-spacing: var(--tracking-caption);
+  cursor: pointer;
+}
+
+.input:checked + .face {
+  border-color: var(--color-onyx);
+  box-shadow: inset 0 0 0 var(--line-width) var(--color-onyx);
+  font-weight: var(--font-weight-medium);
+}
+
+.input:disabled + .face {
+  border-color: var(--color-linen);
+  background: var(--color-linen);
+  color: var(--color-graphite);
+  text-decoration: line-through;
+  cursor: not-allowed;
+}
+
+.input:focus-visible + .face {
+  outline: var(--focus-ring-width) solid var(--color-onyx);
+  outline-offset: var(--focus-ring-offset);
+}

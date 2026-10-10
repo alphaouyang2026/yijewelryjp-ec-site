@@ -1,0 +1,25 @@
+/* A photo's place: linen on light grounds, charcoal on dark ones (spec #1), in the photo's ratio. */
+.placeholder {
+  width: 100%;
+}
+
+.product {
+  aspect-ratio: var(--photo-ratio-product);
+}
+
+.hero {
+  height: 100%;
+  min-height: var(--hero-photo-min-height);
+}
+
+.category {
+  aspect-ratio: var(--photo-ratio-category);
+}
+
+.light {
+  background: var(--color-linen);
+}
+
+.dark {
+  background: var(--color-charcoal);
+}

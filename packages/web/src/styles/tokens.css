@@ -54,6 +54,7 @@
   --space-5: 40px;
   --space-6: 48px;
   --space-7: 56px;
+  --space-8: 64px;
   --space-9: 72px;
   --space-15: 120px;
 
@@ -73,6 +74,28 @@
   --logo-footer: 96px;
   --footer-brand-width: 260px; /* preferred widths; the footer columns wrap below them */
   --footer-column-width: 220px;
+
+  /* Catalog */
+  --photo-ratio-product: 4 / 5; /* product photos (spec #1) */
+  --photo-ratio-hero: 3 / 2;
+  --photo-ratio-category: 1 / 1;
+  --card-min-width: 160px; /* product and category grids: 4 columns on desktop, 2 on phones */
+  --grid-row-gap: var(--space-6);
+  --grid-column-gap: clamp(var(--space-2), 2vw, var(--space-3));
+  --choice-min-width: 64px; /* size choices */
+  --choice-height: 48px;
+  --badge-padding: 4px 10px;
+  --featured-photo-max-width: 520px;
+  --product-photo-max-width: 560px;
+  --hero-photo-min-height: 420px;
+  --text-heading-product: clamp(22px, 2.4vw, 28px); /* product page title */
+  --hover-opacity: 0.85; /* buttons on hover */
+  --line-height-display: 1.6; /* the home page's brand message */
+  /* Preferred widths of side-by-side columns; they stack below them. */
+  --hero-copy-width: 380px;
+  --hero-photo-width: 520px;
+  --featured-column-width: 340px;
+  --service-min-width: 240px;
 }
 
 /* Simplified Chinese: Japanese fonts lack many Simplified glyphs. src/i18n/fonts.ts loads these on zh pages only. */

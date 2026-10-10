@@ -1,0 +1,33 @@
+/* Price (spec #1): Cormorant Garamond figures, then the small tax note. */
+.price {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--space-1);
+  line-height: var(--line-height-tight);
+}
+
+.amount {
+  font-family: var(--font-latin);
+  font-weight: var(--font-weight-medium);
+}
+
+.taxNote {
+  font-size: var(--text-tax-note);
+}
+
+.card .amount {
+  font-size: var(--text-price);
+}
+
+.detail .amount {
+  font-size: var(--text-price-detail);
+}
+
+.light .taxNote {
+  color: var(--color-graphite);
+}
+
+.dark .taxNote {
+  color: var(--color-smoke);
+}

@@ -1,3 +1,6 @@
+import type { ProductSort } from './api';
+import { DEFAULT_PRODUCT_SORT } from './productSorts';
+
 declare const pagePathBrand: unique symbol;
 
 /**
@@ -20,6 +23,12 @@ export const paths = {
   cart: page('/cart'),
   products: page('/products'),
   category: (slug: string) => page(`/categories/${slug}`),
+  product: (slug: string) => page(`/products/${slug}`),
+  /** Every product, or one category's, in `sort` order; the default order (newest) leaves the URL plain. */
+  productList: ({ category, sort }: { category?: string; sort: ProductSort }) => {
+    const list = category === undefined ? '/products' : `/categories/${category}`;
+    return page(sort === DEFAULT_PRODUCT_SORT ? list : `${list}?sort=${sort}`);
+  },
   shippingReturns: page('/shipping-returns'),
   tokushoho: page('/tokushoho'),
   privacy: page('/privacy'),

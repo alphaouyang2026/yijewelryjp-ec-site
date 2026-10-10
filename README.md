@@ -97,6 +97,8 @@ npm run dev
 
 浏览器打开 http://localhost:5173/ （日语）、http://localhost:5173/zh/ 或 http://localhost:5173/en/ 。按 Ctrl+C 停止全部进程（包括 DynamoDB Local 容器）。
 
+需要示例商品时，在 `npm run dev` 运行期间另开一个终端执行 `npm run db:seed`：写入 4 个类别和 8 件示例商品（含主推、多尺寸不同价格、库存紧张、售罄、草稿、归档）。DynamoDB Local 的数据只保存在内存里，容器停止后要重新执行。
+
 ## 运行测试
 
 API 测试需要 DynamoDB Local 在运行（每个测试文件自动新建一张表，结束后删除）：

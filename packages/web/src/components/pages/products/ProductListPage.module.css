@@ -1,13 +1,8 @@
-.section {
+.page {
   display: flex;
   flex-direction: column;
-  gap: var(--space-7);
+  gap: var(--space-5);
   max-width: var(--content-max-width);
   margin: 0 auto;
   padding: var(--section-spacing) var(--gutter);
-}
-
-.more {
-  display: flex;
-  justify-content: center;
 }

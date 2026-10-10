@@ -1,0 +1,24 @@
+.info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.name {
+  font-family: var(--font-heading);
+  font-size: var(--text-heading-product);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-tight);
+  letter-spacing: var(--tracking-caption);
+}
+
+.description {
+  white-space: pre-line;
+}
+
+/* The details span the column, not just their content. */
+.info > dl {
+  align-self: stretch;
+}

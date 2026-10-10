@@ -1,6 +1,6 @@
 /*
- * Every variant: a link on a dark ground, linen with brand gold on hover and
- * on the current page's link, at least a tap target tall.
+ * Links on dark grounds (nav, caption, icon): linen, brand gold on hover and on
+ * the current page's link, at least a tap target tall.
  */
 .link {
   display: flex;
@@ -36,4 +36,90 @@
   composes: link;
   justify-content: center;
   min-width: var(--tap-target);
+}
+
+/* On light grounds: one of a set of options, such as sort orders; the current one in onyx, underlined. */
+.option {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-target);
+  color: var(--color-graphite);
+  font-size: var(--text-nav);
+  letter-spacing: var(--tracking-nav);
+  text-decoration: none;
+}
+
+.option:hover,
+.option[aria-current='page'] {
+  color: var(--color-onyx);
+}
+
+.option[aria-current='page'] {
+  text-decoration: underline;
+  text-decoration-thickness: var(--line-width);
+  text-underline-offset: var(--space-1);
+}
+
+/* On light grounds: a small deep-gold link, such as a product's category above its name. */
+.category {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-target);
+  color: var(--color-deep-gold);
+  font-size: var(--text-caption);
+  letter-spacing: var(--tracking-nav);
+  text-decoration: none;
+}
+
+.category:hover {
+  text-decoration: underline;
+  text-underline-offset: var(--space-1);
+}
+
+/* A whole card (photo, name, price) as one link; its parts bring their own look. */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  color: var(--color-onyx);
+  text-decoration: none;
+}
+
+/* Buttons (spec #1): 52px tall. Gold on dark grounds; outlined onyx on light ones. */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--button-height);
+  padding: 0 var(--space-5);
+  border: var(--line-width) solid;
+  font-size: var(--text-nav);
+  letter-spacing: var(--tracking-nav);
+  text-decoration: none;
+}
+
+.buttonGold {
+  composes: button;
+  border-color: var(--color-brand-gold);
+  background: var(--color-brand-gold);
+  color: var(--color-onyx);
+  font-weight: var(--font-weight-medium);
+}
+
+.buttonGoldOutline {
+  composes: button;
+  border-color: var(--color-brand-gold);
+  color: var(--color-brand-gold);
+}
+
+.buttonOutline {
+  composes: button;
+  border-color: var(--color-onyx);
+  color: var(--color-onyx);
+}
+
+.buttonGold:hover,
+.buttonGoldOutline:hover,
+.buttonOutline:hover {
+  opacity: var(--hover-opacity);
 }
