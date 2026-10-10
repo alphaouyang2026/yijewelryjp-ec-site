@@ -390,7 +390,7 @@ export class ShopStack extends Stack {
       supportedIdentityProviders: [UserPoolClientIdentityProvider.COGNITO],
       preventUserExistenceErrors: true,
       // The API reads the ID token once, at the callback, and keeps no tokens;
-      // the admin session (2 hours idle) is its own cookie.
+      // the admin session (2 hours idle, 12 hours at most) is its own cookie.
       idTokenValidity: Duration.minutes(5),
       accessTokenValidity: Duration.minutes(5),
       refreshTokenValidity: Duration.hours(1),

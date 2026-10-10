@@ -50,13 +50,15 @@ describe('a session cookie the API did not issue as one is refused', () => {
 
   // Signed with the session cookie's own key, as only someone who has the
   // signing secret could: the API still checks the content's shape.
-  const owner = { sub: 'owner-1', email: 'owner@yijewelry.test', csrf: 'csrf-token' };
+  const owner = { sub: 'owner-1', email: 'owner@yijewelry.test' };
+  const session = { ...owner, csrf: 'csrf-token', signedIn: Date.now() };
   test.each([
-    { case: 'no activity time', content: owner },
-    { case: 'an activity time that is not a time', content: { ...owner, active: 'soon' } },
-    { case: 'an activity time that is not a number', content: { ...owner, active: null } },
-    { case: 'a CSRF token that is not text', content: { ...owner, csrf: 42, active: Date.now() } },
-    { case: 'no owner', content: { csrf: 'csrf-token', active: Date.now() } },
+    { case: 'no activity time', content: session },
+    { case: 'an activity time that is not a time', content: { ...session, active: 'soon' } },
+    { case: 'an activity time that is not a number', content: { ...session, active: null } },
+    { case: 'no sign-in time', content: { ...owner, csrf: 'csrf-token', active: Date.now() } },
+    { case: 'a CSRF token that is not text', content: { ...session, csrf: 42, active: Date.now() } },
+    { case: 'no owner', content: { csrf: 'csrf-token', signedIn: Date.now(), active: Date.now() } },
     { case: 'text instead of a session', content: 'signed-in' },
     { case: 'nothing', content: null },
   ])('a session cookie signed by the API, with $case', async ({ content }) => {

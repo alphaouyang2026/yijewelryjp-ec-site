@@ -1,7 +1,7 @@
 import type { Context } from 'hono';
 import * as z from 'zod';
 import type { SignedCookies } from '../../interface/signed-cookies';
-import { SESSION_IDLE_TIMEOUT_MS, type AdminSession } from '../application/resume-session';
+import { expiresAt, type AdminSession } from '../application/resume-session';
 
 /**
  * The owner's session, which lives only in this cookie (__Host-yi_admin_session),
@@ -11,7 +11,10 @@ import { SESSION_IDLE_TIMEOUT_MS, type AdminSession } from '../application/resum
 export type SessionCookie = {
   /** The session in the request's cookie; undefined without one, or for a cookie the API did not issue as a session. */
   read(c: Context): Promise<AdminSession | undefined>;
-  /** Sets the cookie to `session`; the browser drops it once the session could no longer be resumed anyway. */
+  /**
+   * Sets the cookie to `session`, which is active as of now; the browser drops
+   * it once the session could no longer be resumed anyway.
+   */
   write(c: Context, session: AdminSession): Promise<void>;
   clear(c: Context): void;
   /** Whether `response` already sets (or deletes) the session cookie. */
@@ -23,6 +26,7 @@ const content = z.object({
   sub: z.string().min(1),
   email: z.string(),
   csrf: z.string().min(1),
+  signedIn: z.number(),
   active: z.number(),
 });
 
@@ -35,6 +39,7 @@ export function sessionCookie(cookies: SignedCookies): SessionCookie {
         session && {
           owner: { id: session.sub, email: session.email },
           csrfToken: session.csrf,
+          signedInAt: new Date(session.signedIn),
           lastActiveAt: new Date(session.active),
         }
       );
@@ -44,9 +49,12 @@ export function sessionCookie(cookies: SignedCookies): SessionCookie {
         sub: session.owner.id,
         email: session.owner.email,
         csrf: session.csrfToken,
+        signedIn: session.signedInAt.getTime(),
         active: session.lastActiveAt.getTime(),
       };
-      await cookie.write(c, value, SESSION_IDLE_TIMEOUT_MS / 1000);
+      // The session was just started or resumed, so it is active as of now.
+      const maxAgeMs = expiresAt(session).getTime() - session.lastActiveAt.getTime();
+      await cookie.write(c, value, Math.max(0, Math.ceil(maxAgeMs / 1000)));
     },
     clear: (c) => cookie.clear(c),
     isSetIn: (response) => cookie.isSetIn(response),
