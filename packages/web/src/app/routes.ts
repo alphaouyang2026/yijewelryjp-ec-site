@@ -8,7 +8,7 @@ import { ProductListPage } from '../components/pages/products/ProductListPage';
 import { productListLoader } from '../components/pages/products/productListLoader';
 import { NotFoundPage } from '../components/pages/status/NotFoundPage';
 import { LOCALES, localizedPath } from '../i18n/locales';
-import { ADMIN_SECTIONS, paths } from '../paths';
+import { ADMIN_SECTIONS, paths, type AdminSectionHandle } from '../paths';
 import { BlankHydrateFallback } from './BlankHydrateFallback';
 import { LocaleRoot } from './LocaleRoot';
 import { StoreRouteError } from './StoreRouteError';
@@ -43,7 +43,7 @@ function adminPages(): RouteObject {
       ...ADMIN_SECTIONS.map(
         (section): RouteObject => ({
           path: section,
-          handle: { adminSection: section },
+          handle: { adminSection: section } satisfies AdminSectionHandle,
           lazy: async () => ({
             Component: (await import('../components/pages/admin/AdminSectionPage')).AdminSectionPage,
           }),

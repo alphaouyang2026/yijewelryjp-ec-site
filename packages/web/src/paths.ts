@@ -40,3 +40,12 @@ export const paths = {
 /** The admin's sections, in its navigation's order. */
 export const ADMIN_SECTIONS = ['products', 'categories', 'orders', 'settings'] as const;
 export type AdminSection = (typeof ADMIN_SECTIONS)[number];
+
+/** The route handle of an admin section's page (app/routes.ts), naming the section. */
+export type AdminSectionHandle = { adminSection: AdminSection };
+
+/** The admin section a route's `handle` names; undefined when it names none. */
+export function adminSectionOf(handle: unknown): AdminSection | undefined {
+  if (typeof handle !== 'object' || handle === null || !('adminSection' in handle)) return undefined;
+  return ADMIN_SECTIONS.find((section) => section === handle.adminSection);
+}
