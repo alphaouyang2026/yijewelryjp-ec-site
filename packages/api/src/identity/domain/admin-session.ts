@@ -1,4 +1,5 @@
 import type { Owner } from './owner';
+import { randomToken } from './random-token';
 
 /** An owner's session goes after this long without a request to the admin. */
 export const SESSION_IDLE_TIMEOUT_MS = 2 * 60 * 60 * 1000;
@@ -32,9 +33,4 @@ export function isExpired(session: AdminSession, now: Date): boolean {
 /** The session after a request at `now`: idle expiry slides forward. */
 export function touch(session: AdminSession, now: Date): AdminSession {
   return { ...session, lastActiveAt: now };
-}
-
-/** 256 random bits, URL-safe. */
-export function randomToken(): string {
-  return Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('base64url');
 }

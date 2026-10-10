@@ -1,4 +1,4 @@
-import { randomToken } from './admin-session';
+import { randomToken } from './random-token';
 
 /** A sign-in must come back from the identity provider within this long of starting. */
 export const SIGN_IN_TIMEOUT_MS = 10 * 60 * 1000;
