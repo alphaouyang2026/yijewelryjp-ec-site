@@ -1,0 +1,41 @@
+/* Main visual (spec #1, home mock): onyx ground, text beside a 3:2 photo; stacks on phones. */
+.hero {
+  display: flex;
+  flex-wrap: wrap;
+  background: var(--color-onyx);
+}
+
+.copy {
+  display: flex;
+  flex: 1 1 var(--hero-copy-width);
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--section-spacing) var(--gutter);
+}
+
+@media (min-width: 768px) {
+  .copy {
+    padding-inline: var(--space-9);
+  }
+}
+
+.message {
+  color: var(--color-porcelain);
+  font-family: var(--font-heading);
+  font-size: var(--text-display);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-display);
+  letter-spacing: var(--tracking-caption);
+}
+
+.intro {
+  max-width: 30em;
+  color: var(--color-smoke);
+}
+
+.photo {
+  flex: 1.6 1 var(--hero-photo-width);
+  min-width: 0;
+}

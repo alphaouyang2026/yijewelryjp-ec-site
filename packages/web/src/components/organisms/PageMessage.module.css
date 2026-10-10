@@ -1,0 +1,22 @@
+.message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  padding: var(--section-spacing) var(--gutter);
+  text-align: center;
+}
+
+.title {
+  font-family: var(--font-heading);
+  font-size: var(--text-section-title);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-tight);
+  letter-spacing: var(--tracking-heading);
+}
+
+.text {
+  color: var(--color-graphite);
+}

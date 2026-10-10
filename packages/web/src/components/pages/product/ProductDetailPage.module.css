@@ -1,0 +1,17 @@
+/* Photo beside information on desktop; stacked on phones. */
+.page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-6);
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  padding: var(--section-spacing) var(--gutter);
+}
+
+@media (min-width: 768px) {
+  .page {
+    grid-template-columns: minmax(0, var(--product-photo-max-width)) minmax(0, 1fr);
+    gap: var(--space-9);
+    align-items: start;
+  }
+}

@@ -1,0 +1,32 @@
+/* Stock badges (spec #1): in stock grey outline, low stock deep gold outline, sold out onyx. */
+.badge {
+  display: inline-block;
+  padding: var(--badge-padding);
+  border: var(--line-width) solid;
+  font-size: var(--text-caption-small);
+  line-height: var(--line-height-tight);
+  letter-spacing: var(--tracking-caption);
+  background: var(--color-porcelain);
+}
+
+.in_stock {
+  composes: badge;
+  border-color: var(--color-hairline);
+  color: var(--color-graphite);
+}
+
+.low_stock {
+  composes: badge;
+  border-color: var(--color-deep-gold);
+  color: var(--color-deep-gold);
+}
+
+.sold_out {
+  composes: badge;
+  border-color: var(--color-onyx);
+  background: var(--color-onyx);
+  color: var(--color-porcelain);
+  font-family: var(--font-latin);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: var(--tracking-nav);
+}

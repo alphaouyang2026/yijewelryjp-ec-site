@@ -10,11 +10,23 @@ type LocalizedLinkProps = Omit<LinkProps, 'to' | 'className'> & {
   /** The locale to link to; the current page's unless switching locales. */
   locale?: Locale;
   /**
-   * How the link looks, on the dark grounds where the site's links sit: `nav`
-   * for navigation text, `caption` for small text, `icon` for an icon. Leave it
-   * out for a link around something with its own look, such as the logo.
+   * How the link looks. On dark grounds: `nav` for navigation text, `caption`
+   * for small text, `icon` for an icon, `buttonGold` and `buttonGoldOutline`
+   * for buttons. On light grounds: `option` for one of a set of options such as
+   * sort orders, `category` for a small deep-gold link, `buttonOutline` for a
+   * button. `card` makes a whole card one link. Leave it out for a link around
+   * something with its own look, such as the logo.
    */
-  variant?: 'nav' | 'caption' | 'icon';
+  variant?:
+    | 'nav'
+    | 'caption'
+    | 'icon'
+    | 'option'
+    | 'category'
+    | 'card'
+    | 'buttonGold'
+    | 'buttonGoldOutline'
+    | 'buttonOutline';
   /** For the parent's layout and spacing only; `variant` sets the look. */
   className?: string;
 };

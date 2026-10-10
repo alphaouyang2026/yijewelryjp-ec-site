@@ -1,0 +1,17 @@
+.photo {
+  position: relative;
+}
+
+.badge {
+  position: absolute;
+  top: var(--space-1);
+  left: var(--space-1);
+}
+
+.name {
+  font-family: var(--font-heading);
+  font-size: var(--text-product-name);
+  font-weight: normal;
+  line-height: var(--line-height-tight);
+  letter-spacing: var(--tracking-body);
+}

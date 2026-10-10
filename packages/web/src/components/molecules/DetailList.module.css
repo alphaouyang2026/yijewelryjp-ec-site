@@ -1,0 +1,39 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3) 0;
+  border-top: var(--line-width) solid;
+  border-bottom: var(--line-width) solid;
+  font-size: var(--text-nav);
+  letter-spacing: var(--tracking-body);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(var(--space-9), auto) minmax(0, 1fr);
+  column-gap: var(--space-5);
+  align-items: baseline;
+}
+
+.value {
+  margin: 0;
+}
+
+.light {
+  border-color: var(--color-hairline);
+}
+
+.light .term {
+  color: var(--color-graphite);
+}
+
+.dark {
+  border-color: var(--color-bronze-line);
+  color: var(--color-porcelain);
+}
+
+.dark .term {
+  color: var(--color-smoke);
+}

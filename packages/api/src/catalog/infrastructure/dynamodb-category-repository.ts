@@ -3,9 +3,8 @@ import type { LocalizedText } from '../../shared-kernel/localized-text';
 import type { Category, CategoryRepository } from '../domain/category';
 
 /**
- * A category's item. Provisional: nothing writes categories yet, and ticket #7
- * confirms or replaces this layout. Until then the API tests seed it directly
- * (test/support/catalog-seed.ts).
+ * A category's item: every category in partition CATEGORY, keyed by its slug,
+ * with its place in the owner's order (see docs/adr/0005-catalog-data-layout.md).
  */
 export type CategoryItem = {
   pk: 'CATEGORY';

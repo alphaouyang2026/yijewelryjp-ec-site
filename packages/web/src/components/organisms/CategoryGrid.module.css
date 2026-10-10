@@ -1,0 +1,29 @@
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-7);
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  padding: var(--section-spacing) var(--gutter);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--card-min-width), 1fr));
+  gap: var(--space-5) var(--grid-column-gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 768px) {
+  .grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.name {
+  font-size: var(--text-nav);
+  letter-spacing: var(--tracking-nav);
+  text-align: center;
+}
