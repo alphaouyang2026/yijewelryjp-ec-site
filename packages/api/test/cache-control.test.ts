@@ -12,6 +12,23 @@ test('home data may be cached for about a minute, then served stale while it ref
   expect(res.headers.get('cache-control')).toBe('public, max-age=60, stale-while-revalidate=30');
 });
 
+test('product lists and product pages may be cached like home data', async () => {
+  await api.seed.catalog.products([{ slug: 'moon-ring' }]);
+
+  const list = await api.client().api.products.$get({ query: { locale: 'ja' } });
+  const page = await api.client().api.products[':slug'].$get({ param: { slug: 'moon-ring' }, query: { locale: 'ja' } });
+
+  expect(list.headers.get('cache-control')).toBe('public, max-age=60, stale-while-revalidate=30');
+  expect(page.headers.get('cache-control')).toBe('public, max-age=60, stale-while-revalidate=30');
+});
+
+test('a product that is not found is not cached, so it shows up as soon as it is listed', async () => {
+  const res = await api.client().api.products[':slug'].$get({ param: { slug: 'no-such-ring' }, query: { locale: 'ja' } });
+
+  expect(res.status).toBe(404);
+  expect(res.headers.get('cache-control')).toBe('no-store');
+});
+
 test('a home data request the API rejects is not cached', async () => {
   // @ts-expect-error The client's types allow only supported locales; send another one, as a hand-written URL would.
   const res = await api.client().api.home.$get({ query: { locale: 'fr' } });

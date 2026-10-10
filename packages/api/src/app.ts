@@ -1,8 +1,11 @@
 import { Hono } from 'hono';
 import { getHomeData } from './catalog/application/get-home-data';
+import { getProduct } from './catalog/application/get-product';
+import { listProducts } from './catalog/application/list-products';
 import type { CategoryRepository } from './catalog/domain/category';
 import type { ProductRepository } from './catalog/domain/product';
 import { homeRoutes } from './catalog/interface/home-routes';
+import { productRoutes } from './catalog/interface/product-routes';
 import { noStoreUnlessAllowed } from './interface/cache-control';
 import { checkHealth } from './operations/application/check-health';
 import type { DatabaseProbe } from './operations/domain/database-probe';
@@ -26,7 +29,8 @@ export function createApp(deps: AppDeps) {
     .basePath('/api')
     .use(noStoreUnlessAllowed)
     .route('/health', healthRoutes(checkHealth(deps)))
-    .route('/home', homeRoutes(getHomeData(deps)));
+    .route('/home', homeRoutes(getHomeData(deps)))
+    .route('/products', productRoutes(listProducts(deps), getProduct(deps)));
 }
 
 export type AppType = ReturnType<typeof createApp>;

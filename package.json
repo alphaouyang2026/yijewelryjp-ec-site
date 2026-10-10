@@ -14,6 +14,7 @@
     "dev": "concurrently --names db,api,web --prefix-colors gray,blue,magenta \"docker compose up dynamodb\" \"npm run dev -w @yi/api\" \"npm run dev -w @yi/web\"",
     "db:start": "docker compose up --detach dynamodb",
     "db:stop": "docker compose down",
+    "db:seed": "npm run seed -w @yi/api",
     "typecheck": "tsc --build",
     "lint": "eslint .",
     "test": "npm run test:api && npm run test:web",
