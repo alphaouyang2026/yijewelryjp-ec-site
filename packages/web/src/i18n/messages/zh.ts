@@ -92,4 +92,19 @@ export const zh: Messages = {
     text: '请稍后再试。',
     home: '返回首页',
   },
+  admin: {
+    label: 'Admin',
+    title: '后台',
+    nav: '后台菜单',
+    sections: {
+      products: '商品',
+      categories: '类别',
+      orders: '订单',
+      settings: '店铺设置',
+    },
+    welcome: '请从菜单中选择要管理的内容。',
+    comingSoon: '此页面正在准备中。',
+    signedInAs: '当前登录',
+    signOut: '退出登录',
+  },
 };

@@ -5,12 +5,16 @@ import { useMessages } from '../../i18n/useMessages';
 import { LocalizedLink } from '../atoms/LocalizedLink';
 import styles from './LocaleSwitcher.module.css';
 
+/** The links' look on each ground. */
+const LINK_VARIANT = { dark: 'caption', light: 'option' } as const;
+
 /**
  * Links to the current page, with its query and hash, in each locale. Each
  * locale is named in itself; the current one is marked as the current page.
- * `className` is for the parent's placement only.
+ * `ground` is the ground it sits on (the storefront's header is dark, the
+ * admin's light). `className` is for the parent's placement only.
  */
-export function LocaleSwitcher({ className }: { className?: string }) {
+export function LocaleSwitcher({ ground = 'dark', className }: { ground?: 'dark' | 'light'; className?: string }) {
   const currentLocale = useLocale();
   const currentPage = pathWithoutLocale(useLocation());
 
@@ -25,7 +29,7 @@ export function LocaleSwitcher({ className }: { className?: string }) {
               lang={htmlLang(locale)}
               hrefLang={htmlLang(locale)}
               aria-current={locale === currentLocale ? 'page' : undefined}
-              variant="caption"
+              variant={LINK_VARIANT[ground]}
               className={styles.link}
             >
               {localeName(locale)}

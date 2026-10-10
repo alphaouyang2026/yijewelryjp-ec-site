@@ -92,4 +92,19 @@ export const en: Messages = {
     text: 'Please try again in a moment.',
     home: 'Back to the home page',
   },
+  admin: {
+    label: 'Admin',
+    title: 'Admin',
+    nav: 'Admin menu',
+    sections: {
+      products: 'Products',
+      categories: 'Categories',
+      orders: 'Orders',
+      settings: 'Store settings',
+    },
+    welcome: 'Choose what to manage from the menu.',
+    comingSoon: 'This page is coming soon.',
+    signedInAs: 'Signed in as',
+    signOut: 'Sign out',
+  },
 };

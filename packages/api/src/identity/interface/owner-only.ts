@@ -3,11 +3,20 @@ import { createMiddleware } from 'hono/factory';
 import { SESSION_IDLE_TIMEOUT_MS, type AdminSession, type ResumeSession } from '../application/resume-session';
 import { clearSession, readSession, writeSession } from './session-cookie';
 
+/**
+ * The guard's answers when it refuses a request: 401 without a session, 403
+ * without the CSRF token. Hono RPC does not see a group middleware's
+ * responses, so the API exports these for the frontend.
+ */
+export type AdminUnauthorized = { error: 'unauthorized' };
+export type AdminInvalidCsrfToken = { error: 'invalid_csrf_token' };
+
 /** What the guard gives the admin routes behind it. */
 export type OwnerEnv = { Variables: { session: AdminSession } };
 
 /** The request header that carries the session's CSRF token, which the admin gets from GET /api/admin/session. */
 export const CSRF_HEADER = 'X-CSRF-Token';
+export type CsrfHeader = typeof CSRF_HEADER;
 
 /** Requests that only read; every other method changes data and must prove it comes from the admin. */
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -26,10 +35,10 @@ export function ownerOnly({ resumeSession, sessionSecret }: { resumeSession: Res
     const session = resumeSession(await readSession(c, sessionSecret));
     if (!session) {
       clearSession(c);
-      return c.json({ error: 'unauthorized' as const }, 401);
+      return c.json<AdminUnauthorized>({ error: 'unauthorized' }, 401);
     }
     if (!SAFE_METHODS.has(c.req.method) && !sameToken(c.req.header(CSRF_HEADER), session.csrfToken)) {
-      return c.json({ error: 'invalid_csrf_token' as const }, 403);
+      return c.json<AdminInvalidCsrfToken>({ error: 'invalid_csrf_token' }, 403);
     }
 
     await writeSession(c, sessionSecret, session, SESSION_IDLE_TIMEOUT_MS / 1000);

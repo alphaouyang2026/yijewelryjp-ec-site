@@ -7,7 +7,7 @@ import { ProductListPage } from '../components/pages/products/ProductListPage';
 import { productListLoader } from '../components/pages/products/productListLoader';
 import { NotFoundPage } from '../components/pages/status/NotFoundPage';
 import { LOCALES, localizedPath } from '../i18n/locales';
-import { paths } from '../paths';
+import { ADMIN_SECTIONS, paths } from '../paths';
 import { BlankHydrateFallback } from './BlankHydrateFallback';
 import { LocaleRoot } from './LocaleRoot';
 import { StoreRouteError } from './StoreRouteError';
@@ -19,9 +19,41 @@ const pageWithData = (route: RouteObject): RouteObject => ({
   ...route,
 });
 
+/**
+ * The admin, under /admin in each locale. Its code loads only when an admin
+ * page is opened (a separate chunk), so the storefront never downloads it.
+ */
+function adminPages(): RouteObject {
+  return {
+    path: 'admin',
+    HydrateFallback: BlankHydrateFallback,
+    ErrorBoundary: StoreRouteError,
+    lazy: async () => {
+      const [{ AdminFramePage }, { adminSessionLoader }] = await Promise.all([
+        import('../components/pages/admin/AdminFramePage'),
+        import('../components/pages/admin/adminSessionLoader'),
+      ]);
+      return { Component: AdminFramePage, loader: adminSessionLoader };
+    },
+    children: [
+      { index: true, lazy: async () => ({ Component: (await import('../components/pages/admin/AdminHomePage')).AdminHomePage }) },
+      ...ADMIN_SECTIONS.map(
+        (section): RouteObject => ({
+          path: section,
+          handle: { adminSection: section },
+          lazy: async () => ({
+            Component: (await import('../components/pages/admin/AdminSectionPage')).AdminSectionPage,
+          }),
+        }),
+      ),
+    ],
+  };
+}
+
 /** The storefront's pages, relative to a locale's root (the paths match paths.ts). */
 function storePages(): RouteObject[] {
   return [
+    adminPages(),
     pageWithData({ index: true, loader: homeLoader, Component: HomePage }),
     pageWithData({ path: 'products', loader: productListLoader, Component: ProductListPage }),
     pageWithData({ path: 'categories/:slug', loader: productListLoader, Component: ProductListPage }),

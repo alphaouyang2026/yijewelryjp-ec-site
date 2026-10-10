@@ -1,6 +1,7 @@
+import type { AdminUnauthorized } from '@yi/api';
 import type { InferResponseType } from 'hono/client';
 import { http, HttpResponse } from 'msw/http';
-import { api, type HomeData, type ProductList, type ProductPage } from '../api';
+import { api, type AdminSession, type HomeData, type ProductList, type ProductPage } from '../api';
 import type { Locale } from '../i18n/locales';
 
 // Mock bodies are typed by the API's own route types, so they cannot drift from the real responses.
@@ -12,6 +13,13 @@ const unsupportedLocale: InferResponseType<typeof api.home.$get, 400> = unsuppor
 const notFound: InferResponseType<(typeof api.products)[':slug']['$get'], 404> = { error: 'not_found' };
 
 const productsUrl = api.products.$url().href;
+
+const unauthorized: AdminUnauthorized = { error: 'unauthorized' };
+
+type AdminSignedOut = InferResponseType<(typeof api.admin)['sign-out']['$post'], 200>;
+
+/** A signed-in owner's session, as GET /api/admin/session returns it. */
+export const ownerSession: AdminSession = { owner: { email: 'owner@yijewelry.test' }, csrfToken: 'csrf-token-1' };
 
 /** MSW handlers for the API routes, at the URLs the RPC client calls. */
 export const mockApi = {
@@ -35,6 +43,23 @@ export const mockApi = {
     http.get(productsUrl, ({ request }) => {
       requests.push(new URL(request.url));
       return list ? HttpResponse.json(list) : HttpResponse.json(notFound, { status: 404 });
+    }),
+
+  /** Answers admin session requests with `session`, or 401 when it is null (not signed in). */
+  adminSession: (session: AdminSession | null) =>
+    http.get(api.admin.session.$url().href, () =>
+      session ? HttpResponse.json(session) : HttpResponse.json(unauthorized, { status: 401 }),
+    ),
+
+  /**
+   * Answers sign-out requests with `signedOut`, or 401 when it is null (the
+   * session had already ended). `requests` collects each request, so a test
+   * can check its query and headers.
+   */
+  adminSignOut: (signedOut: AdminSignedOut | null, requests: Request[] = []) =>
+    http.post(api.admin['sign-out'].$url().href, ({ request }) => {
+      requests.push(request);
+      return signedOut ? HttpResponse.json(signedOut) : HttpResponse.json(unauthorized, { status: 401 });
     }),
 
   /** Answers product page requests with the page for the requested slug; 404 for any other product. */

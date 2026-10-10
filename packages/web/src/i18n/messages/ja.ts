@@ -98,6 +98,21 @@ export const ja = {
     text: '時間をおいて、もう一度お試しください。',
     home: 'トップページへ戻る',
   },
+  admin: {
+    label: 'Admin',
+    title: '管理画面',
+    nav: '管理メニュー',
+    sections: {
+      products: '商品',
+      categories: 'カテゴリー',
+      orders: '注文',
+      settings: 'ショップ設定',
+    },
+    welcome: 'メニューから管理する項目を選んでください。',
+    comingSoon: 'この画面は準備中です。',
+    signedInAs: 'ログイン中',
+    signOut: 'ログアウト',
+  },
 };
 
 export type Messages = typeof ja;

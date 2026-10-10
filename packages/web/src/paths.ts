@@ -33,4 +33,10 @@ export const paths = {
   tokushoho: page('/tokushoho'),
   privacy: page('/privacy'),
   terms: page('/terms'),
+  admin: page('/admin'),
+  adminSection: (section: AdminSection) => page(`/admin/${section}`),
 };
+
+/** The admin's sections, in its navigation's order. */
+export const ADMIN_SECTIONS = ['products', 'categories', 'orders', 'settings'] as const;
+export type AdminSection = (typeof ADMIN_SECTIONS)[number];
