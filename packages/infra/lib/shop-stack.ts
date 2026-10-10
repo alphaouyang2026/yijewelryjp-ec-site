@@ -377,7 +377,11 @@ export class ShopStack extends Stack {
 
     // The API is a confidential client: it alone exchanges authorization codes
     // (with the client secret) at the token endpoint, on its callback route.
-    // These URLs must match packages/api/src/identity/infrastructure/admin-urls.ts.
+    // The callback and sign-out URLs below are written out a second time in
+    // packages/api/src/identity/infrastructure/admin-urls.ts (adminReturnUrls),
+    // which builds the URLs the API sends to Cognito; infra cannot import the
+    // API's runtime code, so a URL or locale changed in one place must be
+    // changed in the other too, or Cognito refuses the redirect.
     const adminClient = ownerPool.addClient('AdminClient', {
       generateSecret: true,
       oAuth: {

@@ -3,7 +3,10 @@ import type { Locale } from '../../shared-kernel/locale';
 /**
  * Where the identity provider sends the browser back to, as both adapters
  * need them. The Cognito app client must allow exactly these URLs on the
- * site's domain (packages/infra registers them).
+ * site's domain: packages/infra/lib/shop-stack.ts writes the same list out a
+ * second time (the AdminClient's callbackUrls and logoutUrls), because infra
+ * cannot import the API's runtime code. Change a URL or a locale here and
+ * there together, or Cognito refuses the redirect.
  */
 export type AdminReturnUrls = {
   /** The API's sign-in callback (GET /api/admin/auth/callback). */
