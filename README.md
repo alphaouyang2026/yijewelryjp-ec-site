@@ -168,7 +168,7 @@ aws cognito-idp admin-create-user \
 
 Cognito 会给这个邮箱发送临时密码（3 天内有效）。第一次登录时（部署输出的 `AdminUrl`）：输入邮箱和临时密码 → 设置新密码（至少 12 位，含大小写字母、数字和符号）→ 用验证器应用扫描二维码，输入一次性验证码完成 TOTP 设置。以后每次登录都需要密码和验证码。
 
-- **停用或删除店主：** `aws cognito-idp admin-disable-user`（或 `admin-delete-user`）`--user-pool-id <OwnerUserPoolId> --username <邮箱>`。已经登录的会话不会立即失效：最多再保持 12 小时（从登录算起），闲置 2 小时也会过期。
+- **停用或删除店主：** `aws cognito-idp admin-disable-user`（或 `admin-delete-user`）`--user-pool-id <OwnerUserPoolId> --username <邮箱>`。已经登录的会话不会立即失效：停用的店主最多 12 小时内（从登录算起）失去后台权限，闲置 2 小时则更早。
 - **换了手机、无法提供验证码：** 删除该用户后重新创建，第一次登录时重新设置 TOTP。
 
 ## 其他命令
