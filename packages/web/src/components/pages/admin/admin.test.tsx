@@ -181,3 +181,24 @@ test.each([
   // Not the storefront's frame: no store header or footer.
   expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
 });
+
+test('when signing out cannot reach the API, the owner can try again', async () => {
+  server.use(
+    mockApi.adminSignOutUnreachable(),
+    mockApi.adminSession(ownerSession),
+    mockApi.adminSignOut({ signOutUrl: 'https://identity.test/logout?lang=ja' }),
+  );
+  const leaveFor = watchBrowserLeaving();
+  const user = userEvent.setup();
+  renderRoute('/admin');
+  const signOut = await screen.findByRole('button', { name: 'ログアウト' });
+
+  await user.click(signOut);
+
+  await waitFor(() => expect(signOut).toBeEnabled());
+  expect(leaveFor).not.toHaveBeenCalled();
+
+  await user.click(signOut);
+
+  await waitFor(() => expect(leaveFor).toHaveBeenCalledWith('https://identity.test/logout?lang=ja'));
+});

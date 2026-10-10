@@ -24,12 +24,19 @@ export function AdminFramePage() {
 
   async function signOut() {
     setSigningOut(true);
-    const res = await api.admin['sign-out'].$post(
-      { query: { locale } },
-      { headers: { [CSRF_HEADER]: session.csrfToken } },
-    );
-    // 401: the session had already ended; there is nothing more to sign out of here.
-    browser.leaveFor(res.ok ? (await res.json()).signOutUrl : localizedPath(locale, paths.home));
+    try {
+      const res = await api.admin['sign-out'].$post(
+        { query: { locale } },
+        { headers: { [CSRF_HEADER]: session.csrfToken } },
+      );
+      // 401: the session had already ended; there is nothing more to sign out of here.
+      browser.leaveFor(res.ok ? (await res.json()).signOutUrl : localizedPath(locale, paths.home));
+    } catch {
+      // The request did not get through (e.g. the network is down), so the
+      // session goes on: the button works again and the owner can retry. On
+      // success it stays disabled while the browser leaves.
+      setSigningOut(false);
+    }
   }
 
   return (

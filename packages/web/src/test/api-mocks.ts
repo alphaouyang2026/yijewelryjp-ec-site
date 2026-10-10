@@ -66,6 +66,9 @@ export const mockApi = {
       return signedOut ? HttpResponse.json(signedOut) : HttpResponse.json(unauthorized, { status: 401 });
     }),
 
+  /** The next sign-out request fails as if the network were down; later ones go on to other handlers. */
+  adminSignOutUnreachable: () => http.post(api.admin['sign-out'].$url().href, () => HttpResponse.error(), { once: true }),
+
   /** Answers product page requests with the page for the requested slug; 404 for any other product. */
   productPages: (pages: Record<string, ProductPage>) =>
     http.get(`${productsUrl}/:slug`, ({ params }) => {
