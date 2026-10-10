@@ -24,6 +24,8 @@ export class CertificateStack extends Stack {
 
     this.certificate = new Certificate(this, 'Certificate', {
       domainName: domain.domainName,
+      // The redirecting host names need TLS too, before CloudFront can redirect them.
+      subjectAlternativeNames: domain.redirectDomainNames.length > 0 ? domain.redirectDomainNames : undefined,
       validation: CertificateValidation.fromDns(zone),
     });
   }

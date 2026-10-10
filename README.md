@@ -186,8 +186,9 @@ CloudFront（一个域名）
      | `DOMAIN_NAME` | 可选。网站的域名，如 `staging.example.com`、`example.com` |
      | `HOSTED_ZONE_ID` | 可选。该域名所在的 Route 53 托管区 ID |
      | `HOSTED_ZONE_NAME` | 可选。托管区的名称，如 `example.com` |
+     | `REDIRECT_DOMAIN_NAMES` | 可选。永久跳转（301）到 `DOMAIN_NAME` 的其他域名，多个用逗号分隔，如 `www.example.com`。必须在同一个托管区里；证书和 Route 53 记录会自动加上，路径和查询字符串保持不变 |
 
-     三个域名变量要么都设置，要么都不设置。
+     前三个域名变量要么都设置，要么都不设置；`REDIRECT_DOMAIN_NAMES` 需要它们都已设置。
    - **仓库级别的 Variable：** `DEPLOY_ENABLED` = `true`。在设置之前，部署 workflow 会直接跳过。
 
 ### 自动部署

@@ -45,6 +45,55 @@ const webDist = fileURLToPath(new URL('../../web/dist', import.meta.url));
 /** Hashed files never change under their name, so browsers and CloudFront keep them for a year. */
 const HASHED_FILE_CACHE = 'public, max-age=31536000, immutable';
 
+/** CloudFront Function statements: rewrite every page path to the React app's HTML shell. */
+const SERVE_HTML_SHELL_FOR_PAGES = `
+  var lastSegment = request.uri.split('/').pop();
+  // A path whose last segment has a file extension is a file in the bucket;
+  // every other path (/, /products, /zh/cart, ...) is a page the React app routes.
+  if (!/\\.[A-Za-z0-9]+$/.test(lastSegment)) {
+    request.uri = '/index.html';
+  }`;
+
+/**
+ * The source of a viewer-request CloudFront Function. With `redirect`, a
+ * request for one of its host names gets a 301 to the same path and query on
+ * `canonicalHost`; any other request runs `statements` (which may change
+ * `request`) and goes on.
+ */
+function viewerRequestFunction(redirect: { canonicalHost: string; hosts: string[] } | undefined, statements = '') {
+  const redirectCheck = redirect
+    ? `
+  var host = request.headers.host ? request.headers.host.value : '';
+  if (${JSON.stringify(redirect.hosts)}.indexOf(host) !== -1) {
+    return {
+      statusCode: 301,
+      statusDescription: 'Moved Permanently',
+      headers: { location: { value: 'https://${redirect.canonicalHost}' + request.uri + queryString(request.querystring) } },
+    };
+  }`
+    : '';
+  const queryStringHelper = redirect
+    ? `
+
+// The query string as the viewer sent it, repeated keys included.
+function queryString(querystring) {
+  var parts = [];
+  Object.keys(querystring).forEach(function (key) {
+    var entry = querystring[key];
+    (entry.multiValue || [entry]).forEach(function (item) {
+      parts.push(item.value === '' ? key : key + '=' + item.value);
+    });
+  });
+  return parts.length > 0 ? '?' + parts.join('&') : '';
+}`
+    : '';
+  return `
+function handler(event) {
+  var request = event.request;${redirectCheck}${statements}
+  return request;
+}${queryStringHelper}`;
+}
+
 type ShopStackProps = StackProps & {
   config: DeployConfig;
   /** From the certificate stack (us-east-1); required when the config has a domain. */
@@ -159,27 +208,36 @@ export class ShopStack extends Stack {
       enableAcceptEncodingBrotli: true,
     });
 
+    // Requests for a redirecting host name (e.g. www.) get a 301 to the site's
+    // domain before anything else, on every behavior.
+    const redirect =
+      config.domain && config.domain.redirectDomainNames.length > 0
+        ? { canonicalHost: config.domain.domainName, hosts: config.domain.redirectDomainNames }
+        : undefined;
+
     const pageRouting = new CloudFrontFunction(this, 'PageRouting', {
       comment: 'Y&I: serve the React HTML shell for every page path',
       runtime: FunctionRuntime.JS_2_0,
-      code: FunctionCode.fromInline(`
-function handler(event) {
-  var request = event.request;
-  var lastSegment = request.uri.split('/').pop();
-  // A path whose last segment has a file extension is a file in the bucket;
-  // every other path (/, /products, /zh/cart, ...) is a page the React app routes.
-  if (!/\\.[A-Za-z0-9]+$/.test(lastSegment)) {
-    request.uri = '/index.html';
-  }
-  return request;
-}`),
+      code: FunctionCode.fromInline(viewerRequestFunction(redirect, SERVE_HTML_SHELL_FOR_PAGES)),
     });
+
+    const hostRedirect = redirect
+      ? new CloudFrontFunction(this, 'HostRedirect', {
+          comment: `Y&I: redirect ${redirect.hosts.join(', ')} to ${redirect.canonicalHost}`,
+          runtime: FunctionRuntime.JS_2_0,
+          code: FunctionCode.fromInline(viewerRequestFunction(redirect)),
+        })
+      : undefined;
+    const hostRedirectAssociations = hostRedirect
+      ? [{ function: hostRedirect, eventType: FunctionEventType.VIEWER_REQUEST }]
+      : undefined;
 
     const fileBehavior: BehaviorOptions = {
       origin: siteOrigin,
       viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
       cachePolicy: CachePolicy.CACHING_OPTIMIZED,
       responseHeadersPolicy: ResponseHeadersPolicy.SECURITY_HEADERS,
+      functionAssociations: hostRedirectAssociations,
     };
 
     const distribution = new Distribution(this, 'Distribution', {
@@ -201,13 +259,14 @@ function handler(event) {
           cachePolicy: apiCachePolicy,
           originRequestPolicy: OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
           responseHeadersPolicy: ResponseHeadersPolicy.SECURITY_HEADERS,
+          functionAssociations: hostRedirectAssociations,
         },
         // Vite's hashed build output.
         '/assets/*': fileBehavior,
         // Product images (uploaded by the admin, under immutable keys).
         '/images/*': fileBehavior,
       },
-      domainNames: config.domain ? [config.domain.domainName] : undefined,
+      domainNames: config.domain ? [config.domain.domainName, ...config.domain.redirectDomainNames] : undefined,
       certificate,
       // Includes edge locations in Japan and the rest of Asia, at lower cost than all locations.
       priceClass: PriceClass.PRICE_CLASS_200,
@@ -259,6 +318,11 @@ function handler(event) {
       const target = RecordTarget.fromAlias(new CloudFrontTarget(distribution));
       new ARecord(this, 'SiteAliasIpv4', { zone, recordName: config.domain.domainName, target });
       new AaaaRecord(this, 'SiteAliasIpv6', { zone, recordName: config.domain.domainName, target });
+      // The redirecting host names reach the same distribution, which redirects them.
+      for (const name of config.domain.redirectDomainNames) {
+        new ARecord(this, `RedirectAliasIpv4-${name}`, { zone, recordName: name, target });
+        new AaaaRecord(this, `RedirectAliasIpv6-${name}`, { zone, recordName: name, target });
+      }
     }
 
     new CfnOutput(this, 'SiteUrl', {
