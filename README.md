@@ -137,7 +137,7 @@ npm run db:stop    # 停止并删除容器
 | `DELETE /api/cart/lines/:lineId?locale=…` | 删除一行。不在购物车里也返回 200 |
 
 - 返回的每一行带 `lineId`（不透明的 id，修改和删除时原样回传）、当前语言的名称和规格、主照片、当前单价、数量、数量的上限（`maxQuantity`，即现在的可售数）、行金额、是否可售（`available`）和购物车提示（`notices`：`unlisted`、`sold_out`、`quantity_reduced`、`price_changed`）。购物车另带 `itemCount`（页头显示的件数）、`subtotalYen`、`shippingYen`、`totalYen`、`freeShippingThresholdYen`、`freeShippingRemainingYen`。金额都是含税日元，由 API 计算，前端只显示。
-- 拒绝时什么都不改，也不写 cookie：商品不存在、未上架或没有这个规格时 404 `not_found`；售罄时 409 `sold_out`；数量（加入时连同购物车里已有的）超过可售数时 409 `exceeds_available`（带 `availableStock`）；已有 20 行还要加新的一行时 409 `cart_full`；修改不在购物车里的行时 404 `not_in_cart`；请求体不是 JSON 或不合格时 400 `invalid_input`。
+- 拒绝时什么都不改，也不写 cookie：商品不存在、未上架或没有这个规格时 404 `not_found`；售罄时 409 `sold_out`；数量（加入时连同购物车里已有的）超过可售数时 409 `exceeds_available`（带 `availableStock`）；已有 20 行还要加新的一行、或加入后签名 cookie 会超过 4000 字节（浏览器约 4 KB 的上限，SKU 用日文时 20 行以内也可能超出）时 409 `cart_full`；修改不在购物车里的行时 404 `not_in_cart`；请求体不是 JSON 或不合格时 400 `invalid_input`。
 - 被篡改或格式不对的 cookie 当作空购物车。购物车接口不要求 CSRF 令牌（理由见 ADR 0007）。
 - 运费和免运费门槛暂时来自配置（见"环境变量"），后台的店铺设置（#16）完成后由店主编辑。
 
