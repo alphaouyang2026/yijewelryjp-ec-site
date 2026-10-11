@@ -96,6 +96,11 @@
   --hero-photo-width: 520px;
   --featured-column-width: 340px;
   --service-min-width: 240px;
+
+  /* Admin forms. Preferred widths of side-by-side fields; they stack below them. */
+  --localized-field-min-width: 200px; /* one locale of a text kept per locale */
+  --variant-number-min-width: 160px; /* a variant's price and stock */
+  --select-min-width: 50%; /* drop-down lists, of their field's width */
 }
 
 /* Simplified Chinese: Japanese fonts lack many Simplified glyphs. src/i18n/fonts.ts loads these on zh pages only. */

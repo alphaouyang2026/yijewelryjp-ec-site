@@ -57,22 +57,22 @@ test('admin sections not built yet show a placeholder, and the navigation marks 
 
 test.each([
   {
-    path: '/zh/admin/products',
+    path: '/zh/admin/orders',
     lang: 'zh-Hans',
     nav: '后台菜单',
     links: ['商品', '类别', '订单', '店铺设置'],
     hrefs: ['/zh/admin/products', '/zh/admin/categories', '/zh/admin/orders', '/zh/admin/settings'],
-    heading: '商品',
+    heading: '订单',
     comingSoon: '此页面正在准备中。',
     signOut: '退出登录',
   },
   {
-    path: '/en/admin/products',
+    path: '/en/admin/settings',
     lang: 'en',
     nav: 'Admin menu',
     links: ['Products', 'Categories', 'Orders', 'Store settings'],
     hrefs: ['/en/admin/products', '/en/admin/categories', '/en/admin/orders', '/en/admin/settings'],
-    heading: 'Products',
+    heading: 'Store settings',
     comingSoon: 'This page is coming soon.',
     signOut: 'Sign out',
   },

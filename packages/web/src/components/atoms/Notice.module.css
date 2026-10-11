@@ -1,0 +1,20 @@
+.notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  padding: var(--space-2);
+  border: var(--line-width) solid var(--color-hairline);
+  background: var(--color-mist);
+}
+
+.done {
+  composes: notice;
+}
+
+.problem {
+  composes: notice;
+  border-color: var(--color-onyx);
+  font-weight: var(--font-weight-medium);
+}

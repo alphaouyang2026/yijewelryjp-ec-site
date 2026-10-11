@@ -1,7 +1,7 @@
 // Fills the local DynamoDB table with sample categories and products, for
 // local development only (`npm run db:seed`, with DynamoDB Local running).
-// Every sample is written with the same layout the API reads; running it again
-// overwrites them. The admin (a later ticket) will replace this for real data.
+// Every sample is written with the same layout the API reads, at version 1;
+// running it again overwrites them. Real data is entered in the admin.
 import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
 import type { CategoryItem } from '../src/catalog/infrastructure/dynamodb-category-repository';
 import type { ProductItem, VariantItem } from '../src/catalog/infrastructure/dynamodb-product-repository';
@@ -11,10 +11,10 @@ import { createTable, localDynamoClient, waitForDynamoDbLocal } from '../src/pla
 const tableName = process.env.TABLE_NAME ?? 'yijewelry-local';
 
 const categories: CategoryItem[] = [
-  { pk: 'CATEGORY', sk: 'rings', position: 1, name: { ja: 'リング', zh: '戒指', en: 'Rings' } },
-  { pk: 'CATEGORY', sk: 'necklaces', position: 2, name: { ja: 'ネックレス', zh: '项链', en: 'Necklaces' } },
-  { pk: 'CATEGORY', sk: 'earrings', position: 3, name: { ja: 'ピアス・イヤリング', zh: '耳饰', en: 'Earrings' } },
-  { pk: 'CATEGORY', sk: 'bracelets', position: 4, name: { ja: 'ブレスレット', zh: '手链', en: 'Bracelets' } },
+  { pk: 'CATEGORY', sk: 'rings', position: 1, version: 1, name: { ja: 'リング', zh: '戒指', en: 'Rings' } },
+  { pk: 'CATEGORY', sk: 'necklaces', position: 2, version: 1, name: { ja: 'ネックレス', zh: '项链', en: 'Necklaces' } },
+  { pk: 'CATEGORY', sk: 'earrings', position: 3, version: 1, name: { ja: 'ピアス・イヤリング', zh: '耳饰', en: 'Earrings' } },
+  { pk: 'CATEGORY', sk: 'bracelets', position: 4, version: 1, name: { ja: 'ブレスレット', zh: '手链', en: 'Bracelets' } },
 ];
 
 const ringSizes = (priceYen: number, stock: number[]): VariantItem[] =>
@@ -39,8 +39,8 @@ const sample = (text: { ja: string; zh: string; en: string }) => ({
 const product = (
   slug: string,
   listedAt: string | undefined,
-  fields: Omit<ProductItem, 'pk' | 'sk' | 'listedAt'>,
-): ProductItem => ({ pk: 'PRODUCT', sk: slug, listedAt, ...fields });
+  fields: Omit<ProductItem, 'pk' | 'sk' | 'listedAt' | 'version'>,
+): ProductItem => ({ pk: 'PRODUCT', sk: slug, listedAt, version: 1, ...fields });
 
 const products: ProductItem[] = [
   product('crescent-ring', '2026-09-20T10:00:00+09:00', {

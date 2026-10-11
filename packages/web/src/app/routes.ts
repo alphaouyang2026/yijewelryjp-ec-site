@@ -8,7 +8,7 @@ import { ProductListPage } from '../components/pages/products/ProductListPage';
 import { productListLoader } from '../components/pages/products/productListLoader';
 import { NotFoundPage } from '../components/pages/status/NotFoundPage';
 import { LOCALES, localizedPath } from '../i18n/locales';
-import { ADMIN_SECTIONS, paths, type AdminSectionHandle } from '../paths';
+import { paths, type AdminSection, type AdminSectionHandle } from '../paths';
 import { BlankHydrateFallback } from './BlankHydrateFallback';
 import { LocaleRoot } from './LocaleRoot';
 import { StoreRouteError } from './StoreRouteError';
@@ -19,6 +19,9 @@ const pageWithData = (route: RouteObject): RouteObject => ({
   ErrorBoundary: StoreRouteError,
   ...route,
 });
+
+/** The admin's sections whose pages later tickets build: a placeholder until then. */
+const ADMIN_SECTIONS_TO_COME: AdminSection[] = ['orders', 'settings'];
 
 /**
  * The admin, under /admin in each locale. Its code loads only when an admin
@@ -40,7 +43,47 @@ function adminPages(): RouteObject {
     },
     children: [
       { index: true, lazy: async () => ({ Component: (await import('../components/pages/admin/AdminHomePage')).AdminHomePage }) },
-      ...ADMIN_SECTIONS.map(
+      {
+        path: 'products',
+        lazy: async () => {
+          const [{ AdminProductListPage }, { adminProductListLoader }] = await Promise.all([
+            import('../components/pages/admin/products/AdminProductListPage'),
+            import('../components/pages/admin/products/adminProductListLoader'),
+          ]);
+          return { Component: AdminProductListPage, loader: adminProductListLoader };
+        },
+      },
+      {
+        path: 'products/new',
+        lazy: async () => {
+          const [{ AdminNewProductPage }, { adminNewProductLoader }] = await Promise.all([
+            import('../components/pages/admin/products/AdminNewProductPage'),
+            import('../components/pages/admin/products/adminProductLoaders'),
+          ]);
+          return { Component: AdminNewProductPage, loader: adminNewProductLoader };
+        },
+      },
+      {
+        path: 'products/:slug/edit',
+        lazy: async () => {
+          const [{ AdminEditProductPage }, { adminEditProductLoader }] = await Promise.all([
+            import('../components/pages/admin/products/AdminEditProductPage'),
+            import('../components/pages/admin/products/adminProductLoaders'),
+          ]);
+          return { Component: AdminEditProductPage, loader: adminEditProductLoader };
+        },
+      },
+      {
+        path: 'categories',
+        lazy: async () => {
+          const [{ AdminCategoriesPage }, { adminCategoriesLoader }] = await Promise.all([
+            import('../components/pages/admin/categories/AdminCategoriesPage'),
+            import('../components/pages/admin/categories/adminCategoriesLoader'),
+          ]);
+          return { Component: AdminCategoriesPage, loader: adminCategoriesLoader };
+        },
+      },
+      ...ADMIN_SECTIONS_TO_COME.map(
         (section): RouteObject => ({
           path: section,
           handle: { adminSection: section } satisfies AdminSectionHandle,

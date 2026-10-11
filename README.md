@@ -17,7 +17,7 @@ npm workspaces 的 monorepo：
 ```
 packages/api/src/
 ├── shared-kernel/    共享内核：金额（Money）、语言（Locale）、多语言文本（LocalizedText）、时钟（Clock）
-├── interface/        各上下文接口层共用的部件：locale 查询参数的 Zod 校验
+├── interface/        各上下文接口层共用的部件：locale 查询参数和 JSON 请求体的 Zod 校验（字段错误的格式）
 ├── catalog/          商品目录 ┐
 ├── ordering/         订单     │ 限界上下文，各有四层：
 ├── store/            店铺     │   domain/ application/ infrastructure/ interface/
@@ -53,6 +53,8 @@ packages/web/src/
 ├── app/              路由表（每种语言一棵）和每种语言的根路由
 ├── i18n/             语言、语言前缀的路径、三种语言的翻译资源、按语言加载的字体
 ├── api.ts            Hono RPC 客户端和由 API 推出的响应类型
+├── adminForms.ts     后台表单的值与 API 请求体之间的转换、API 返回的字段错误
+├── adminChanges.ts   后台页面发送修改、显示结果（完成、输入错误、版本冲突）并在保存后重新加载数据的 hook
 ├── paths.ts          页面路径（`PagePath` 类型，不带语言前缀）
 ├── brand.ts          logo 和品牌名
 ├── browser.ts        离开 React 应用、转到它不处理的页面（如 API 的登录入口）
@@ -116,7 +118,7 @@ npm run db:stop    # 停止并删除容器
 
 ### 两层测试
 
-- **API（`packages/api/test`）：** 像入口一样组装 API，只是换成测试适配器，在进程内通过 Hono 的 request 接口发请求。`useTestApi()` 提供会保存 cookie 的客户端（`api.client()`，类型来自 API 路由）、可以控制的时钟（`api.clock`）、内存版的身份提供方（`api.identity`）和让客户端以店主身份登录的 `api.signIn(client)`、列出全部路由的 `api.routes`（逐一检查后台路由的测试用它），以及在 API 还不能创建数据时直接写入种子数据的 `api.seed`（结果仍然只通过 API 检查）。
+- **API（`packages/api/test`）：** 像入口一样组装 API，只是换成测试适配器，在进程内通过 Hono 的 request 接口发请求。`useTestApi()` 提供会保存 cookie 的客户端（`api.client()`，类型来自 API 路由）、可以控制的时钟（`api.clock`）、内存版的身份提供方（`api.identity`）和让客户端以店主身份登录的 `api.signIn(client)`、返回已登录店主的客户端和带 CSRF 令牌的请求头的 `api.owner()`、列出全部路由的 `api.routes`（逐一检查后台路由的测试用它），以及直接写入后台做不出来的数据（结账锁定的库存、过去的上架时间等）的 `api.seed`（结果仍然只通过 API 检查）。
 - **前端（`packages/web/src/**/*.test.tsx`）：** 用 React Testing Library 渲染真实的路由表（`renderRoute('/zh/')`），用 user-event 像用户那样操作，用 MSW 在网络层拦截 `/api`。模拟响应用 `test/api-mocks.ts` 里按 API 类型编写的 handler。页面让浏览器离开 React 应用时（如去登录），测试监视 `browser.leaveFor` 看它去哪里（jsdom 不能真的跳转）。
 
 不给单个组件、领域对象或用例写单元测试：业务规则通过 API 的 HTTP 接口测试，界面行为通过页面测试。
@@ -132,6 +134,24 @@ npm run db:stop    # 停止并删除容器
 3. 登录后 Cognito 把浏览器带回 `GET /api/admin/auth/callback?code=…&state=…`。API 核对 `state`，用授权码和应用客户端密钥向 Cognito 换取令牌，按用户池的 JWKS 验证 ID 令牌，然后发放会话 cookie 并跳回原来的后台页面。令牌只在 API 里用这一次，不保存，也不交给浏览器。登录没有完成时（`state` 不符或超过 10 分钟、授权码无效或已用过、Cognito 报告错误，比如店主在登录页取消），API 把浏览器转到登录时语言的 `/admin/sign-in-failed`（`/zh/admin/sign-in-failed`、`/en/admin/sign-in-failed`）：这个页面不需要会话，说明登录失败，并可以重新登录。
 4. 会话 cookie（`__Host-yi_admin_session`）是 HTTP-only、Secure、SameSite=Lax 的签名 cookie。API 的签名 cookie 都由 `packages/api/src/interface/signed-cookies.ts` 读写：每个 cookie 用自己的密钥签名（由 Secrets Manager 里的签名密钥和 cookie 名派生），所以一个 cookie 的值不能冒充另一个 cookie；读取时还用 Zod 检查内容，不符合的当作没有 cookie。每次后台请求都把闲置时间重新算起，闲置 2 小时后过期；无论是否一直在用，登录 12 小时后也会过期，需要重新登录。API 只在登录时向 Cognito 确认店主身份，这个上限保证停用的店主不会一直保持登录。
 5. 登出（`POST /api/admin/sign-out`）清除会话 cookie，再把浏览器转到 Cognito 的登出页，结束 Cognito 自己的登录状态（否则一小时内再登录不用输密码），最后回到当前语言的网站首页。
+
+### 后台的商品与类别
+
+后台 API 都在 `/api/admin` 下（所以都经过下面的权限检查）：
+
+| 路由 | 作用 |
+| --- | --- |
+| `GET /api/admin/products?locale=…&status=…` | 全部商品（任何状态，或只看一种状态），按最近修改排序 |
+| `POST /api/admin/products` | 创建商品（草稿） |
+| `GET` / `PUT /api/admin/products/:slug` | 读取 / 修改商品的内容和规格 |
+| `POST /api/admin/products/:slug/{list,unlist,archive,restore}` | 上架、下架、归档、恢复为草稿。没有删除 |
+| `GET` / `POST /api/admin/categories` | 全部类别（按店主的顺序） / 创建类别（排在最后） |
+| `PUT /api/admin/categories/:slug` | 类别改名 |
+| `PUT /api/admin/category-order?locale=…` | 按给出的顺序排列全部类别（一次最多 100 个，即一个 DynamoDB 事务的上限） |
+
+- 输入由接口层的 Zod 校验：多语言文本日语必填（中文、英语留空即未填，显示时回退到日语）；价格和在库数是 0 以上的整数，价格最高 99,999,999 日元（Stripe 一次日元付款的上限）；slug 是用单个连字符连接的小写英文字母和数字，创建后不能修改；SKU 在整个目录内唯一；有锁定数的规格不能删除，在库数不能少于锁定数；每个商品至少一个规格。不合格时返回 400 `{ error: 'invalid_input', fields: [{ path: 'variants.0.priceYen', code: 'non_negative_integer' }, …] }`，前端按 `path` 把 `code` 对应的文字显示在字段旁边。
+- 路径里的 `:slug` 不符合 slug 格式（或超过 80 个字符）时和不存在的商品、类别一样返回 404。排序中出现不存在的类别是 400（`unknown_category`，类别没有删除，所以这不是“内容过时”）。
+- 每次修改都带上店主看到的 `version`。别人已经改过（或排序漏掉了别人新加的类别）时返回 409 `stale_version`，什么都不改，后台提示加载最新内容（见 [ADR 0005](docs/adr/0005-catalog-data-layout.md)）。任何状态都可以归档：归档已归档的商品返回 200，什么都不改（版本号不变）。当前状态不允许的上架、下架等返回 409 `invalid_status_transition`；后台只显示 API 给出的 `statusChanges`。
 
 ### 权限检查
 
