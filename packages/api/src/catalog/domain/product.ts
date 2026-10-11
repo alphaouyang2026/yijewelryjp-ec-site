@@ -11,12 +11,15 @@ export type Variant = {
   readonly sku: string;
   /** What tells this variant apart, e.g. 9号 or 45cm. */
   readonly label: LocalizedText;
-  /** Tax-inclusive. */
+  /** Tax-inclusive, at most MAX_PRICE_YEN. */
   readonly price: Money;
   readonly onHandStock: number;
   /** Held by checkouts in progress (from the checkout ticket on). */
   readonly reservedStock: number;
 };
+
+/** The highest price a variant can have: the most Stripe charges in one payment in yen. */
+export const MAX_PRICE_YEN = 99_999_999;
 
 /** A design shown on the site, with at least one variant. */
 export type Product = {

@@ -220,6 +220,7 @@ export const ja = {
       too_long: '長すぎます。',
       invalid_slug: '半角英小文字・数字を、ハイフン1つでつないでください。',
       non_negative_integer: '0以上の整数を入力してください。',
+      price_too_high: '99,999,999円以下で入力してください。',
       at_least_one_variant: '規格を1つ以上登録してください。',
       too_many: '多すぎます。',
       slug_taken: 'このスラッグはすでに使われています。',

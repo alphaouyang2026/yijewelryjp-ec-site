@@ -212,6 +212,7 @@ export const zh: Messages = {
       too_long: '太长了。',
       invalid_slug: '请用单个连字符连接小写英文字母和数字。',
       non_negative_integer: '请输入 0 或以上的整数。',
+      price_too_high: '请输入 99,999,999 日元以下的价格。',
       at_least_one_variant: '请至少添加一个规格。',
       too_many: '太多了。',
       slug_taken: '此 Slug 已被使用。',

@@ -1,5 +1,6 @@
 import * as z from 'zod';
 import type { FieldErrorCode } from '../../interface/json-body';
+import { MAX_PRICE_YEN } from '../domain/product';
 
 // What the admin's catalog forms send, validated field by field. Each error
 // message is a field error code, so the admin can say what is wrong next to
@@ -61,7 +62,7 @@ const variant = z.object(
   {
     sku: requiredText(SKU_MAX),
     label: localizedText(SHORT_TEXT_MAX),
-    priceYen: count,
+    priceYen: count.max(MAX_PRICE_YEN, code('price_too_high')),
     onHandStock: count,
   },
   { error: missingOr('invalid') },

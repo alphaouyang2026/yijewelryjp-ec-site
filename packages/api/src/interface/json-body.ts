@@ -12,6 +12,8 @@ export const FIELD_ERROR_CODES = [
   /** Not lowercase letters and digits joined by single hyphens. */
   'invalid_slug',
   'non_negative_integer',
+  /** A price above ¥99,999,999, the most a card payment in yen can be. */
+  'price_too_high',
   'at_least_one_variant',
   'too_many',
   /** Another product or category already has this slug. */

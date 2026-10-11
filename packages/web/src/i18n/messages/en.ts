@@ -212,6 +212,7 @@ export const en: Messages = {
       too_long: 'This is too long.',
       invalid_slug: 'Use lowercase letters and digits joined by single hyphens.',
       non_negative_integer: 'Enter a whole number, 0 or more.',
+      price_too_high: 'Enter a price of ¥99,999,999 or less.',
       at_least_one_variant: 'Add at least one variant.',
       too_many: 'There are too many.',
       slug_taken: 'This slug is already in use.',

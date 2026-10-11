@@ -137,6 +137,25 @@ describe('the new-product form’s errors', () => {
     });
   });
 
+  test('a price is at most ¥99,999,999, the most a card payment in yen can be', async () => {
+    const owner = await api.owner();
+    const product = newProduct('dear-ring');
+    const [first, second] = product.variants;
+
+    const tooHigh = await post({ ...product, variants: [{ ...first, priceYen: 100_000_000 }, second] });
+    const highest = await owner.client.api.admin.products.$post(
+      { json: { ...product, variants: [{ ...first!, priceYen: 99_999_999 }, second!] } },
+      { headers: owner.headers },
+    );
+
+    expect(tooHigh.status).toBe(400);
+    expect(await tooHigh.json()).toEqual({
+      error: 'invalid_input',
+      fields: [{ path: 'variants.0.priceYen', code: 'price_too_high' }],
+    });
+    expect(highest.status).toBe(201);
+  });
+
   test('a product has at least one variant', async () => {
     const res = await post({ ...newProduct('no-variants'), variants: [] });
 
