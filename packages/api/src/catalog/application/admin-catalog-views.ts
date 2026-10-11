@@ -1,7 +1,7 @@
 import type { Locale } from '../../shared-kernel/locale';
 import { textIn, type LocalizedText } from '../../shared-kernel/localized-text';
 import type { Category } from '../domain/category';
-import { priceRange, type Product } from '../domain/product';
+import { allowedStatusChanges, priceRange, type Product, type StatusChange } from '../domain/product';
 import { categoryEntry, type CatalogEntry } from './catalog-views';
 
 // How the use cases show the catalog to the owner in the admin: every text in
@@ -12,6 +12,8 @@ import { categoryEntry, type CatalogEntry } from './catalog-views';
 export type AdminProduct = {
   slug: string;
   status: Product['status'];
+  /** What the owner can do to the status now, so the admin offers only that. */
+  statusChanges: StatusChange[];
   name: LocalizedText;
   description: LocalizedText;
   materials: LocalizedText | null;
@@ -30,6 +32,7 @@ export function adminProduct(product: Product): AdminProduct {
   return {
     slug: product.slug,
     status: product.status,
+    statusChanges: allowedStatusChanges(product),
     name: product.name,
     description: product.description,
     materials: product.materials ?? null,

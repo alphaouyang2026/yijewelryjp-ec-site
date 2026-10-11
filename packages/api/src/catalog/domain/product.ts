@@ -123,6 +123,13 @@ const TRANSITIONS: Record<StatusChange, { from: readonly ProductStatus[]; to: Pr
   restore: { from: ['archived'], to: 'draft' },
 };
 
+/** The status changes the product's status allows, in a fixed order (list, unlist, archive, restore). */
+export function allowedStatusChanges(product: Product): StatusChange[] {
+  return (Object.keys(TRANSITIONS) as StatusChange[]).filter((change) =>
+    TRANSITIONS[change].from.includes(product.status),
+  );
+}
+
 /**
  * The product after `change` at `now`, or undefined if its status does not
  * allow it. Listing: draft to listed, and the first listing sets when it was

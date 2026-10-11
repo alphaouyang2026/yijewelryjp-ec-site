@@ -47,6 +47,7 @@ describe('creating a product', () => {
     const created = {
       slug: 'moon-ring',
       status: 'draft',
+      statusChanges: ['list', 'archive'],
       name: { ja: '月のリング', zh: '月亮戒指' },
       description: { ja: '月の満ち欠けをかたどったリング。', en: 'A ring shaped like the moon.' },
       materials: { ja: 'K18イエローゴールド', en: '18K yellow gold' },
@@ -240,7 +241,12 @@ describe('listing, unlisting, archiving and restoring', () => {
     const res = await change(owner, 'listed-ring', 'list', 1);
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toMatchObject({ status: 'listed', listedAt: '2026-10-01T01:00:00.000Z', version: 2 });
+    expect(await res.json()).toMatchObject({
+      status: 'listed',
+      statusChanges: ['unlist', 'archive'],
+      listedAt: '2026-10-01T01:00:00.000Z',
+      version: 2,
+    });
     expect(await storeSlugs()).toContain('listed-ring');
     const page = await storePage('listed-ring');
     assert(page.ok);
@@ -283,7 +289,7 @@ describe('listing, unlisting, archiving and restoring', () => {
     const res = await change(owner, slug, 'archive', version);
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toMatchObject({ status: 'archived', version: version + 1 });
+    expect(await res.json()).toMatchObject({ status: 'archived', statusChanges: ['restore'], version: version + 1 });
     expect(await storeSlugs()).not.toContain(slug);
     expect((await storePage(slug)).status).toBe(404);
   });
