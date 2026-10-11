@@ -14,6 +14,7 @@ import {
   type ProductContent,
   type ProductRepository,
   type ProductStatus,
+  type ProductTexts,
   type RevisionProblem,
   type StatusChange,
 } from '../domain/product';
@@ -27,13 +28,7 @@ type Deps = { products: ProductRepository; categories: CategoryRepository; clock
  * What the owner enters for a product, already checked for form (the
  * interface layer validates each field): texts per locale, money as yen.
  */
-export type ProductInput = {
-  name: LocalizedText;
-  description: LocalizedText;
-  materials?: LocalizedText;
-  dimensions?: LocalizedText;
-  weight?: LocalizedText;
-  care?: LocalizedText;
+export type ProductInput = ProductTexts & {
   categorySlug: string | null;
   featured: boolean;
   variants: { sku: string; label: LocalizedText; priceYen: number; onHandStock: number }[];
@@ -44,7 +39,13 @@ export type ProductChange = CatalogChange<AdminProduct>;
 
 export type { StatusChange, VersionedSlug };
 export { CATALOG_RULES } from './catalog-changes';
-export { MAX_PRICE_YEN, PRODUCT_STATUSES } from '../domain/product';
+export {
+  MAX_PRICE_YEN,
+  OPTIONAL_PRODUCT_TEXTS,
+  PRODUCT_STATUSES,
+  REQUIRED_PRODUCT_TEXTS,
+  type ProductTextField,
+} from '../domain/product';
 
 export type ListAdminProducts = (query: {
   locale: Locale;

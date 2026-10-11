@@ -21,16 +21,32 @@ export type Variant = {
 /** The highest price a variant can have: the most Stripe charges in one payment in yen. */
 export const MAX_PRICE_YEN = 99_999_999;
 
+/** The texts every product has, each kept per locale. */
+export const REQUIRED_PRODUCT_TEXTS = ['name', 'description'] as const;
+/** The details, each kept per locale, that the owner may leave out; customers see those entered. */
+export const OPTIONAL_PRODUCT_TEXTS = ['materials', 'dimensions', 'weight', 'care'] as const;
+
+/** Every text of a product, the one list the layers' product texts follow. */
+export const PRODUCT_TEXT_FIELDS = [...REQUIRED_PRODUCT_TEXTS, ...OPTIONAL_PRODUCT_TEXTS] as const;
+export type ProductTextField = (typeof PRODUCT_TEXT_FIELDS)[number];
+
+/** A product's texts: its name and description, and the details the owner entered. */
+export type ProductTexts = { readonly [F in (typeof REQUIRED_PRODUCT_TEXTS)[number]]: LocalizedText } & {
+  readonly [F in (typeof OPTIONAL_PRODUCT_TEXTS)[number]]?: LocalizedText;
+};
+
+/**
+ * Just the texts of `source`, with every detail present (undefined where left
+ * out), so spreading them over a product replaces each of its texts.
+ */
+export function productTexts(source: ProductTexts): ProductTexts {
+  return Object.fromEntries(PRODUCT_TEXT_FIELDS.map((field) => [field, source[field]])) as ProductTexts;
+}
+
 /** A design shown on the site, with at least one variant. */
-export type Product = {
+export type Product = ProductTexts & {
   readonly slug: string;
   readonly status: ProductStatus;
-  readonly name: LocalizedText;
-  readonly description: LocalizedText;
-  readonly materials?: LocalizedText;
-  readonly dimensions?: LocalizedText;
-  readonly weight?: LocalizedText;
-  readonly care?: LocalizedText;
   readonly categorySlug?: string;
   /** Picked by the owner for the home page. */
   readonly featured: boolean;
@@ -41,17 +57,16 @@ export type Product = {
   readonly variants: readonly Variant[];
   /**
    * Which stored version of the product this is: 1 when created (0 if stored
-   * before products had versions), one more with each change. A change is saved only onto the version it was made from, so
-   * an owner editing an outdated copy cannot overwrite a newer one.
+   * before products had versions), one more with each change. A change is
+   * saved only onto the version it was made from, so an owner editing an
+   * outdated copy cannot overwrite a newer one.
    */
   readonly version: number;
 };
 
 /** What the owner enters for a product: everything but its slug, status, listing time and reserved stock. */
-export type ProductContent = Pick<
-  Product,
-  'name' | 'description' | 'materials' | 'dimensions' | 'weight' | 'care' | 'categorySlug' | 'featured'
-> & {
+export type ProductContent = ProductTexts &
+  Pick<Product, 'categorySlug' | 'featured'> & {
   readonly variants: readonly VariantContent[];
 };
 
@@ -116,12 +131,7 @@ export function reviseProduct(product: Product, content: ProductContent, now: Da
   if (problems.length > 0) return problems;
   return {
     ...product,
-    name: content.name,
-    description: content.description,
-    materials: content.materials,
-    dimensions: content.dimensions,
-    weight: content.weight,
-    care: content.care,
+    ...productTexts(content),
     categorySlug: content.categorySlug,
     featured: content.featured,
     variants,

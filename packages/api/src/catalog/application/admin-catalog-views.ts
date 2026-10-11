@@ -1,25 +1,38 @@
 import type { Locale } from '../../shared-kernel/locale';
 import { textIn, type LocalizedText } from '../../shared-kernel/localized-text';
 import type { Category } from '../domain/category';
-import { allowedStatusChanges, priceRange, type Product, type StatusChange } from '../domain/product';
+import {
+  allowedStatusChanges,
+  OPTIONAL_PRODUCT_TEXTS,
+  priceRange,
+  productTexts,
+  REQUIRED_PRODUCT_TEXTS,
+  type Product,
+  type StatusChange,
+} from '../domain/product';
 import { categoryEntry, type CatalogEntry } from './catalog-views';
 
 // How the use cases show the catalog to the owner in the admin: every text in
 // every locale it was entered in (the forms edit each one), money as yen, and
 // each product's version, which the owner's changes are made from.
 
-/** A product as the admin's form edits it. Details the owner left out are null. */
-export type AdminProduct = {
+/** A product's texts as the admin edits them: details the owner left out are null. */
+type AdminProductTexts = { [F in (typeof REQUIRED_PRODUCT_TEXTS)[number]]: LocalizedText } & {
+  [F in (typeof OPTIONAL_PRODUCT_TEXTS)[number]]: LocalizedText | null;
+};
+
+function adminProductTexts(product: Product): AdminProductTexts {
+  const texts = productTexts(product);
+  const details = Object.fromEntries(OPTIONAL_PRODUCT_TEXTS.map((field) => [field, texts[field] ?? null]));
+  return { ...texts, ...details } as AdminProductTexts;
+}
+
+/** A product as the admin's form edits it. */
+export type AdminProduct = AdminProductTexts & {
   slug: string;
   status: Product['status'];
   /** What the owner can do to the status now, so the admin offers only that. */
   statusChanges: StatusChange[];
-  name: LocalizedText;
-  description: LocalizedText;
-  materials: LocalizedText | null;
-  dimensions: LocalizedText | null;
-  weight: LocalizedText | null;
-  care: LocalizedText | null;
   categorySlug: string | null;
   featured: boolean;
   /** When the product was first listed (ISO 8601); null until then. */
@@ -33,12 +46,7 @@ export function adminProduct(product: Product): AdminProduct {
     slug: product.slug,
     status: product.status,
     statusChanges: allowedStatusChanges(product),
-    name: product.name,
-    description: product.description,
-    materials: product.materials ?? null,
-    dimensions: product.dimensions ?? null,
-    weight: product.weight ?? null,
-    care: product.care ?? null,
+    ...adminProductTexts(product),
     categorySlug: product.categorySlug ?? null,
     featured: product.featured,
     listedAt: product.listedAt?.toISOString() ?? null,

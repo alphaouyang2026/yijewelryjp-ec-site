@@ -1,7 +1,13 @@
 import { zValidator } from '@hono/zod-validator';
 import * as z from 'zod';
 import { jsonBody, type GenericFieldErrorCode } from '../../interface/json-body';
-import { CATALOG_RULES, MAX_PRICE_YEN } from '../application/manage-products';
+import {
+  CATALOG_RULES,
+  MAX_PRICE_YEN,
+  OPTIONAL_PRODUCT_TEXTS,
+  REQUIRED_PRODUCT_TEXTS,
+  type ProductTextField,
+} from '../application/manage-products';
 
 // What the admin's catalog forms send, validated field by field. Each error
 // message is a field error code, so the admin can say what is wrong next to
@@ -99,14 +105,28 @@ const variant = z.object(
   { error: missingOr('invalid') },
 );
 
+/** How long each of a product's texts may be: a line, or paragraphs. */
+const PRODUCT_TEXT_MAX: Record<ProductTextField, number> = {
+  name: SHORT_TEXT_MAX,
+  description: LONG_TEXT_MAX,
+  materials: SHORT_TEXT_MAX,
+  dimensions: SHORT_TEXT_MAX,
+  weight: SHORT_TEXT_MAX,
+  care: LONG_TEXT_MAX,
+};
+
+/** A Zod shape with a schema for each of `fields`. */
+function shapeOf<Field extends string, Schema extends z.ZodType>(
+  fields: readonly Field[],
+  schemaOf: (field: Field) => Schema,
+): Record<Field, Schema> {
+  return Object.fromEntries(fields.map((field) => [field, schemaOf(field)])) as Record<Field, Schema>;
+}
+
 /** A product's content, as both the new-product and the edit form send it. */
 export const productInput = z.object({
-  name: localizedText(SHORT_TEXT_MAX),
-  description: localizedText(LONG_TEXT_MAX),
-  materials: optionalLocalizedText(SHORT_TEXT_MAX),
-  dimensions: optionalLocalizedText(SHORT_TEXT_MAX),
-  weight: optionalLocalizedText(SHORT_TEXT_MAX),
-  care: optionalLocalizedText(LONG_TEXT_MAX),
+  ...shapeOf(REQUIRED_PRODUCT_TEXTS, (field) => localizedText(PRODUCT_TEXT_MAX[field])),
+  ...shapeOf(OPTIONAL_PRODUCT_TEXTS, (field) => optionalLocalizedText(PRODUCT_TEXT_MAX[field])),
   /** Null: in no category. */
   categorySlug: z.string({ error: 'invalid' }).nullable(),
   featured: z.boolean({ error: 'invalid' }),

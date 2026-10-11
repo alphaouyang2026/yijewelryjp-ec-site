@@ -1,3 +1,4 @@
+import type { ProductTextField } from '@yi/api';
 import type { AdminProduct, FieldErrorCode, InvalidInput, NewProduct } from './api';
 import type { Locale } from './i18n/locales';
 
@@ -27,6 +28,30 @@ export const textValues = (text: Partial<LocalizedValues> | null): LocalizedValu
 /** Whether two texts, as forms edit them, are the same in every locale. */
 export const sameText = (a: LocalizedValues, b: LocalizedValues): boolean => a.ja === b.ja && a.zh === b.zh && a.en === b.en;
 
+/**
+ * A product's texts, each kept per locale, in the API's order: a Record, so
+ * type checking fails if it leaves out a text the API has.
+ */
+const PRODUCT_TEXTS: Record<ProductTextField, true> = {
+  name: true,
+  description: true,
+  materials: true,
+  dimensions: true,
+  weight: true,
+  care: true,
+};
+
+export type { ProductTextField };
+
+/** A product's texts as the form edits them. */
+type ProductTextValues = Record<ProductTextField, LocalizedValues>;
+
+/** Each of a product's texts, made by `valueOf`. */
+function productTextValues(valueOf: (field: ProductTextField) => LocalizedValues): ProductTextValues {
+  const fields = Object.keys(PRODUCT_TEXTS) as ProductTextField[];
+  return Object.fromEntries(fields.map((field) => [field, valueOf(field)])) as ProductTextValues;
+}
+
 export type VariantValues = {
   /** Tells the form's rows apart while the owner adds and removes them. */
   key: string;
@@ -39,14 +64,8 @@ export type VariantValues = {
   reservedStock: number;
 };
 
-export type ProductFormValues = {
+export type ProductFormValues = ProductTextValues & {
   slug: string;
-  name: LocalizedValues;
-  description: LocalizedValues;
-  materials: LocalizedValues;
-  dimensions: LocalizedValues;
-  weight: LocalizedValues;
-  care: LocalizedValues;
   /** '' for no category. */
   categorySlug: string;
   featured: boolean;
@@ -64,12 +83,7 @@ export function blankVariant(): VariantValues {
 export function blankProduct(): ProductFormValues {
   return {
     slug: '',
-    name: blankText(),
-    description: blankText(),
-    materials: blankText(),
-    dimensions: blankText(),
-    weight: blankText(),
-    care: blankText(),
+    ...productTextValues(blankText),
     categorySlug: '',
     featured: false,
     variants: [blankVariant()],
@@ -80,12 +94,7 @@ export function blankProduct(): ProductFormValues {
 export function productValues(product: AdminProduct): ProductFormValues {
   return {
     slug: product.slug,
-    name: textValues(product.name),
-    description: textValues(product.description),
-    materials: textValues(product.materials),
-    dimensions: textValues(product.dimensions),
-    weight: textValues(product.weight),
-    care: textValues(product.care),
+    ...productTextValues((field) => textValues(product[field])),
     categorySlug: product.categorySlug ?? '',
     featured: product.featured,
     variants: product.variants.map((variant) => ({
@@ -108,12 +117,7 @@ const numberAsTyped = (typed: string) => (typed.trim() === '' ? Number.NaN : Num
 /** The product's content as the API takes it, for creating (with the slug) or editing it. */
 export function productContent(values: ProductFormValues): Omit<NewProduct, 'slug'> {
   return {
-    name: values.name,
-    description: values.description,
-    materials: values.materials,
-    dimensions: values.dimensions,
-    weight: values.weight,
-    care: values.care,
+    ...productTextValues((field) => values[field]),
     categorySlug: values.categorySlug === '' ? null : values.categorySlug,
     featured: values.featured,
     variants: values.variants.map((variant) => ({

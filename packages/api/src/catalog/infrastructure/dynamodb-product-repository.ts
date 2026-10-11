@@ -3,7 +3,13 @@ import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dyn
 import { queryPartition, withoutUndefined, type Database } from '../../platform/dynamodb';
 import type { LocalizedText } from '../../shared-kernel/localized-text';
 import { yen } from '../../shared-kernel/money';
-import type { Product, ProductRepository, ProductStatus } from '../domain/product';
+import {
+  productTexts,
+  type Product,
+  type ProductRepository,
+  type ProductStatus,
+  type ProductTexts,
+} from '../domain/product';
 import { isStaleWrite, onVersion, storedVersion } from './versioned-writes';
 
 /**
@@ -11,16 +17,10 @@ import { isStaleWrite, onVersion, storedVersion } from './versioned-writes';
  * its variants and their stock inside it. The whole catalog is one partition,
  * read whole for every list (see docs/adr/0005-catalog-data-layout.md).
  */
-export type ProductItem = {
+export type ProductItem = ProductTexts & {
   pk: 'PRODUCT';
   sk: string; // the slug
   status: ProductStatus;
-  name: LocalizedText;
-  description: LocalizedText;
-  materials?: LocalizedText;
-  dimensions?: LocalizedText;
-  weight?: LocalizedText;
-  care?: LocalizedText;
   categorySlug?: string;
   featured: boolean;
   listedAt?: string; // ISO 8601
@@ -97,12 +97,7 @@ function toProduct(item: ProductItem): Product {
   return {
     slug: item.sk,
     status: item.status,
-    name: item.name,
-    description: item.description,
-    materials: item.materials,
-    dimensions: item.dimensions,
-    weight: item.weight,
-    care: item.care,
+    ...productTexts(item),
     categorySlug: item.categorySlug,
     featured: item.featured,
     listedAt: item.listedAt ? new Date(item.listedAt) : undefined,
@@ -124,12 +119,7 @@ function toItem(product: Product): ProductItem {
     pk: PARTITION,
     sk: product.slug,
     status: product.status,
-    name: product.name,
-    description: product.description,
-    materials: product.materials,
-    dimensions: product.dimensions,
-    weight: product.weight,
-    care: product.care,
+    ...productTexts(product),
     categorySlug: product.categorySlug,
     featured: product.featured,
     listedAt: product.listedAt?.toISOString(),

@@ -1,5 +1,5 @@
 import { useId, useState, type FormEvent } from 'react';
-import type { FieldErrors, LocalizedValues, ProductFormValues, VariantValues } from '../../adminForms';
+import type { FieldErrors, LocalizedValues, ProductFormValues, ProductTextField, VariantValues } from '../../adminForms';
 import { blankVariant } from '../../adminForms';
 import type { Locale } from '../../i18n/locales';
 import { useMessages } from '../../i18n/useMessages';
@@ -12,8 +12,6 @@ import { FormField } from '../molecules/FormField';
 import { LocalizedTextField } from '../molecules/LocalizedTextField';
 import { VariantFields } from '../molecules/VariantFields';
 import styles from './ProductForm.module.css';
-
-type TextField = 'name' | 'description' | 'materials' | 'dimensions' | 'weight' | 'care';
 
 /**
  * The product form, for a new product (`mode` 'new': the owner enters the
@@ -54,7 +52,7 @@ export function ProductForm({
     en: errorOf(`${path}.en`),
   });
 
-  const textField = (field: TextField, options: { required?: boolean; multiline?: boolean } = {}) => (
+  const textField = (field: ProductTextField, options: { required?: boolean; multiline?: boolean } = {}) => (
     <LocalizedTextField
       label={text[field]}
       value={values[field]}
