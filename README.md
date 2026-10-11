@@ -125,6 +125,22 @@ npm run db:stop    # 停止并删除容器
 
 不给单个组件、领域对象或用例写单元测试：业务规则通过 API 的 HTTP 接口测试，界面行为通过页面测试。
 
+## 购物车
+
+购物车只保存在签名 cookie `__Host-yi_cart` 里（HTTP-only、Secure、SameSite=Lax，修改后 30 天有效），服务器不存储；设计见 [ADR 0007](docs/adr/0007-cart-in-a-signed-cookie.md)。接口都在 `/api/cart` 下，不缓存，都要求 `locale` 查询参数（商品名称、规格和替代文字按这个语言返回），成功时都返回修改后的整个购物车：
+
+| 路由 | 作用 |
+| --- | --- |
+| `GET /api/cart?locale=…` | 查看购物车。不写 cookie |
+| `POST /api/cart/lines?locale=…` | 加入 `{ productSlug, sku, quantity }`（加入的件数）。购物车里已有这个规格时并入原来的行 |
+| `PUT /api/cart/lines/:lineId?locale=…` | 把一行的数量改为 `{ quantity }`（1 以上） |
+| `DELETE /api/cart/lines/:lineId?locale=…` | 删除一行。不在购物车里也返回 200 |
+
+- 返回的每一行带 `lineId`（不透明的 id，修改和删除时原样回传）、当前语言的名称和规格、主照片、当前单价、数量、数量的上限（`maxQuantity`，即现在的可售数）、行金额、是否可售（`available`）和购物车提示（`notices`：`unlisted`、`sold_out`、`quantity_reduced`、`price_changed`）。购物车另带 `itemCount`（页头显示的件数）、`subtotalYen`、`shippingYen`、`totalYen`、`freeShippingThresholdYen`、`freeShippingRemainingYen`。金额都是含税日元，由 API 计算，前端只显示。
+- 拒绝时什么都不改，也不写 cookie：商品不存在、未上架或没有这个规格时 404 `not_found`；售罄时 409 `sold_out`；数量（加入时连同购物车里已有的）超过可售数时 409 `exceeds_available`（带 `availableStock`）；已有 20 行还要加新的一行时 409 `cart_full`；修改不在购物车里的行时 404 `not_in_cart`；请求体不是 JSON 或不合格时 400 `invalid_input`。
+- 被篡改或格式不对的 cookie 当作空购物车。购物车接口不要求 CSRF 令牌（理由见 ADR 0007）。
+- 运费和免运费门槛暂时来自配置（见"环境变量"），后台的店铺设置（#16）完成后由店主编辑。
+
 ## 后台登录
 
 店主在后台（`/admin`、`/zh/admin`、`/en/admin`）用 Cognito 托管登录页登录：邮箱、密码，加上验证器应用（Google Authenticator、1Password 等）里的 TOTP 一次性验证码。
@@ -223,6 +239,8 @@ Cognito 会给这个邮箱发送临时密码（3 天内有效）。第一次登�
 | `TABLE_NAME` | DynamoDB 表名（Lambda 必须设置） | 本地开发为 `yijewelry-local` |
 | `SESSION_SECRET` | 本地开发时签名后台会话 cookie 的密钥 | 固定的开发用值 |
 | `DEV_OWNER_EMAIL` | 本地开发时以哪个邮箱登录后台 | `owner@localhost` |
+| `SHIPPING_FEE_YEN` | 可选。运费（含税日元整数），本地和 Lambda 都读取；后台能编辑店铺设置（#16）之前用它 | `800` |
+| `FREE_SHIPPING_THRESHOLD_YEN` | 可选。免运费门槛（含税日元整数），同上 | `20000` |
 
 Lambda 另外需要 `PHOTO_BUCKET`（照片所在的存储桶）、`SITE_URL`、`COGNITO_DOMAIN_URL`、`COGNITO_USER_POOL_ID`、`COGNITO_CLIENT_ID`、`COGNITO_CLIENT_SECRET_ARN`、`SESSION_SECRET_ARN`，都由 CDK 设置（`packages/infra/lib/shop-stack.ts`）。
 
