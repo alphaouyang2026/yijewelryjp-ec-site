@@ -4,7 +4,7 @@ import { SectionHeading } from '../../molecules/SectionHeading';
 import { SortOptions } from '../../molecules/SortOptions';
 import { ProductGrid } from '../../organisms/ProductGrid';
 import { StoreLayout } from '../../templates/StoreLayout';
-import { useCartItemCount } from '../store/storeFrame';
+import { useCartQuantity } from '../store/storeFrame';
 import styles from './ProductListPage.module.css';
 import type { productListLoader } from './productListLoader';
 
@@ -14,7 +14,7 @@ export function ProductListPage() {
   const text = useMessages().productList;
 
   return (
-    <StoreLayout categories={list.categories} cartItemCount={useCartItemCount()}>
+    <StoreLayout categories={list.categories} cartQuantity={useCartQuantity()}>
       <div className={styles.page}>
         <SectionHeading
           level={1}

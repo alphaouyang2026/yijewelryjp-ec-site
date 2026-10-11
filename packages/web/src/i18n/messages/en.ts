@@ -95,6 +95,7 @@ export const en: Messages = {
     exceedsAvailable: (count) =>
       `Not enough in stock: you can buy up to ${count}, including those already in your cart.`,
     cartFull: (max) => `Your cart can hold up to ${max} different items.`,
+    cartTooLarge: 'Your cart has too much in it to add this. Remove something from your cart and try again.',
     addFailed: 'This item could not be added to your cart. Please try again later.',
   },
   cart: {
@@ -103,9 +104,9 @@ export const en: Messages = {
     empty: 'Your cart is empty.',
     continueShopping: 'Browse products',
     lines: 'Items in your cart',
-    item: (name, variant) => (variant ? `${name} (${variant})` : name),
-    remove: (item) => `Remove ${item}`,
-    lineTotal: 'Subtotal',
+    lineName: (name, variant) => (variant ? `${name} (${variant})` : name),
+    remove: (line) => `Remove ${line}`,
+    lineAmount: 'Amount',
     notCounted: 'Not included in the total',
     summary: 'Order summary',
     subtotal: 'Subtotal',
@@ -121,6 +122,7 @@ export const en: Messages = {
       price_changed: (previous) => `The price has changed (was ${previous}).`,
     },
     exceedsAvailable: (count) => `Not enough in stock: you can buy up to ${count}.`,
+    tooLarge: 'Your cart has too much in it to change this quantity. Remove something else and try again.',
     changeFailed: 'This could not be changed. Please try again later.',
   },
   notFound: {

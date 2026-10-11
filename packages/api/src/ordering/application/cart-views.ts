@@ -22,8 +22,8 @@ export type CartLineView = {
   quantity: number;
   /** The most the customer can have of the variant now; 0 when the line cannot be bought. */
   maxQuantity: number;
-  /** Price × quantity; 0 when the line cannot be bought. */
-  lineTotalYen: number;
+  /** The line amount: price × quantity; 0 when the line cannot be bought. */
+  lineAmountYen: number;
   /** Whether the line can be bought, and so counts in the amounts. */
   available: boolean;
   notices: CartNotice[];
@@ -33,14 +33,12 @@ export type CartLineView = {
 export type CartView = {
   /** In the order they were first added. */
   lines: CartLineView[];
-  /** Every line's quantity, those that cannot be bought too: the count the site's header shows. */
-  itemCount: number;
+  /** How many the cart holds, as the site's header shows: every line's quantity, those that cannot be bought too. */
+  quantity: number;
   subtotalYen: number;
   shippingYen: number;
   totalYen: number;
   freeShippingThresholdYen: number;
   /** How much more the subtotal needs for free shipping; 0 once it has it. */
   freeShippingRemainingYen: number;
-  /** The most lines the cart can hold. */
-  maxLines: number;
 };

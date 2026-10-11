@@ -116,5 +116,7 @@ function refusalText(refusal: CartAddRefusal, text: Messages['productPage']): st
       return text.exceedsAvailable(refusal.availableStock);
     case 'cart_full':
       return text.cartFull(refusal.maxLines);
+    case 'cart_too_large':
+      return text.cartTooLarge;
   }
 }

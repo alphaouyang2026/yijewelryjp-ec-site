@@ -14,9 +14,10 @@ import styles from './CartTable.module.css';
 
 /**
  * The cart's lines as the API checked them against the catalog: each with
- * its photo, name (a link to the product), size, unit price, quantity, line
- * total and the API's notices. A line that cannot be bought says it is not in
- * the total, and its quantity cannot be changed. Changes go to `onChangeQuantity`
+ * its photo, name (a link to the product, unless the line is unlisted: there
+ * is nothing there to buy), size, unit price, quantity, line amount and the
+ * API's notices. A line that cannot be bought says it is not in the total,
+ * and its quantity cannot be changed. Changes go to `onChangeQuantity`
  * and `onRemove`; while `busy`, nothing can be changed.
  */
 export function CartTable({
@@ -44,9 +45,13 @@ export function CartTable({
             )}
           </div>
           <div className={styles.details}>
-            <LocalizedLink to={paths.product(line.productSlug)} variant="card">
+            {isUnlisted(line) ? (
               <span className={styles.name}>{line.name}</span>
-            </LocalizedLink>
+            ) : (
+              <LocalizedLink to={paths.product(line.productSlug)} variant="card">
+                <span className={styles.name}>{line.name}</span>
+              </LocalizedLink>
+            )}
             {line.variantLabel !== null && <p className={styles.variant}>{line.variantLabel}</p>}
             <Price amount={formatYen(line.priceYen)} taxNote={text.price.taxIncluded} />
             {line.notices.map((notice) => (
@@ -62,17 +67,17 @@ export function CartTable({
               disabled={busy || !line.available}
               onChange={(quantity) => onChangeQuantity(line, quantity)}
             />
-            <dl className={styles.lineTotal}>
-              <dt className={styles.lineTotalTerm}>{text.cart.lineTotal}</dt>
-              <dd className={line.available ? styles.lineTotalAmount : styles.notCounted}>
-                {line.available ? formatYen(line.lineTotalYen) : text.cart.notCounted}
+            <dl className={styles.lineAmount}>
+              <dt className={styles.lineAmountTerm}>{text.cart.lineAmount}</dt>
+              <dd className={line.available ? styles.lineAmountValue : styles.notCounted}>
+                {line.available ? formatYen(line.lineAmountYen) : text.cart.notCounted}
               </dd>
             </dl>
           </div>
           <div className={styles.remove}>
             <Button
               variant="icon"
-              aria-label={text.cart.remove(text.cart.item(line.name, line.variantLabel))}
+              aria-label={text.cart.remove(text.cart.lineName(line.name, line.variantLabel))}
               disabled={busy}
               onClick={() => onRemove(line)}
             >
@@ -83,6 +88,11 @@ export function CartTable({
       ))}
     </ul>
   );
+}
+
+/** Whether the line's product is no longer sold (or no longer has the line's variant). */
+function isUnlisted(line: CartLine): boolean {
+  return line.notices.some((notice) => notice.code === 'unlisted');
 }
 
 /** A cart notice in words, with its price formatted as the site writes amounts. */

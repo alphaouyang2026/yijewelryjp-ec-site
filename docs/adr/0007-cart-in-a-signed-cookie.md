@@ -21,7 +21,7 @@ cookie 里只有顾客的选择，价格和可售数都不可信：API 每次返
 ## Consequences
 
 - 结账（#12）复用同一个 cookie 和同样的重新校验，付款完成后由感谢页清除它。
-- 浏览器限制一个 cookie 约 4 KB。20 行用常见长度的 slug 和英数字 SKU 约 1.5 KB，用满 80 字符的 slug 和 64 字符的英数字 SKU 约 3.8 KB；cookie 里的非 ASCII 字符要经过 URL 编码（一个日文字符 9 字节），SKU 用日文时 20 行可能超出上限，浏览器会丢弃这个 cookie。所以加入商品时 API 先按实际写出的字节数（`signed-cookies.ts` 的 `byteLength`：cookie 名加 URL 编码后的 JSON 和签名）估算，超过 4000 字节（留出余量）就和已有 20 行时一样拒绝，返回 409 `cart_full`，不改购物车、不写 cookie；这样购物车不会因为 cookie 太大被浏览器悄悄丢掉。修改数量和删除不会让 cookie 变大，不做这个检查。
+- 浏览器限制一个 cookie 约 4 KB。20 行用常见长度的 slug 和英数字 SKU 约 1.5 KB，用满 80 字符的 slug 和 64 字符的英数字 SKU 约 3.8 KB；cookie 里的非 ASCII 字符要经过 URL 编码（一个日文字符 9 字节），SKU 用日文时 20 行可能超出上限，浏览器会丢弃这个 cookie。所以加入商品和修改数量时 API 先按实际写出的字节数（`signed-cookies.ts` 的 `byteLength`：cookie 名加 URL 编码后的 JSON 和签名）估算，超过 4000 字节（留出余量）就拒绝，返回 409 `cart_too_large`，不改购物车、不写 cookie；这样购物车不会因为 cookie 太大被浏览器悄悄丢掉。它和已有 20 行时的 409 `cart_full` 分开，前端才不会在不到 20 行时说"最多 20 种"。修改数量也要检查：新的数量或记下的价格位数多了，cookie 也会变长几个字节。删除只会让 cookie 变短，不做这个检查。
 - 商品不存在的行（商品从不删除，只有重置表后才会发生）不显示，下次修改时从 cookie 中去掉。
 
 ## Considered Options

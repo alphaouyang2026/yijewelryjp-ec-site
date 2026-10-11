@@ -64,7 +64,7 @@
   gap: var(--space-2);
 }
 
-.lineTotal {
+.lineAmount {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -73,18 +73,18 @@
   text-align: right;
 }
 
-.lineTotalTerm {
+.lineAmountTerm {
   color: var(--color-graphite);
   font-size: var(--text-caption);
   line-height: var(--line-height-tight);
 }
 
-.lineTotalAmount,
+.lineAmountValue,
 .notCounted {
   margin: 0;
 }
 
-.lineTotalAmount {
+.lineAmountValue {
   font-family: var(--font-latin);
   font-size: var(--text-price);
   font-weight: var(--font-weight-medium);
@@ -122,7 +122,7 @@
   }
 
   /* Line totals line up, one under another. */
-  .lineTotal {
+  .lineAmount {
     min-width: var(--cart-line-total-width);
   }
 

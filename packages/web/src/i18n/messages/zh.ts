@@ -94,6 +94,7 @@ export const zh: Messages = {
     soldOut: '此商品已售罄。',
     exceedsAvailable: (count) => `库存不足。连同购物车中的数量，最多可购买${count}件。`,
     cartFull: (max) => `购物车最多可放入${max}种商品。`,
+    cartTooLarge: '购物车内容过多，未能加入。请先从购物车中删除一些商品再试。',
     addFailed: '未能加入购物车，请稍后再试。',
   },
   cart: {
@@ -102,9 +103,9 @@ export const zh: Messages = {
     empty: '购物车中还没有商品。',
     continueShopping: '浏览商品',
     lines: '购物车中的商品',
-    item: (name, variant) => (variant ? `${name}（${variant}）` : name),
-    remove: (item) => `删除${item}`,
-    lineTotal: '小计',
+    lineName: (name, variant) => (variant ? `${name}（${variant}）` : name),
+    remove: (line) => `删除${line}`,
+    lineAmount: '金额',
     notCounted: '不计入合计',
     summary: '订单金额',
     subtotal: '小计',
@@ -120,6 +121,7 @@ export const zh: Messages = {
       price_changed: (previous) => `价格已变更（原价 ${previous}）。`,
     },
     exceedsAvailable: (count) => `库存不足，最多可购买${count}件。`,
+    tooLarge: '购物车内容过多，未能修改数量。请先删除其他商品再试。',
     changeFailed: '未能修改，请稍后再试。',
   },
   notFound: {

@@ -11,14 +11,14 @@ import styles from './SiteHeader.module.css';
 import { useCategoryLinks } from './useCategoryLinks';
 
 /**
- * The store's header: locale switcher, logo, the cart (with how many items it
- * holds, once there are any; `cartItemCount` is null when that is not known)
+ * The store's header: locale switcher, logo, the cart (with how many it
+ * holds, once there are any; `cartQuantity` is null when that is not known)
  * and the category navigation.
  */
-export function SiteHeader({ categories, cartItemCount }: { categories: Category[]; cartItemCount: number | null }) {
+export function SiteHeader({ categories, cartQuantity }: { categories: Category[]; cartQuantity: number | null }) {
   const text = useMessages().header;
   const categoryLinks = useCategoryLinks(categories);
-  const count = cartItemCount ?? 0;
+  const count = cartQuantity ?? 0;
 
   return (
     <header className={styles.header}>

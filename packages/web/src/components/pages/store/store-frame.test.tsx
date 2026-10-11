@@ -8,9 +8,9 @@ beforeEach(() => {
   server.use(mockApi.home(emptyHomeData));
 });
 
-test('the header shows how many items the cart holds, and asks for the cart in the page’s locale', async () => {
+test('the header shows how many the cart holds, and asks for the cart in the page’s locale', async () => {
   const requests: URL[] = [];
-  server.use(mockApi.cart({ ...emptyCart, itemCount: 3 }, requests));
+  server.use(mockApi.cart({ ...emptyCart, quantity: 3 }, requests));
 
   renderRoute('/');
 
@@ -22,17 +22,17 @@ test('the header shows how many items the cart holds, and asks for the cart in t
 });
 
 test.each([
-  { path: '/zh/', name: '购物车（1件）', locale: 'zh', itemCount: 1 },
-  { path: '/en/', name: 'Cart (1 item)', locale: 'en', itemCount: 1 },
-  { path: '/en/', name: 'Cart (4 items)', locale: 'en', itemCount: 4 },
-])('$path: the header names the cart with its count as “$name”', async ({ path, name, locale, itemCount }) => {
+  { path: '/zh/', name: '购物车（1件）', locale: 'zh', quantity: 1 },
+  { path: '/en/', name: 'Cart (1 item)', locale: 'en', quantity: 1 },
+  { path: '/en/', name: 'Cart (4 items)', locale: 'en', quantity: 4 },
+])('$path: the header names the cart with its count as “$name”', async ({ path, name, locale, quantity }) => {
   const requests: URL[] = [];
-  server.use(mockApi.cart({ ...emptyCart, itemCount }, requests));
+  server.use(mockApi.cart({ ...emptyCart, quantity }, requests));
 
   renderRoute(path);
 
   const header = await screen.findByRole('banner');
-  expect(within(header).getByRole('link', { name })).toHaveTextContent(String(itemCount));
+  expect(within(header).getByRole('link', { name })).toHaveTextContent(String(quantity));
   expect(requests.map((url) => url.searchParams.get('locale'))).toEqual([locale]);
 });
 
@@ -54,7 +54,7 @@ test('when the cart cannot be read, the store still shows, with the cart link bu
 });
 
 test('pages that show an error keep the cart’s count in the header', async () => {
-  server.use(mockApi.cart({ ...emptyCart, itemCount: 2 }), mockApi.productPages({}));
+  server.use(mockApi.cart({ ...emptyCart, quantity: 2 }), mockApi.productPages({}));
 
   renderRoute('/products/no-such-ring');
 

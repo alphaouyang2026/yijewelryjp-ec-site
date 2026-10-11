@@ -2,7 +2,7 @@ import type { Context } from 'hono';
 import * as z from 'zod';
 import type { SignedCookies } from '../../interface/signed-cookies';
 import { yen } from '../../shared-kernel/money';
-import { EMPTY_CART, MAX_CART_LINES, type Cart } from '../application/manage-cart';
+import { EMPTY_CART, lineKeyString, MAX_CART_LINES, type Cart } from '../application/manage-cart';
 
 /**
  * The customer's cart, which lives only in this cookie (__Host-yi_cart),
@@ -13,8 +13,6 @@ export type CartCookie = {
   read(c: Context): Promise<Cart>;
   /** Sets the cookie to `cart`, kept for 30 days from now; drops it when the cart is empty. */
   write(c: Context, cart: Cart): Promise<void>;
-  /** Tells the browser to drop the cookie: the cart is empty again. */
-  clear(c: Context): void;
   /** Whether a browser would keep the cookie with `cart` in it, which takes about 4 KB at most. */
   fits(cart: Cart): boolean;
 };
@@ -41,7 +39,10 @@ const content = z.object({
       ]),
     )
     .max(MAX_CART_LINES)
-    .refine((lines) => new Set(lines.map(([slug, sku]) => JSON.stringify([slug, sku]))).size === lines.length),
+    .refine((lines) => {
+      const keys = new Set(lines.map(([productSlug, sku]) => lineKeyString({ productSlug, sku })));
+      return keys.size === lines.length;
+    }),
 });
 
 type Content = z.infer<typeof content>;
@@ -70,7 +71,6 @@ export function cartCookie(cookies: SignedCookies): CartCookie {
       if (cart.lines.length === 0) cookie.clear(c);
       else await cookie.write(c, toContent(cart), MAX_AGE_SECONDS);
     },
-    clear: (c) => cookie.clear(c),
     fits: (cart) => cookie.byteLength(toContent(cart)) <= MAX_COOKIE_BYTES,
   };
 }

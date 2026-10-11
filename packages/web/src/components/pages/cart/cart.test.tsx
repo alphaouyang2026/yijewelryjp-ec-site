@@ -16,7 +16,7 @@ const crescentRing: CartLine = {
   priceYen: 9_000,
   quantity: 1,
   maxQuantity: 3,
-  lineTotalYen: 9_000,
+  lineAmountYen: 9_000,
   available: true,
   notices: [],
 };
@@ -25,7 +25,7 @@ const crescentRing: CartLine = {
 const oneRing: Cart = {
   ...emptyCart,
   lines: [crescentRing],
-  itemCount: 1,
+  quantity: 1,
   subtotalYen: 9_000,
   shippingYen: 800,
   totalYen: 9_800,
@@ -35,8 +35,8 @@ const oneRing: Cart = {
 /** The same cart once the ring's quantity is 2. */
 const twoRings: Cart = {
   ...oneRing,
-  lines: [{ ...crescentRing, quantity: 2, lineTotalYen: 18_000 }],
-  itemCount: 2,
+  lines: [{ ...crescentRing, quantity: 2, lineAmountYen: 18_000 }],
+  quantity: 2,
   subtotalYen: 18_000,
   totalYen: 18_800,
   freeShippingRemainingYen: 2_000,
@@ -46,7 +46,7 @@ const twoRings: Cart = {
 const changedCart: Cart = {
   ...emptyCart,
   lines: [
-    { ...crescentRing, priceYen: 24_000, lineTotalYen: 24_000, notices: [{ code: 'price_changed', previousPriceYen: 22_000 }] },
+    { ...crescentRing, priceYen: 24_000, lineAmountYen: 24_000, notices: [{ code: 'price_changed', previousPriceYen: 22_000 }] },
     {
       lineId: 'cGVhcmwtZWFycmluZ3Mvb25l',
       productSlug: 'pearl-earrings',
@@ -57,7 +57,7 @@ const changedCart: Cart = {
       priceYen: 28_000,
       quantity: 1,
       maxQuantity: 0,
-      lineTotalYen: 0,
+      lineAmountYen: 0,
       available: false,
       notices: [{ code: 'sold_out' }],
     },
@@ -71,7 +71,7 @@ const changedCart: Cart = {
       priceYen: 18_000,
       quantity: 1,
       maxQuantity: 0,
-      lineTotalYen: 0,
+      lineAmountYen: 0,
       available: false,
       notices: [{ code: 'unlisted' }],
     },
@@ -85,12 +85,12 @@ const changedCart: Cart = {
       priceYen: 6_000,
       quantity: 1,
       maxQuantity: 1,
-      lineTotalYen: 6_000,
+      lineAmountYen: 6_000,
       available: true,
       notices: [{ code: 'quantity_reduced', requestedQuantity: 3 }],
     },
   ],
-  itemCount: 4,
+  quantity: 4,
   subtotalYen: 30_000,
   shippingYen: 0,
   totalYen: 30_000,
@@ -106,7 +106,7 @@ function cartLines(): HTMLElement[] {
 
 /** The cart line showing the product `name`. */
 function lineOf(name: string): HTMLElement {
-  const line = cartLines().find((item) => within(item).queryByRole('link', { name }));
+  const line = cartLines().find((entry) => within(entry).queryByText(name));
   if (!line) throw new Error(`No cart line for ${name}`);
   return line;
 }
@@ -152,7 +152,7 @@ test('shows each line and the amounts as the API computed them, with what is lef
   expect(within(line).getByText('9号')).toBeInTheDocument();
   expect(within(line).getByText('（税込）').parentElement).toHaveTextContent('¥9,000（税込）');
   expect(within(line).getByRole('group', { name: '数量' })).toHaveTextContent('1');
-  expect(within(line).getByText('小計').nextElementSibling).toHaveTextContent('¥9,000');
+  expect(within(line).getByText('金額').nextElementSibling).toHaveTextContent('¥9,000');
 
   expect(summaryAmount('小計')).toBe('¥9,000');
   expect(summaryAmount('送料')).toBe('¥800');
@@ -174,6 +174,7 @@ test('shows every notice the API gives, and marks the lines that cannot be bough
 
   const soldOut = lineOf('パールピアス');
   expect(soldOut).toHaveTextContent('売り切れのため、ご購入いただけません。');
+  expect(within(soldOut).getByRole('link', { name: 'パールピアス' })).toHaveAttribute('href', '/products/pearl-earrings');
   expect(soldOut).toHaveTextContent('合計に含まれません');
   for (const button of within(within(soldOut).getByRole('group', { name: '数量' })).getAllByRole('button')) {
     expect(button).toBeDisabled();
@@ -182,6 +183,8 @@ test('shows every notice the API gives, and marks the lines that cannot be bough
   const unlisted = lineOf('月のネックレス');
   expect(unlisted).toHaveTextContent('販売を終了したため、ご購入いただけません。');
   expect(unlisted).toHaveTextContent('合計に含まれません');
+  // Its product's page is gone, so its name links nowhere.
+  expect(within(unlisted).queryByRole('link')).not.toBeInTheDocument();
 
   const reduced = lineOf('星のリング');
   expect(reduced).toHaveTextContent('在庫が少なくなったため、数量を3点から変更しました。');
@@ -197,7 +200,7 @@ test('shows every notice the API gives, and marks the lines that cannot be bough
 test('with only lines that cannot be bought, there is nothing to pay and no word of free shipping', async () => {
   const unavailable = changedCart.lines.filter((line) => !line.available);
   server.use(
-    mockApi.cart({ ...emptyCart, lines: unavailable, itemCount: 2, freeShippingRemainingYen: 20_000 }),
+    mockApi.cart({ ...emptyCart, lines: unavailable, quantity: 2, freeShippingRemainingYen: 20_000 }),
   );
 
   renderRoute('/cart');
@@ -228,7 +231,7 @@ describe('changing the cart', () => {
     expect(url.searchParams.get('locale')).toBe('ja');
     expect(await requests[0]?.json()).toEqual({ quantity: 2 });
     expect(screen.getByRole('group', { name: '数量' })).toHaveTextContent('2');
-    expect(within(lineOf('三日月のリング')).getByText('小計').nextElementSibling).toHaveTextContent('¥18,000');
+    expect(within(lineOf('三日月のリング')).getByText('金額').nextElementSibling).toHaveTextContent('¥18,000');
     expect(summaryAmount('小計')).toBe('¥18,000');
     expect(summaryAmount('合計（税込）')).toBe('¥18,800');
     expect(within(screen.getByRole('banner')).getByRole('link', { name: 'カート（2点）' })).toBeInTheDocument();
@@ -264,6 +267,22 @@ describe('changing the cart', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('在庫が足りません。1点までご購入いただけます。');
     expect(await screen.findByRole('button', { name: '数量を増やす' })).toBeDisabled();
+    expect(screen.getByRole('group', { name: '数量' })).toHaveTextContent('1');
+  });
+
+  test('when the cart would be too large for its cookie, says so, not that it is out of stock', async () => {
+    const user = userEvent.setup();
+    server.use(
+      mockApi.cartSetQuantity({ status: 409, body: { error: 'cart_too_large' } }),
+      mockApi.cart(oneRing),
+    );
+    renderRoute('/cart');
+
+    await user.click(await screen.findByRole('button', { name: '数量を増やす' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'カートの内容が多すぎるため、数量を変更できませんでした。ほかの商品を削除してからお試しください。',
+    );
     expect(screen.getByRole('group', { name: '数量' })).toHaveTextContent('1');
   });
 
@@ -311,6 +330,7 @@ test.each([
     cart: '购物车（4件）',
     notices: ['价格已变更（原价 ¥22,000）。', '此商品已售罄，无法购买。', '此商品已下架，无法购买。', '库存减少，数量已由3件调整。'],
     notCounted: '不计入合计',
+    lineAmount: '金额',
     terms: { subtotal: '小计', shipping: '运费', total: '合计（含税）' },
     free: '免运费',
     reached: '本单免运费',
@@ -328,6 +348,7 @@ test.each([
       'Stock is low: the quantity was changed from 3.',
     ],
     notCounted: 'Not included in the total',
+    lineAmount: 'Amount',
     terms: { subtotal: 'Subtotal', shipping: 'Shipping', total: 'Total (tax incl.)' },
     free: 'Free',
     reached: 'Your order ships free',
@@ -343,6 +364,7 @@ test.each([
   const lines = cartLines();
   text.notices.forEach((notice, index) => expect(lines[index]).toHaveTextContent(notice));
   expect(lines[1]).toHaveTextContent(text.notCounted);
+  expect(within(lines[0] as HTMLElement).getByText(text.lineAmount).nextElementSibling).toHaveTextContent('¥24,000');
   expect(within(lines[0] as HTMLElement).getByRole('button', { name: text.remove })).toBeInTheDocument();
   expect(summaryAmount(text.terms.subtotal)).toBe('¥30,000');
   expect(summaryAmount(text.terms.shipping)).toBe(text.free);

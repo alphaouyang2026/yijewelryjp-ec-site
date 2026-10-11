@@ -30,7 +30,7 @@ export type CartAddRefusal = InferResponseType<typeof api.cart.lines.$post, 409>
 /** Why changing a cart line's quantity changed nothing (409). */
 export type CartQuantityRefusal = InferResponseType<(typeof api.cart.lines)[':lineId']['$put'], 409>;
 
-export type AdminSession =InferResponseType<typeof api.admin.session.$get, 200>;
+export type AdminSession = InferResponseType<typeof api.admin.session.$get, 200>;
 
 export type AdminProductList = InferResponseType<typeof api.admin.products.$get, 200>;
 export type AdminProductSummary = AdminProductList['products'][number];

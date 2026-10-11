@@ -9,13 +9,12 @@ type Client = ReturnType<ReturnType<typeof useTestApi>['client']>;
 
 const EMPTY_CART = {
   lines: [],
-  itemCount: 0,
+  quantity: 0,
   subtotalYen: 0,
   shippingYen: 0,
   totalYen: 0,
   freeShippingThresholdYen: TEST_SHIPPING_RATES.freeShippingThreshold.yen,
   freeShippingRemainingYen: TEST_SHIPPING_RATES.freeShippingThreshold.yen,
-  maxLines: 20,
 };
 
 /** The id a cart line has in the cart's routes: its slug and SKU, in base64url. */
@@ -142,18 +141,17 @@ describe('adding to the cart', () => {
           priceYen: 24_000,
           quantity: 2,
           maxQuantity: 3,
-          lineTotalYen: 48_000,
+          lineAmountYen: 48_000,
           available: true,
           notices: [],
         },
       ],
-      itemCount: 2,
+      quantity: 2,
       subtotalYen: 48_000,
       shippingYen: 0,
       totalYen: 48_000,
       freeShippingThresholdYen: 20_000,
       freeShippingRemainingYen: 0,
-      maxLines: 20,
     });
     const cookie = cartSetCookie(res);
     expect(cookie).toBeDefined();
@@ -172,7 +170,7 @@ describe('adding to the cart', () => {
     const cart = await cartOf(client);
 
     expect(cart.lines.map((line) => [line.sku, line.quantity])).toEqual([['moon-ring-9', 1]]);
-    expect(cart.itemCount).toBe(1);
+    expect(cart.quantity).toBe(1);
   });
 
   test('adding a variant already in the cart adds to its line, which keeps its place', async () => {
@@ -187,7 +185,7 @@ describe('adding to the cart', () => {
       ['moon-ring-9', 3],
       ['star-necklace-1', 1],
     ]);
-    expect(cart.itemCount).toBe(4);
+    expect(cart.quantity).toBe(4);
   });
 
   test('more than the available stock is refused, counting what the cart has, and the cart stays as it was', async () => {
@@ -308,30 +306,67 @@ describe('a cart too large for its cookie', () => {
     slug: `long-ring-${String(index + 1).padStart(2, '0')}-${'a'.repeat(67)}`,
     variants: [{ sku: longSku(index + 1) }],
   }));
+  // Short lines, to bring a cart of long ones close to the limit; with stock enough for quantities of many digits.
+  const shortSlugs = Array.from({ length: 20 }, (_, index) => `s-${String(index + 1).padStart(2, '0')}`);
 
   beforeAll(async () => {
-    await api.seed.catalog.products(products);
+    await api.seed.catalog.products([
+      ...products,
+      ...shortSlugs.map((slug) => ({ slug, variants: [{ sku: 's', onHandStock: 1_000_000_000_000 }] })),
+    ]);
   });
 
-  test('adding a line that would make the cookie too large for browsers is refused as a full cart', async () => {
+  const longLines = products.map((product) => ({ slug: product.slug, sku: product.variants[0]!.sku }));
+  const shortLines = shortSlugs.map((slug) => ({ slug, sku: 's' }));
+
+  /** Adds one of each line's variant until the API refuses one; that refusal, if any. */
+  async function addUntilRefused(client: Client, lines: { slug: string; sku: string }[]) {
+    for (const { slug, sku } of lines) {
+      const res = await add(client, slug, sku);
+      if (res.status !== 200) return res;
+      expect(cartCookieValue(res).length + '__Host-yi_cart='.length).toBeLessThanOrEqual(4000);
+    }
+    return undefined;
+  }
+
+  test('adding a line that would make the cookie too large for browsers is refused, as a cart too large', async () => {
     const client = api.client();
-    let refused: Response | undefined;
-    for (const product of products) {
-      const res = await add(client, product.slug, product.variants[0]!.sku);
+
+    const refused = await addUntilRefused(client, longLines);
+
+    assert(refused, 'Expected a line to be refused before the cart had 20');
+    expect(refused.status).toBe(409);
+    expect(await refused.json()).toEqual({ error: 'cart_too_large' });
+    expect(cartSetCookie(refused)).toBeUndefined();
+    const cart = await cartOf(client);
+    expect(cart.lines.length).toBeGreaterThan(0);
+    expect(cart.lines.length).toBeLessThan(20);
+  });
+
+  test('a longer quantity that would make the cookie too large is refused, and the cart stays as it was', async () => {
+    const client = api.client();
+    // Long lines until one does not fit, then short ones until one does not: the cookie
+    // is then less than a short line short of the limit.
+    await addUntilRefused(client, longLines);
+    assert(await addUntilRefused(client, shortLines), 'Expected a short line to be refused before the cart had 20');
+
+    // Each quantity of 100,000,000,000 makes its line 11 bytes longer.
+    let refused: { res: Response; lineId: string } | undefined;
+    for (const line of (await cartOf(client)).lines.filter(({ sku }) => sku === 's')) {
+      const res = await setQuantity(client, line.lineId, 100_000_000_000);
       if (res.status !== 200) {
-        refused = res;
+        refused = { res, lineId: line.lineId };
         break;
       }
       expect(cartCookieValue(res).length + '__Host-yi_cart='.length).toBeLessThanOrEqual(4000);
     }
 
-    assert(refused, 'Expected a line to be refused before the cart had 20');
-    expect(refused.status).toBe(409);
-    expect(await refused.json()).toEqual({ error: 'cart_full', maxLines: 20 });
-    expect(cartSetCookie(refused)).toBeUndefined();
+    assert(refused, 'Expected a quantity to be refused');
+    expect(refused.res.status).toBe(409);
+    expect(await refused.res.json()).toEqual({ error: 'cart_too_large' });
+    expect(cartSetCookie(refused.res)).toBeUndefined();
     const cart = await cartOf(client);
-    expect(cart.lines.length).toBeGreaterThan(0);
-    expect(cart.lines.length).toBeLessThan(20);
+    expect(cart.lines.find((line) => line.lineId === refused.lineId)?.quantity).toBe(1);
   });
 });
 
@@ -353,13 +388,13 @@ describe('changing a line’s quantity', () => {
 
     assert(res.status === 200);
     const cart = await res.json();
-    expect(cart.lines.map((line) => [line.sku, line.quantity, line.lineTotalYen])).toEqual([
+    expect(cart.lines.map((line) => [line.sku, line.quantity, line.lineAmountYen])).toEqual([
       ['moon-ring-1', 3, 15_000],
       ['star-necklace-1', 1, 3_000],
     ]);
-    expect(cart).toMatchObject({ itemCount: 4, subtotalYen: 18_000, shippingYen: 800, totalYen: 18_800 });
+    expect(cart).toMatchObject({ quantity: 4, subtotalYen: 18_000, shippingYen: 800, totalYen: 18_800 });
     expect(cartSetCookie(res)).toContain('; Max-Age=2592000');
-    expect((await cartOf(client)).itemCount).toBe(4);
+    expect((await cartOf(client)).quantity).toBe(4);
   });
 
   test('the line id the cart gives names the line', async () => {
@@ -431,7 +466,7 @@ describe('removing a line', () => {
     assert(res.status === 200);
     const cart = await res.json();
     expect(cart.lines.map((line) => line.sku)).toEqual(['star-necklace-1']);
-    expect(cart.itemCount).toBe(2);
+    expect(cart.quantity).toBe(2);
     expect((await cartOf(client)).lines.map((line) => line.sku)).toEqual(['star-necklace-1']);
   });
 
@@ -539,11 +574,11 @@ describe('checking the cart against the catalog', () => {
       priceYen: 10_000,
       quantity: 2,
       maxQuantity: 0,
-      lineTotalYen: 0,
+      lineAmountYen: 0,
       available: false,
       notices: [{ code: 'sold_out' }],
     });
-    expect(cart).toMatchObject({ itemCount: 3, subtotalYen: 3_000, shippingYen: 800, totalYen: 3_800 });
+    expect(cart).toMatchObject({ quantity: 3, subtotalYen: 3_000, shippingYen: 800, totalYen: 3_800 });
   });
 
   test.each([
@@ -563,12 +598,12 @@ describe('checking the cart against the catalog', () => {
         priceYen: 10_000,
         quantity: 1,
         maxQuantity: 0,
-        lineTotalYen: 0,
+        lineAmountYen: 0,
         available: false,
         notices: [{ code: 'unlisted' }],
       }),
     ]);
-    expect(cart).toMatchObject({ itemCount: 1, subtotalYen: 0, shippingYen: 0, totalYen: 0 });
+    expect(cart).toMatchObject({ quantity: 1, subtotalYen: 0, shippingYen: 0, totalYen: 0 });
   });
 
   test('a line whose variant the product no longer has is marked unlisted, at the price the customer saw', async () => {
@@ -583,7 +618,7 @@ describe('checking the cart against the catalog', () => {
         variantLabel: null,
         priceYen: 10_000,
         available: false,
-        lineTotalYen: 0,
+        lineAmountYen: 0,
         notices: [{ code: 'unlisted' }],
       }),
     ]);
@@ -614,7 +649,7 @@ describe('checking the cart against the catalog', () => {
     expect(cart.lines[0]).toMatchObject({
       priceYen: 12_000,
       quantity: 2,
-      lineTotalYen: 24_000,
+      lineAmountYen: 24_000,
       available: true,
       notices: [{ code: 'price_changed', previousPriceYen: 10_000 }],
     });
@@ -665,11 +700,11 @@ describe('checking the cart against the catalog', () => {
     expect(cart.lines[0]).toMatchObject({
       quantity: 2,
       maxQuantity: 2,
-      lineTotalYen: 20_000,
+      lineAmountYen: 20_000,
       available: true,
       notices: [{ code: 'quantity_reduced', requestedQuantity: 4 }],
     });
-    expect(cart).toMatchObject({ itemCount: 2, subtotalYen: 20_000 });
+    expect(cart).toMatchObject({ quantity: 2, subtotalYen: 20_000 });
 
     // Adding counts what the cart counts, not what the customer wanted.
     const more = await add(client, 'scarce-ring', 'scarce-ring-1');
@@ -687,7 +722,7 @@ describe('checking the cart against the catalog', () => {
       { code: 'quantity_reduced', requestedQuantity: 3 },
       { code: 'price_changed', previousPriceYen: 10_000 },
     ]);
-    expect(cart.lines[0]).toMatchObject({ quantity: 1, lineTotalYen: 8_000 });
+    expect(cart.lines[0]).toMatchObject({ quantity: 1, lineAmountYen: 8_000 });
   });
 
   test('a line whose product no longer exists is left out, and dropped once the cart changes', async () => {
@@ -809,6 +844,6 @@ describe('a cart cookie the API did not issue as one is an empty cart', () => {
     });
 
     expect((await cartIn(res)).lines.map((line) => line.sku)).toEqual(['star-necklace-1']);
-    expect(await viewWith(cartCookieValue(res))).toMatchObject({ itemCount: 1 });
+    expect(await viewWith(cartCookieValue(res))).toMatchObject({ quantity: 1 });
   });
 });

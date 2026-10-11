@@ -6,21 +6,21 @@ import { SiteHeader } from '../organisms/SiteHeader';
 
 /**
  * The storefront's page frame: announcement bar, header, the page's content,
- * footer. `cartItemCount` is how many items the cart holds (null when not known).
+ * footer. `cartQuantity` is how many the cart holds (null when not known).
  */
 export function StoreLayout({
   categories,
-  cartItemCount,
+  cartQuantity,
   children,
 }: {
   categories: Category[];
-  cartItemCount: number | null;
+  cartQuantity: number | null;
   children: ReactNode;
 }) {
   return (
     <>
       <AnnouncementBar />
-      <SiteHeader categories={categories} cartItemCount={cartItemCount} />
+      <SiteHeader categories={categories} cartQuantity={cartQuantity} />
       <main>{children}</main>
       <SiteFooter categories={categories} />
     </>

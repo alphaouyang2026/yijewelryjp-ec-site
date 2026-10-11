@@ -198,12 +198,12 @@ describe('adding to the cart', () => {
         priceYen: 24_000,
         quantity: 3,
         maxQuantity: 3,
-        lineTotalYen: 72_000,
+        lineAmountYen: 72_000,
         available: true,
         notices: [],
       },
     ],
-    itemCount: 3,
+    quantity: 3,
     subtotalYen: 72_000,
     totalYen: 72_000,
     freeShippingRemainingYen: 0,
@@ -242,6 +242,10 @@ describe('adding to the cart', () => {
     },
     { refusal: { error: 'sold_out' } as const, text: 'この商品は売り切れました。' },
     { refusal: { error: 'cart_full', maxLines: 20 } as const, text: 'カートに入れられる商品は20種類までです。' },
+    {
+      refusal: { error: 'cart_too_large' } as const,
+      text: 'カートの内容が多すぎるため、追加できませんでした。カート内の商品を減らしてからお試しください。',
+    },
   ])('when the API refuses ($refusal.error), says why', async ({ refusal, text }) => {
     const user = userEvent.setup();
     server.use(mockApi.cartAdd({ status: 409, body: refusal }));
@@ -251,6 +255,23 @@ describe('adding to the cart', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent(text);
     expect(within(screen.getByRole('banner')).getByRole('link', { name: 'カート' })).toBeInTheDocument();
+  });
+
+  test.each([
+    { path: '/zh/products/crescent-ring', add: '加入购物车', text: '购物车内容过多，未能加入。请先从购物车中删除一些商品再试。' },
+    {
+      path: '/en/products/crescent-ring',
+      add: 'Add to cart',
+      text: 'Your cart has too much in it to add this. Remove something from your cart and try again.',
+    },
+  ])('$path says in its locale when the cart would be too large for its cookie', async ({ path, add, text }) => {
+    const user = userEvent.setup();
+    server.use(mockApi.cartAdd({ status: 409, body: { error: 'cart_too_large' } }));
+    renderRoute(path);
+
+    await user.click(await screen.findByRole('button', { name: add }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(text);
   });
 
   test('when the size has just sold out, the page shows it once the API refuses', async () => {
@@ -302,7 +323,7 @@ describe('adding to the cart', () => {
   test('in English, the size goes into the cart in English and the header counts it', async () => {
     const user = userEvent.setup();
     const requests: Request[] = [];
-    const cartWithOne = { ...cartWithThree, itemCount: 1 };
+    const cartWithOne = { ...cartWithThree, quantity: 1 };
     server.use(
       mockApi.cartAdd({ status: 200, body: cartWithOne }, requests),
       mockApi.cart(() => (requests.length > 0 ? cartWithOne : emptyCart)),

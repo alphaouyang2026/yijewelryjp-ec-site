@@ -56,13 +56,12 @@ const reply = <Changed extends Record<string, unknown>>({ status, body }: AdminC
  */
 export const emptyCart: Cart = {
   lines: [],
-  itemCount: 0,
+  quantity: 0,
   subtotalYen: 0,
   shippingYen: 0,
   totalYen: 0,
   freeShippingThresholdYen: 20_000,
   freeShippingRemainingYen: 20_000,
-  maxLines: 20,
 };
 
 type CartAddNotFound = InferResponseType<typeof api.cart.lines.$post, 404>;

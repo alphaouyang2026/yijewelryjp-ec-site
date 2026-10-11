@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { useLoaderData, useRevalidator } from 'react-router';
-import { api, type CartLine } from '../../../api';
+import { useLoaderData } from 'react-router';
+import { api, type CartLine, type CartQuantityRefusal } from '../../../api';
 import { BRAND_NAME } from '../../../brand';
+import type { Messages } from '../../../i18n/messages/ja';
 import { useLocale } from '../../../i18n/useLocale';
 import { useMessages } from '../../../i18n/useMessages';
 import { paths } from '../../../paths';
@@ -11,12 +12,15 @@ import { CartSummary } from '../../molecules/CartSummary';
 import { SectionHeading } from '../../molecules/SectionHeading';
 import { CartTable } from '../../organisms/CartTable';
 import { StoreLayout } from '../../templates/StoreLayout';
-import { useCartItemCount } from '../store/storeFrame';
+import { useCartQuantity } from '../store/storeFrame';
+import { useCartChange, type CartChangeAnswer } from '../store/useCartChange';
 import styles from './CartPage.module.css';
 import type { cartLoader } from './cartLoader';
 
-/** Why a cart change changed nothing: not that many in stock, or it failed. */
-type ChangeProblem = { problem: 'exceeds_available'; availableStock: number } | { problem: 'failed' };
+/** Why a cart change changed nothing: the API refused it (409), or it failed. */
+type ChangeProblem = { outcome: 'refused'; refusal: CartQuantityRefusal } | { outcome: 'failed' };
+
+const FAILED: ChangeProblem = { outcome: 'failed' };
 
 /**
  * The cart page: the cart's lines and amounts as the API answers with them
@@ -28,23 +32,12 @@ export function CartPage() {
   const { cart, categories } = useLoaderData<typeof cartLoader>();
   const locale = useLocale();
   const text = useMessages().cart;
-  const revalidator = useRevalidator();
-  const [busy, setBusy] = useState(false);
+  const { busy, send } = useCartChange();
   const [problem, setProblem] = useState<ChangeProblem | null>(null);
 
-  /** Sends a change; the API's answer (`answered`) means the data is reloaded, whether or not it changed anything. */
-  async function change(send: () => Promise<{ answered: boolean; problem: ChangeProblem | null }>) {
-    setBusy(true);
+  async function change(request: () => Promise<CartChangeAnswer<ChangeProblem | null>>) {
     setProblem(null);
-    let outcome: Awaited<ReturnType<typeof send>>;
-    try {
-      outcome = await send();
-    } catch {
-      outcome = { answered: false, problem: { problem: 'failed' } };
-    }
-    setProblem(outcome.problem);
-    if (outcome.answered) await revalidator.revalidate();
-    setBusy(false);
+    setProblem(await send(request, FAILED));
   }
 
   const changeQuantity = (line: CartLine, quantity: number) =>
@@ -54,32 +47,25 @@ export function CartPage() {
         query: { locale },
         json: { quantity },
       });
-      if (res.ok) return { answered: true, problem: null };
-      if (res.status === 409) {
-        const { availableStock } = await res.json();
-        return { answered: true, problem: { problem: 'exceeds_available', availableStock } };
-      }
+      if (res.ok) return { answered: true, result: null };
+      if (res.status === 409) return { answered: true, result: { outcome: 'refused', refusal: await res.json() } };
       // 404: the line is no longer in the cart (changed in another tab, say).
-      return { answered: res.status === 404, problem: { problem: 'failed' } };
+      return { answered: res.status === 404, result: FAILED };
     });
 
   const remove = (line: CartLine) =>
     change(async () => {
       const res = await api.cart.lines[':lineId'].$delete({ param: { lineId: line.lineId }, query: { locale } });
-      return res.ok ? { answered: true, problem: null } : { answered: false, problem: { problem: 'failed' } };
+      return res.ok ? { answered: true, result: null } : { answered: false, result: FAILED };
     });
 
   return (
-    <StoreLayout categories={categories} cartItemCount={useCartItemCount()}>
+    <StoreLayout categories={categories} cartQuantity={useCartQuantity()}>
       <title>{`${text.title} | ${BRAND_NAME}`}</title>
       <meta name="robots" content="noindex" />
       <div className={styles.page}>
         <SectionHeading level={1} label={text.label} title={text.title} />
-        {problem && (
-          <Notice tone="problem">
-            {problem.problem === 'exceeds_available' ? text.exceedsAvailable(problem.availableStock) : text.changeFailed}
-          </Notice>
-        )}
+        {problem && <Notice tone="problem">{problemText(problem, text)}</Notice>}
         {cart.lines.length === 0 ? (
           <div className={styles.empty}>
             <p>{text.empty}</p>
@@ -98,4 +84,14 @@ export function CartPage() {
       </div>
     </StoreLayout>
   );
+}
+
+function problemText(problem: ChangeProblem, text: Messages['cart']): string {
+  if (problem.outcome === 'failed') return text.changeFailed;
+  switch (problem.refusal.error) {
+    case 'exceeds_available':
+      return text.exceedsAvailable(problem.refusal.availableStock);
+    case 'cart_too_large':
+      return text.tooLarge;
+  }
 }

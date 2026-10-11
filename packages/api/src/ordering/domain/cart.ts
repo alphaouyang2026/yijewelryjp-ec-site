@@ -42,12 +42,17 @@ export type CartRefusal =
 /** More than can be bought: at most `availableStock`. */
 export type ExceedsAvailable = { readonly outcome: 'exceeds_available'; readonly availableStock: number };
 
-export function isSameLine(a: LineKey, b: LineKey): boolean {
-  return a.productSlug === b.productSlug && a.sku === b.sku;
+/**
+ * The line key as one string, for maps and sets of lines: the same for the
+ * same slug and SKU, and different for any other.
+ */
+export function lineKeyString(key: LineKey): string {
+  return JSON.stringify([key.productSlug, key.sku]);
 }
 
 export function findLine(cart: Cart, key: LineKey): CartLine | undefined {
-  return cart.lines.find((line) => isSameLine(line, key));
+  const wanted = lineKeyString(key);
+  return cart.lines.find((line) => lineKeyString(line) === wanted);
 }
 
 /**
@@ -56,12 +61,6 @@ export function findLine(cart: Cart, key: LineKey): CartLine | undefined {
  */
 function buyable(inCatalog: LineInCatalog): number {
   return inCatalog.listed && inCatalog.variant ? inCatalog.variant.availableStock : 0;
-}
-
-/** How many the cart counts of a line: its quantity, but never more than can be bought now. */
-function countedQuantity(line: CartLine, inCatalog: LineInCatalog): number {
-  const available = buyable(inCatalog);
-  return available > 0 ? Math.min(line.quantity, available) : line.quantity;
 }
 
 /**
@@ -79,11 +78,11 @@ export function addLine(
   quantity: number,
   variant: { readonly price: Money; readonly availableStock: number },
 ): Cart | CartRefusal {
-  const inCatalog: LineInCatalog = { listed: true, variant };
   if (variant.availableStock === 0) return { outcome: 'sold_out' };
   const existing = findLine(cart, key);
   if (!existing && cart.lines.length >= MAX_CART_LINES) return { outcome: 'cart_full', maxLines: MAX_CART_LINES };
-  const total = (existing ? countedQuantity(existing, inCatalog) : 0) + quantity;
+  // What the line already has, as the cart counts it: never more than the available stock.
+  const total = (existing ? Math.min(existing.quantity, variant.availableStock) : 0) + quantity;
   if (total > variant.availableStock) return { outcome: 'exceeds_available', availableStock: variant.availableStock };
 
   const line: CartLine = { productSlug: key.productSlug, sku: key.sku, quantity: total, seenPrice: variant.price };
@@ -111,7 +110,8 @@ export function setLineQuantity(
 
 /** The cart without the line of `key`; the same cart if it has no such line. */
 export function removeLine(cart: Cart, key: LineKey): Cart {
-  return { lines: cart.lines.filter((line) => !isSameLine(line, key)) };
+  const removed = lineKeyString(key);
+  return { lines: cart.lines.filter((line) => lineKeyString(line) !== removed) };
 }
 
 /**
@@ -137,17 +137,17 @@ export type PricedLine = {
   readonly maxQuantity: number;
   /** Whether the line can be bought now, and so counts in the amounts. */
   readonly available: boolean;
-  /** Price × quantity; zero for a line that cannot be bought. */
-  readonly lineTotal: Money;
+  /** The line amount: price × quantity; zero for a line that cannot be bought. */
+  readonly lineAmount: Money;
   readonly notices: readonly CartNotice[];
 };
 
 /** The cart's amounts, all tax-inclusive. */
 export type PricedCart = {
   readonly lines: readonly PricedLine[];
-  /** Every line's quantity, those that cannot be bought too. */
-  readonly itemCount: number;
-  /** The lines that can be bought: price × quantity, summed. */
+  /** How many the cart holds: every line's quantity summed, those that cannot be bought too. */
+  readonly quantity: number;
+  /** The line amounts of the lines that can be bought, summed. */
   readonly subtotal: Money;
   readonly shipping: Money;
   /** Subtotal plus shipping. */
@@ -163,11 +163,11 @@ export function priceCart(
   rates: ShippingRates,
 ): PricedCart {
   const priced = lines.map(({ line, inCatalog }) => priceLine(line, inCatalog));
-  const subtotal = yen(priced.reduce((sum, line) => sum + line.lineTotal.yen, 0));
+  const subtotal = yen(priced.reduce((sum, line) => sum + line.lineAmount.yen, 0));
   const shipping = shippingFor(subtotal, rates);
   return {
     lines: priced,
-    itemCount: priced.reduce((sum, line) => sum + line.quantity, 0),
+    quantity: priced.reduce((sum, line) => sum + line.quantity, 0),
     subtotal,
     shipping,
     total: yen(subtotal.yen + shipping.yen),
@@ -185,7 +185,7 @@ function priceLine(line: CartLine, inCatalog: LineInCatalog): PricedLine {
     quantity: line.quantity,
     maxQuantity: 0,
     available: false,
-    lineTotal: yen(0),
+    lineAmount: yen(0),
     notices: [notice],
   });
   if (!inCatalog.listed || !variant) return unavailable({ code: 'unlisted' });
@@ -201,7 +201,7 @@ function priceLine(line: CartLine, inCatalog: LineInCatalog): PricedLine {
     quantity,
     maxQuantity: variant.availableStock,
     available: true,
-    lineTotal: yen(price.yen * quantity),
+    lineAmount: yen(price.yen * quantity),
     notices,
   };
 }

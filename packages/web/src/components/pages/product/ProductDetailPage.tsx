@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { useLoaderData, useRevalidator } from 'react-router';
+import { useLoaderData } from 'react-router';
 import { api } from '../../../api';
 import { useLocale } from '../../../i18n/useLocale';
 import { PhotoGallery } from '../../organisms/PhotoGallery';
 import { ProductInfo, type AddToCartResult } from '../../organisms/ProductInfo';
 import { StoreLayout } from '../../templates/StoreLayout';
-import { useCartItemCount } from '../store/storeFrame';
+import { useCartQuantity } from '../store/storeFrame';
+import { useCartChange } from '../store/useCartChange';
 import styles from './ProductDetailPage.module.css';
 import type { productLoader } from './productLoader';
 
@@ -18,30 +19,26 @@ import type { productLoader } from './productLoader';
 export function ProductDetailPage() {
   const { categories, product } = useLoaderData<typeof productLoader>();
   const locale = useLocale();
-  const revalidator = useRevalidator();
-  const [adding, setAdding] = useState(false);
+  const { busy: adding, send } = useCartChange();
   const [addResult, setAddResult] = useState<{ slug: string; result: AddToCartResult } | null>(null);
 
   async function addToCart(sku: string, quantity: number) {
     const slug = product.slug;
-    setAdding(true);
     setAddResult(null);
-    let result: AddToCartResult;
-    try {
-      const res = await api.cart.lines.$post({ query: { locale }, json: { productSlug: slug, sku, quantity } });
-      if (res.ok) result = { outcome: 'added' };
-      else if (res.status === 409) result = { outcome: 'refused', refusal: await res.json() };
-      else result = { outcome: 'failed' };
-    } catch {
-      result = { outcome: 'failed' };
-    }
+    const result = await send<AddToCartResult>(
+      async () => {
+        const res = await api.cart.lines.$post({ query: { locale }, json: { productSlug: slug, sku, quantity } });
+        if (res.ok) return { answered: true, result: { outcome: 'added' } };
+        if (res.status === 409) return { answered: true, result: { outcome: 'refused', refusal: await res.json() } };
+        return { answered: false, result: { outcome: 'failed' } };
+      },
+      { outcome: 'failed' },
+    );
     setAddResult({ slug, result });
-    if (result.outcome !== 'failed') await revalidator.revalidate();
-    setAdding(false);
   }
 
   return (
-    <StoreLayout categories={categories} cartItemCount={useCartItemCount()}>
+    <StoreLayout categories={categories} cartQuantity={useCartQuantity()}>
       <div className={styles.page}>
         <div className={styles.photo}>
           <PhotoGallery key={product.slug} photos={product.photos} />

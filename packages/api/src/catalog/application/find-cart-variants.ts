@@ -19,24 +19,24 @@ export type CartVariant = {
 };
 
 /**
- * Query, for the ordering context: each of `items` (a product's slug and a
- * SKU) as the catalog has it now, in the same order; undefined where no
- * product has the slug.
+ * Query, for the ordering context: each of `variants` (named by its product's
+ * slug and its SKU) as the catalog has it now, in the same order; undefined
+ * where no product has the slug.
  */
 export type FindCartVariants = (query: {
   locale: Locale;
-  items: readonly { productSlug: string; sku: string }[];
+  variants: readonly { productSlug: string; sku: string }[];
 }) => Promise<(CartVariant | undefined)[]>;
 
-/** Reads only the products the items name, each once: a cart holds few lines, the catalog many products. */
+/** Reads only the products of the variants, each once: a cart holds few lines, the catalog many products. */
 export function findCartVariants(deps: { products: ProductRepository }): FindCartVariants {
-  return async ({ locale, items }) => {
-    const slugs = [...new Set(items.map((item) => item.productSlug))];
+  return async ({ locale, variants }) => {
+    const slugs = [...new Set(variants.map(({ productSlug }) => productSlug))];
     const products = new Map(
       await Promise.all(slugs.map(async (slug) => [slug, await deps.products.bySlug(slug)] as const)),
     );
 
-    return items.map(({ productSlug, sku }) => {
+    return variants.map(({ productSlug, sku }) => {
       const product = products.get(productSlug);
       if (!product) return undefined;
       const variant = product.variants.find((candidate) => candidate.sku === sku);

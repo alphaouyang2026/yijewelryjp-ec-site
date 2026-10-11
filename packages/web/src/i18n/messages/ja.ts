@@ -102,6 +102,7 @@ export const ja = {
     soldOut: 'この商品は売り切れました。',
     exceedsAvailable: (count: number) => `在庫が足りません。カート内と合わせて${count}点までご購入いただけます。`,
     cartFull: (max: number) => `カートに入れられる商品は${max}種類までです。`,
+    cartTooLarge: 'カートの内容が多すぎるため、追加できませんでした。カート内の商品を減らしてからお試しください。',
     addFailed: 'カートに追加できませんでした。時間をおいて、もう一度お試しください。',
   },
   cart: {
@@ -111,9 +112,10 @@ export const ja = {
     continueShopping: '商品を見る',
     lines: 'カート内の商品',
     /** A line's product and size, as the line's buttons name it. */
-    item: (name: string, variant: string | null) => (variant ? `${name}（${variant}）` : name),
-    remove: (item: string) => `${item}を削除`,
-    lineTotal: '小計',
+    lineName: (name: string, variant: string | null) => (variant ? `${name}（${variant}）` : name),
+    remove: (line: string) => `${line}を削除`,
+    /** A line's price × quantity: not 小計, which is the whole cart's. */
+    lineAmount: '金額',
     notCounted: '合計に含まれません',
     summary: 'ご注文金額',
     subtotal: '小計',
@@ -130,6 +132,7 @@ export const ja = {
       price_changed: (previous: string) => `価格が変更されました（変更前 ${previous}）。`,
     } satisfies Record<CartNotice['code'], string | ((value: never) => string)>,
     exceedsAvailable: (count: number) => `在庫が足りません。${count}点までご購入いただけます。`,
+    tooLarge: 'カートの内容が多すぎるため、数量を変更できませんでした。ほかの商品を削除してからお試しください。',
     changeFailed: '変更できませんでした。時間をおいて、もう一度お試しください。',
   },
   notFound: {
