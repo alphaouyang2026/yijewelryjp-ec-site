@@ -116,8 +116,9 @@ export const mockApi = {
       return params.slug === current.slug ? HttpResponse.json(current) : HttpResponse.json(notFound, { status: 404 });
     }),
 
-  /** Answers the admin's category list requests with `list`. */
-  adminCategories: (list: AdminCategoryList) => http.get(adminCategoriesUrl, () => HttpResponse.json(list)),
+  /** Answers the admin's category list requests with `list` (or what it returns at the time, for a list that changes). */
+  adminCategories: (list: AdminCategoryList | (() => AdminCategoryList)) =>
+    http.get(adminCategoriesUrl, () => HttpResponse.json(typeof list === 'function' ? list() : list)),
 
   /** Answers requests to create a product with `answer`; `requests` collects each request. */
   adminCreateProduct: (answer: AdminChangeReply<AdminProduct>, requests: Request[] = []) =>

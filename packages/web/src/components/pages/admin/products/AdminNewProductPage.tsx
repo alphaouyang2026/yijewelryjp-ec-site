@@ -20,7 +20,8 @@ import type { EditPageState } from './AdminEditProductPage';
  */
 export function AdminNewProductPage() {
   const { categories } = useLoaderData<typeof adminNewProductLoader>();
-  const text = useMessages().admin.productForm;
+  const messages = useMessages().admin;
+  const text = messages.productForm;
   const headers = useCsrfHeaders();
   const navigate = useNavigate();
   const locale = useLocale();
@@ -57,7 +58,7 @@ export function AdminNewProductPage() {
           {text.backToList}
         </LocalizedLink>
       </AdminPageHeading>
-      {problem && <Notice tone="problem">{text[problem]}</Notice>}
+      {problem && <Notice tone="problem">{messages.forms[problem]}</Notice>}
       <ProductForm
         mode="new"
         initial={initial}

@@ -144,6 +144,11 @@ export const zh: Messages = {
       zh: '中文',
       en: 'English',
     },
+    forms: {
+      invalid: '请检查输入内容。',
+      failed: '无法保存。请稍后再试。',
+      reload: '加载最新内容',
+    },
     productForm: {
       newTitle: '添加商品',
       editTitle: '编辑商品',
@@ -174,10 +179,7 @@ export const zh: Messages = {
       save: '保存',
       created: '已创建商品。',
       saved: '已保存。',
-      invalid: '请检查输入内容。',
       stale: '此商品已在其他页面被修改。请先加载最新内容，再重新操作。',
-      reload: '加载最新内容',
-      failed: '无法保存。请稍后再试。',
     },
     productActions: {
       title: '销售状态',

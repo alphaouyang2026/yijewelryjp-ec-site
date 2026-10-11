@@ -144,6 +144,11 @@ export const en: Messages = {
       zh: '中文',
       en: 'English',
     },
+    forms: {
+      invalid: 'Please check the highlighted fields.',
+      failed: 'Could not save. Please try again in a moment.',
+      reload: 'Load the latest version',
+    },
     productForm: {
       newTitle: 'Add a product',
       editTitle: 'Edit product',
@@ -174,10 +179,7 @@ export const en: Messages = {
       save: 'Save',
       created: 'The product was created.',
       saved: 'Saved.',
-      invalid: 'Please check the highlighted fields.',
       stale: 'This product was changed elsewhere. Load the latest version, then try again.',
-      reload: 'Load the latest version',
-      failed: 'Could not save. Please try again in a moment.',
     },
     productActions: {
       title: 'Sales status',

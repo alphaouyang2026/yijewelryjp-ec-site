@@ -152,6 +152,11 @@ export const ja = {
       zh: '中文',
       en: 'English',
     },
+    forms: {
+      invalid: '入力内容を確認してください。',
+      failed: '保存できませんでした。時間をおいて、もう一度お試しください。',
+      reload: '最新の内容を読み込む',
+    },
     productForm: {
       newTitle: '商品を追加',
       editTitle: '商品を編集',
@@ -182,10 +187,7 @@ export const ja = {
       save: '保存する',
       created: '商品を作成しました。',
       saved: '保存しました。',
-      invalid: '入力内容を確認してください。',
       stale: 'この商品はほかの画面で変更されました。最新の内容を読み込んでから、もう一度操作してください。',
-      reload: '最新の内容を読み込む',
-      failed: '保存できませんでした。時間をおいて、もう一度お試しください。',
     },
     productActions: {
       title: '販売状態',

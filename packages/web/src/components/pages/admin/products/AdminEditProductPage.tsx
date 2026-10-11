@@ -86,8 +86,8 @@ export function AdminEditProductPage() {
     created: text.productForm.created,
     saved: text.productForm.saved,
     statusChanged: text.productActions.changed,
-    invalid: text.productForm.invalid,
-    failed: text.productForm.failed,
+    invalid: text.forms.invalid,
+    failed: text.forms.failed,
     stale: text.productForm.stale,
     invalidTransition: text.productActions.invalidTransition,
   };
@@ -104,7 +104,7 @@ export function AdminEditProductPage() {
           <span>{noticeText[notice.text]}</span>
           {(notice.text === 'stale' || notice.text === 'invalidTransition') && (
             <Button variant="secondary" onClick={reload}>
-              {text.productForm.reload}
+              {text.forms.reload}
             </Button>
           )}
         </Notice>
