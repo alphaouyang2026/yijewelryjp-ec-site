@@ -44,9 +44,11 @@ const DEFAULT_NOW = new Date('2026-01-01T00:00:00+09:00');
  * so tests can check the test client itself. POST /session-cookie sets the
  * session cookie to the JSON body, signed with the session cookie's key
  * whatever its shape, as only someone with the signing secret could.
+ * POST /cart-cookie does the same for the cart cookie.
  */
 function testOnlyRoutes(cookies: SignedCookies) {
   const anySessionCookie = cookies.cookie('yi_admin_session', z.unknown());
+  const anyCartCookie = cookies.cookie('yi_cart', z.unknown());
   return new Hono()
     .post('/cookie', (c) => {
       setCookie(c, 'probe', 'set-by-api');
@@ -55,6 +57,10 @@ function testOnlyRoutes(cookies: SignedCookies) {
     .get('/cookie', (c) => c.json({ cookie: c.req.header('cookie') ?? null }, 200))
     .post('/session-cookie', async (c) => {
       await anySessionCookie.write(c, await c.req.json(), 60);
+      return c.body(null, 204);
+    })
+    .post('/cart-cookie', async (c) => {
+      await anyCartCookie.write(c, await c.req.json(), 60);
       return c.body(null, 204);
     });
 }
