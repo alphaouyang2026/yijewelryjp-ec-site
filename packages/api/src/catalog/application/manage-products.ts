@@ -13,6 +13,7 @@ import {
   type ProductContent,
   type ProductRepository,
   type ProductStatus,
+  type RevisionProblem,
   type StatusChange,
 } from '../domain/product';
 import { adminProduct, adminProductSummary, type AdminProduct, type AdminProductSummary } from './admin-catalog-views';
@@ -41,7 +42,7 @@ export type ProductInput = {
  */
 export type RuleViolation = {
   path: string;
-  rule: 'slug_taken' | 'sku_taken' | 'unknown_category' | 'variant_has_reserved_stock';
+  rule: 'slug_taken' | 'sku_taken' | 'unknown_category' | 'variant_has_reserved_stock' | 'below_reserved_stock';
 };
 
 /** How a change the owner asked for ended. */
@@ -124,8 +125,8 @@ export function editProduct(deps: Deps): EditProduct {
         categorySlugs: categories.map((category) => category.slug),
       });
       const revised = reviseProduct(product, productContent(input), deps.clock.now());
-      if (revised === 'variant_has_reserved_stock') violations.push({ path: 'variants', rule: revised });
-      if (violations.length > 0 || typeof revised === 'string') return { outcome: 'invalid', violations };
+      if (Array.isArray(revised)) violations.push(...revised.map(revisionViolation));
+      if (violations.length > 0 || Array.isArray(revised)) return { outcome: 'invalid', violations };
       return revised;
     });
 }
@@ -177,6 +178,13 @@ function contentViolations(
     violations.push({ path: `variants.${position}.sku`, rule: 'sku_taken' });
   }
   return violations;
+}
+
+/** The field of the edit form a revision problem is about. */
+function revisionViolation(problem: RevisionProblem): RuleViolation {
+  return problem.rule === 'below_reserved_stock'
+    ? { path: `variants.${problem.position}.onHandStock`, rule: problem.rule }
+    : { path: 'variants', rule: problem.rule };
 }
 
 function productContent({ categorySlug, variants, ...input }: ProductInput): ProductContent {

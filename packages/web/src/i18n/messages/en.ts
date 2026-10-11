@@ -218,6 +218,7 @@ export const en: Messages = {
       sku_taken: 'Another variant already has this SKU.',
       unknown_category: 'This category does not exist.',
       variant_has_reserved_stock: 'A variant with stock in checkouts cannot be removed.',
+      below_reserved_stock: 'On-hand stock cannot be less than the reserved stock.',
       invalid: 'This is not valid.',
     },
   },

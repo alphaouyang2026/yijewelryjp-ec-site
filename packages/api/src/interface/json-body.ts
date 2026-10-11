@@ -21,6 +21,8 @@ export const FIELD_ERROR_CODES = [
   'unknown_category',
   /** A variant that checkouts in progress hold stock of cannot be removed. */
   'variant_has_reserved_stock',
+  /** On-hand stock below what checkouts in progress hold of the variant. */
+  'below_reserved_stock',
   /** Anything else wrong with the value, such as the wrong type. */
   'invalid',
 ] as const;

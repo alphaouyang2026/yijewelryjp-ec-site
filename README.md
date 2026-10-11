@@ -148,7 +148,7 @@ npm run db:stop    # 停止并删除容器
 | `PUT /api/admin/categories/:slug` | 类别改名 |
 | `PUT /api/admin/category-order?locale=…` | 按给出的顺序排列全部类别 |
 
-- 输入由接口层的 Zod 校验：多语言文本日语必填（中文、英语留空即未填，显示时回退到日语）；价格和在库数是 0 以上的整数；slug 是用单个连字符连接的小写英文字母和数字，创建后不能修改；SKU 在整个目录内唯一；有锁定数的规格不能删除；每个商品至少一个规格。不合格时返回 400 `{ error: 'invalid_input', fields: [{ path: 'variants.0.priceYen', code: 'non_negative_integer' }, …] }`，前端按 `path` 把 `code` 对应的文字显示在字段旁边。
+- 输入由接口层的 Zod 校验：多语言文本日语必填（中文、英语留空即未填，显示时回退到日语）；价格和在库数是 0 以上的整数；slug 是用单个连字符连接的小写英文字母和数字，创建后不能修改；SKU 在整个目录内唯一；有锁定数的规格不能删除，在库数不能少于锁定数；每个商品至少一个规格。不合格时返回 400 `{ error: 'invalid_input', fields: [{ path: 'variants.0.priceYen', code: 'non_negative_integer' }, …] }`，前端按 `path` 把 `code` 对应的文字显示在字段旁边。
 - 每次修改都带上店主看到的 `version`。别人已经改过时返回 409 `stale_version`，什么都不改，后台提示加载最新内容（见 [ADR 0005](docs/adr/0005-catalog-data-layout.md)）。当前状态不允许的上架、下架等返回 409 `invalid_status_transition`；后台只显示 API 给出的 `statusChanges`。
 
 ### 权限检查

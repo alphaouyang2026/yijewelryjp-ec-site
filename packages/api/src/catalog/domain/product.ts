@@ -83,21 +83,34 @@ export function newProduct(slug: string, content: ProductContent, now: Date): Pr
 }
 
 /**
- * The product with the owner's new `content` at `now`. Variants are matched by
- * SKU: one the owner keeps keeps its reserved stock, a new one has none. A
- * variant that checkouts in progress hold stock of cannot be removed, so the
- * revision is refused then. The slug never changes: URLs depend on it.
+ * Why the owner's new content cannot replace a product's: a variant that
+ * checkouts in progress hold stock of is removed, or a variant (by its
+ * position in the content) would have less on-hand stock than they hold.
  */
-export function reviseProduct(
-  product: Product,
-  content: ProductContent,
-  now: Date,
-): Product | 'variant_has_reserved_stock' {
+export type RevisionProblem =
+  | { readonly rule: 'variant_has_reserved_stock' }
+  | { readonly rule: 'below_reserved_stock'; readonly position: number };
+
+/**
+ * The product with the owner's new `content` at `now`. Variants are matched by
+ * SKU: one the owner keeps keeps its reserved stock, a new one has none. Stock
+ * that checkouts in progress hold must stay on hand, so the revision is
+ * refused if it removes a variant they hold stock of, or sets a variant's
+ * on-hand stock below its reserved stock. The slug never changes: URLs depend on it.
+ */
+export function reviseProduct(product: Product, content: ProductContent, now: Date): Product | RevisionProblem[] {
   const reserved = new Map(product.variants.map((variant) => [variant.sku, variant.reservedStock]));
   const kept = new Set(content.variants.map((variant) => variant.sku));
-  if (product.variants.some((variant) => variant.reservedStock > 0 && !kept.has(variant.sku))) {
-    return 'variant_has_reserved_stock';
-  }
+  const variants = content.variants.map((variant) => ({ ...variant, reservedStock: reserved.get(variant.sku) ?? 0 }));
+  const problems: RevisionProblem[] = [
+    ...(product.variants.some((variant) => variant.reservedStock > 0 && !kept.has(variant.sku))
+      ? [{ rule: 'variant_has_reserved_stock' } as const]
+      : []),
+    ...variants.flatMap((variant, position) =>
+      variant.onHandStock < variant.reservedStock ? [{ rule: 'below_reserved_stock', position } as const] : [],
+    ),
+  ];
+  if (problems.length > 0) return problems;
   return {
     ...product,
     name: content.name,
@@ -108,7 +121,7 @@ export function reviseProduct(
     care: content.care,
     categorySlug: content.categorySlug,
     featured: content.featured,
-    variants: content.variants.map((variant) => ({ ...variant, reservedStock: reserved.get(variant.sku) ?? 0 })),
+    variants,
     updatedAt: now,
   };
 }

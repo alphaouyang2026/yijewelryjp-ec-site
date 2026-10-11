@@ -465,6 +465,26 @@ describe('editing a product', () => {
       expect(await unchanged.json()).toMatchObject({ version: 1 });
     });
 
+    test('cannot have its on-hand stock set below its reserved stock, and nothing changes', async () => {
+      const owner = await api.owner();
+
+      const res = await edit(owner, 'held-ring', {
+        ...heldRingContent([
+          { sku: 'held-ring-7', onHandStock: 0 },
+          { sku: 'held-ring-9', onHandStock: 0 },
+        ]),
+        version: 1,
+      });
+
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({
+        error: 'invalid_input',
+        fields: [{ path: 'variants.0.onHandStock', code: 'below_reserved_stock' }],
+      });
+      const unchanged = await owner.client.api.admin.products[':slug'].$get({ param: { slug: 'held-ring' } });
+      expect(await unchanged.json()).toMatchObject({ version: 1, variants: [{ onHandStock: 2 }, { onHandStock: 3 }] });
+    });
+
     test('keeps the reserved stock when the owner sets on-hand stock or removes another variant', async () => {
       const owner = await api.owner();
 

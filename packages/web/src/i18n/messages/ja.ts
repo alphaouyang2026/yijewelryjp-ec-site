@@ -226,6 +226,7 @@ export const ja = {
       sku_taken: 'このSKUはすでにほかの規格で使われています。',
       unknown_category: 'このカテゴリーはありません。',
       variant_has_reserved_stock: '決済中の在庫がある規格は削除できません。',
+      below_reserved_stock: '在庫数は確保中の数より少なくできません。',
       invalid: '入力内容が正しくありません。',
     } satisfies Record<FieldErrorCode, string>,
   },

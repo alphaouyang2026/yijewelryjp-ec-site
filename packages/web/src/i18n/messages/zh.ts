@@ -218,6 +218,7 @@ export const zh: Messages = {
       sku_taken: '此 SKU 已被其他规格使用。',
       unknown_category: '没有这个类别。',
       variant_has_reserved_stock: '有结账中库存的规格不能删除。',
+      below_reserved_stock: '在库数不能少于锁定数。',
       invalid: '输入内容不正确。',
     },
   },
