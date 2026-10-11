@@ -109,6 +109,21 @@ describe('creating and renaming categories', () => {
 
     expect(res.status).toBe(404);
   });
+
+  test.each([
+    { kind: 'with capitals', slug: 'Brooch' },
+    { kind: 'of 2,000 characters', slug: 'x'.repeat(2_000) },
+  ])('a slug that cannot be a category’s ($kind) is not found', async ({ slug }) => {
+    const owner = await api.owner();
+
+    const res = await owner.client.api.admin.categories[':slug'].$put(
+      { param: { slug }, json: { name: { ja: 'ブローチ', zh: '', en: '' }, version: 1 } },
+      { headers: owner.headers },
+    );
+
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ error: 'not_found' });
+  });
 });
 
 describe('ordering categories', () => {
@@ -174,6 +189,37 @@ describe('ordering categories', () => {
 
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual({ error: 'invalid_input', fields: [{ path: 'categories', code: 'invalid' }] });
+  });
+
+  test('an order naming a category there is not is refused as invalid, not as outdated', async () => {
+    const owner = await api.owner();
+    const before = await adminCategories(owner);
+    const current = before.map(({ slug, version }) => ({ slug, version }));
+
+    const unknown = await reorder(owner, [...current, { slug: 'brooch', version: 1 }]);
+    const notASlug = await reorder(owner, [{ slug: 'Not A Slug', version: 1 }, ...current]);
+
+    expect(unknown.status).toBe(400);
+    expect(await unknown.json()).toEqual({
+      error: 'invalid_input',
+      fields: [{ path: 'categories.3.slug', code: 'unknown_category' }],
+    });
+    expect(notASlug.status).toBe(400);
+    expect(await notASlug.json()).toEqual({
+      error: 'invalid_input',
+      fields: [{ path: 'categories.0.slug', code: 'invalid_slug' }],
+    });
+    expect(await adminCategories(owner)).toEqual(before);
+  });
+
+  test('an order of more categories than can be reordered at once is refused', async () => {
+    const owner = await api.owner();
+    const many = Array.from({ length: 101 }, (_, index) => ({ slug: `category-${index}`, version: 1 }));
+
+    const res = await reorder(owner, many);
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: 'invalid_input', fields: [{ path: 'categories', code: 'too_many' }] });
   });
 });
 

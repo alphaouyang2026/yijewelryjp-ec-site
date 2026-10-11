@@ -1,3 +1,4 @@
+import { zValidator } from '@hono/zod-validator';
 import * as z from 'zod';
 import type { FieldErrorCode } from '../../interface/json-body';
 import { MAX_PRICE_YEN } from '../application/manage-products';
@@ -11,6 +12,8 @@ const LONG_TEXT_MAX = 5_000;
 const SLUG_MAX = 80;
 const SKU_MAX = 64;
 const VARIANTS_MAX = 50;
+/** One reorder is one DynamoDB transaction, which writes at most 100 items. */
+const CATEGORIES_MAX = 100;
 
 /** Lowercase letters and digits, joined by single hyphens: the product's or category's part of its URLs. */
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -51,6 +54,14 @@ const optionalLocalizedText = (max: number) =>
     .transform((value) => (value?.ja ? { ja: value.ja, zh: value.zh, en: value.en } : undefined));
 
 export const slug = requiredText(SLUG_MAX).regex(SLUG_PATTERN, code('invalid_slug'));
+
+/**
+ * The `:slug` of a product's or category's path. Anything that cannot be a
+ * slug names nothing there is: 404, as for a slug no product or category has.
+ */
+export const slugParam = zValidator('param', z.object({ slug }), (result, c) => {
+  if (!result.success) return c.json({ error: 'not_found' } as const, 404);
+});
 
 /** Yen or units: a whole number, zero or more. */
 const count = z
@@ -97,6 +108,14 @@ export const categoryName = localizedText(SHORT_TEXT_MAX);
 export const version = z.number({ error: 'invalid' }).int({ error: 'invalid' }).min(0, { error: 'invalid' });
 
 export const versionBody = z.object({ version });
+
+/** The categories' new order: each category once, with the version the owner saw. */
+export const categoryOrderBody = z.object({
+  categories: z
+    .array(z.object({ slug, version }), { error: missingOr('invalid') })
+    .max(CATEGORIES_MAX, code('too_many'))
+    .refine((order) => new Set(order.map((entry) => entry.slug)).size === order.length, { error: 'invalid' }),
+});
 
 /** What the edit form sends: the product's content (not its slug, which never changes) and the version it was made from. */
 export const productEditBody = productInput.extend({ version });

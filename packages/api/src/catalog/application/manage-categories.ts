@@ -1,6 +1,12 @@
 import type { Locale } from '../../shared-kernel/locale';
 import type { LocalizedText } from '../../shared-kernel/localized-text';
-import { namesEveryCategory, newCategory, type CategoryOrderEntry, type CategoryRepository } from '../domain/category';
+import {
+  namesEveryCategory,
+  newCategory,
+  positionsOfUnknownCategories,
+  type CategoryOrderEntry,
+  type CategoryRepository,
+} from '../domain/category';
 import { adminCategory, adminCategoryEntry, type AdminCategory, type AdminCategoryEntry } from './admin-catalog-views';
 import type { RuleViolation } from './manage-products';
 
@@ -51,16 +57,29 @@ export function renameCategory(deps: Deps): RenameCategory {
 export type ReorderCategories = (command: {
   order: readonly CategoryOrderEntry[];
   locale: Locale;
-}) => Promise<{ outcome: 'changed'; categories: AdminCategoryEntry[] } | { outcome: 'stale' }>;
+}) => Promise<
+  | { outcome: 'changed'; categories: AdminCategoryEntry[] }
+  | { outcome: 'invalid'; violations: RuleViolation[] }
+  | { outcome: 'stale' }
+>;
 
 /**
  * Use case: the owner puts the categories in a new order, giving each one's
- * version as the owner saw it. Refused as stale if the owner's list is out of
- * date: a category changed, added, or missing from it.
+ * version as the owner saw it. Refused as invalid if it names a category there
+ * is not, and as stale if the owner's list is out of date: a category
+ * changed, added, or missing from it.
  */
 export function reorderCategories(deps: Deps): ReorderCategories {
   return async ({ order, locale }) => {
-    if (!namesEveryCategory(order, await deps.categories.listInDisplayOrder())) return { outcome: 'stale' };
+    const categories = await deps.categories.listInDisplayOrder();
+    const unknown = positionsOfUnknownCategories(order, categories);
+    if (unknown.length > 0) {
+      return {
+        outcome: 'invalid',
+        violations: unknown.map((position) => ({ path: `categories.${position}.slug`, rule: 'unknown_category' })),
+      };
+    }
+    if (!namesEveryCategory(order, categories)) return { outcome: 'stale' };
     if ((await deps.categories.reorder(order)) === 'stale') return { outcome: 'stale' };
     return { outcome: 'changed', ...(await listAdminCategories(deps)({ locale })) };
   };

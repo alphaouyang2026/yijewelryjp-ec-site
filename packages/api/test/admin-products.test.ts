@@ -602,6 +602,41 @@ describe('featuring a product', () => {
   });
 });
 
+describe('a slug that cannot be a product’s', () => {
+  const slugs = [
+    { kind: 'with capitals', slug: 'Moon-Ring' },
+    { kind: 'of 2,000 characters', slug: 'x'.repeat(2_000) },
+  ];
+
+  test.each(slugs)('($kind) is not found when read or edited', async ({ slug }) => {
+    const owner = await api.owner();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { slug: _, ...content } = newProduct('moon-ring');
+
+    const read = await owner.client.api.admin.products[':slug'].$get({ param: { slug } });
+    const edited = await owner.client.api.admin.products[':slug'].$put(
+      { param: { slug }, json: { ...content, version: 1 } },
+      { headers: owner.headers },
+    );
+
+    expect(read.status).toBe(404);
+    expect(edited.status).toBe(404);
+    expect(await edited.json()).toEqual({ error: 'not_found' });
+  });
+
+  test.each(slugs)('($kind) is not found when its status is changed', async ({ slug }) => {
+    const owner = await api.owner();
+
+    const res = await owner.client.api.admin.products[':slug'].archive.$post(
+      { param: { slug }, json: { version: 1 } },
+      { headers: owner.headers },
+    );
+
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ error: 'not_found' });
+  });
+});
+
 describe('a product stored before products had versions', () => {
   beforeAll(async () => {
     await api.seed.catalog.products([

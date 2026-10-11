@@ -40,6 +40,15 @@ export function newCategory(slug: string, name: LocalizedText): Category {
   return { slug, name, version: 1 };
 }
 
+/** The positions in `order` of slugs no category has. Categories are never deleted, so such an order is not merely outdated. */
+export function positionsOfUnknownCategories(
+  order: readonly CategoryOrderEntry[],
+  categories: readonly Category[],
+): number[] {
+  const slugs = new Set(categories.map((category) => category.slug));
+  return order.flatMap((entry, position) => (slugs.has(entry.slug) ? [] : [position]));
+}
+
 /**
  * Whether `order` names exactly the categories there are, each once. An order
  * made before a category was added (or that leaves one out) does not.

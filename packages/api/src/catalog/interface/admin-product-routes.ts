@@ -13,7 +13,7 @@ import {
   type RuleViolation,
   type StatusChange,
 } from '../application/manage-products';
-import { newProductBody, productEditBody, versionBody } from './admin-catalog-input';
+import { newProductBody, productEditBody, slugParam, versionBody } from './admin-catalog-input';
 
 /** Rule violations as field errors, the same shape as the form's other errors. */
 const ruleErrors = (violations: RuleViolation[]) =>
@@ -58,27 +58,27 @@ export function adminProductRoutes(useCases: {
         if (change.outcome !== 'changed') throw new Error(`Creating a product cannot end ${change.outcome}`);
         return c.json(change.product, 201);
       })
-      .get('/:slug', async (c) => {
-        const product = await useCases.getAdminProduct(c.req.param('slug'));
+      .get('/:slug', slugParam, async (c) => {
+        const product = await useCases.getAdminProduct(c.req.valid('param').slug);
         if (!product) return c.json({ error: 'not_found' } as const, 404);
         return c.json(product, 200);
       })
-      .put('/:slug', jsonBody(productEditBody), async (c) => {
+      .put('/:slug', slugParam, jsonBody(productEditBody), async (c) => {
         const { version, ...input } = c.req.valid('json');
-        return changeResponse(c, await useCases.editProduct({ slug: c.req.param('slug'), input, version }));
+        return changeResponse(c, await useCases.editProduct({ slug: c.req.valid('param').slug, input, version }));
       })
       // One route per status change, so each is its own typed RPC call.
-      .post('/:slug/list', jsonBody(versionBody), (c) =>
-        changeStatus(c, c.req.param('slug'), 'list', c.req.valid('json').version),
+      .post('/:slug/list', slugParam, jsonBody(versionBody), (c) =>
+        changeStatus(c, c.req.valid('param').slug, 'list', c.req.valid('json').version),
       )
-      .post('/:slug/unlist', jsonBody(versionBody), (c) =>
-        changeStatus(c, c.req.param('slug'), 'unlist', c.req.valid('json').version),
+      .post('/:slug/unlist', slugParam, jsonBody(versionBody), (c) =>
+        changeStatus(c, c.req.valid('param').slug, 'unlist', c.req.valid('json').version),
       )
-      .post('/:slug/archive', jsonBody(versionBody), (c) =>
-        changeStatus(c, c.req.param('slug'), 'archive', c.req.valid('json').version),
+      .post('/:slug/archive', slugParam, jsonBody(versionBody), (c) =>
+        changeStatus(c, c.req.valid('param').slug, 'archive', c.req.valid('json').version),
       )
-      .post('/:slug/restore', jsonBody(versionBody), (c) =>
-        changeStatus(c, c.req.param('slug'), 'restore', c.req.valid('json').version),
+      .post('/:slug/restore', slugParam, jsonBody(versionBody), (c) =>
+        changeStatus(c, c.req.valid('param').slug, 'restore', c.req.valid('json').version),
       )
   );
 }
