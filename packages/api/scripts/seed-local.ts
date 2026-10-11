@@ -11,10 +11,10 @@ import { createTable, localDynamoClient, waitForDynamoDbLocal } from '../src/pla
 const tableName = process.env.TABLE_NAME ?? 'yijewelry-local';
 
 const categories: CategoryItem[] = [
-  { pk: 'CATEGORY', sk: 'rings', position: 1, name: { ja: 'リング', zh: '戒指', en: 'Rings' } },
-  { pk: 'CATEGORY', sk: 'necklaces', position: 2, name: { ja: 'ネックレス', zh: '项链', en: 'Necklaces' } },
-  { pk: 'CATEGORY', sk: 'earrings', position: 3, name: { ja: 'ピアス・イヤリング', zh: '耳饰', en: 'Earrings' } },
-  { pk: 'CATEGORY', sk: 'bracelets', position: 4, name: { ja: 'ブレスレット', zh: '手链', en: 'Bracelets' } },
+  { pk: 'CATEGORY', sk: 'rings', position: 1, version: 1, name: { ja: 'リング', zh: '戒指', en: 'Rings' } },
+  { pk: 'CATEGORY', sk: 'necklaces', position: 2, version: 1, name: { ja: 'ネックレス', zh: '项链', en: 'Necklaces' } },
+  { pk: 'CATEGORY', sk: 'earrings', position: 3, version: 1, name: { ja: 'ピアス・イヤリング', zh: '耳饰', en: 'Earrings' } },
+  { pk: 'CATEGORY', sk: 'bracelets', position: 4, version: 1, name: { ja: 'ブレスレット', zh: '手链', en: 'Bracelets' } },
 ];
 
 const ringSizes = (priceYen: number, stock: number[]): VariantItem[] =>

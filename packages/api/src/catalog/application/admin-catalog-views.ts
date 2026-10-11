@@ -84,3 +84,17 @@ export function adminProductSummary(product: Product, locale: Locale, categories
     reservedStock: total((variant) => variant.reservedStock),
   };
 }
+
+/** A category as the admin edits it: its name in every locale entered, and its version. */
+export type AdminCategory = { slug: string; name: LocalizedText; version: number };
+
+/** A category in the admin's list: also named in the owner's locale. */
+export type AdminCategoryEntry = AdminCategory & { displayName: string };
+
+export function adminCategory(category: Category): AdminCategory {
+  return { slug: category.slug, name: category.name, version: category.version };
+}
+
+export function adminCategoryEntry(category: Category, locale: Locale): AdminCategoryEntry {
+  return { slug: category.slug, displayName: textIn(category.name, locale), name: category.name, version: category.version };
+}

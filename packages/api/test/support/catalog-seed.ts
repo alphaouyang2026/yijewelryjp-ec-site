@@ -26,7 +26,9 @@ export function catalogSeed(db: Database) {
     /** Categories, each at its `position` in the owner's order. */
     categories(categories: { slug: string; name: LocalizedText; position: number }[]) {
       return put(
-        categories.map(({ slug, name, position }): CategoryItem => ({ pk: 'CATEGORY', sk: slug, name, position })),
+        categories.map(
+          ({ slug, name, position }): CategoryItem => ({ pk: 'CATEGORY', sk: slug, name, position, version: 1 }),
+        ),
       );
     },
 

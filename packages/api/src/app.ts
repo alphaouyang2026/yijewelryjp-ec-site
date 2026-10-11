@@ -3,6 +3,12 @@ import { getHomeData } from './catalog/application/get-home-data';
 import { getProduct } from './catalog/application/get-product';
 import { listProducts } from './catalog/application/list-products';
 import {
+  createCategory,
+  listAdminCategories,
+  renameCategory,
+  reorderCategories,
+} from './catalog/application/manage-categories';
+import {
   changeProductStatus,
   createProduct,
   editProduct,
@@ -11,6 +17,7 @@ import {
 } from './catalog/application/manage-products';
 import type { CategoryRepository } from './catalog/domain/category';
 import type { ProductRepository } from './catalog/domain/product';
+import { adminCategoryRoutes, categoryOrderRoutes } from './catalog/interface/admin-category-routes';
 import { adminProductRoutes } from './catalog/interface/admin-product-routes';
 import { homeRoutes } from './catalog/interface/home-routes';
 import { productRoutes } from './catalog/interface/product-routes';
@@ -67,7 +74,16 @@ export function createApp(deps: AppDeps) {
         editProduct: editProduct(deps),
         changeProductStatus: changeProductStatus(deps),
       }),
-    );
+    )
+    .route(
+      '/categories',
+      adminCategoryRoutes({
+        listAdminCategories: listAdminCategories(deps),
+        createCategory: createCategory(deps),
+        renameCategory: renameCategory(deps),
+      }),
+    )
+    .route('/category-order', categoryOrderRoutes({ reorderCategories: reorderCategories(deps) }));
 
   return new Hono()
     .basePath('/api')
