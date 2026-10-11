@@ -39,6 +39,7 @@ import { checkHealth } from './operations/application/check-health';
 import type { DatabaseProbe } from './operations/domain/database-probe';
 import { healthRoutes } from './operations/interface/health-routes';
 import type { Clock } from './shared-kernel/clock';
+import type { StoreSettings } from './store/domain/store-settings';
 
 /**
  * The adapters the API runs on. Each entry point (local, Lambda) chooses them,
@@ -54,6 +55,8 @@ export type AppDeps = {
   adminIdentity: AdminIdentity;
   /** Signs the API's cookies, each with its own key. Production derives the keys from a secret in Secrets Manager. */
   signedCookies: SignedCookies;
+  /** The store settings, such as the shipping rates. Until the owner can edit them (#16), configured defaults. */
+  storeSettings: StoreSettings;
 };
 
 /** The API: each module's routes, wired to its use cases. */

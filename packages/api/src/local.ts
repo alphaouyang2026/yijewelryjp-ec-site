@@ -14,6 +14,7 @@ import { LOCAL_PHOTO_BUCKET, LOCAL_PHOTO_CREDENTIALS, localPhotoBucket } from '.
 import type { Database } from './platform/dynamodb';
 import { createTable, localDynamoClient, waitForDynamoDbLocal } from './platform/dynamodb-local';
 import { systemClock } from './shared-kernel/clock';
+import { configuredStoreSettings, shippingRatesFromEnv } from './store/infrastructure/configured-store-settings';
 
 // packages/web/vite.config.ts proxies /api to this port.
 const port = 8787;
@@ -45,6 +46,7 @@ const app = new Hono().use(logger()).route('/', localPhotoBucket()).route(
     // Relative URLs: the browser stays on the Vite dev server, which proxies /api here.
     adminIdentity: devAdminIdentity({ owner: devOwner, returnUrls: adminReturnUrls('') }),
     signedCookies: signedCookies(process.env.SESSION_SECRET ?? 'local-development-session-secret'),
+    storeSettings: configuredStoreSettings(shippingRatesFromEnv(process.env)),
   }),
 );
 

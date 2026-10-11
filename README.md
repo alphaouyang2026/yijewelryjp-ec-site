@@ -239,7 +239,7 @@ Cognito 会给这个邮箱发送临时密码（3 天内有效）。第一次登�
 | `TABLE_NAME` | DynamoDB 表名（Lambda 必须设置） | 本地开发为 `yijewelry-local` |
 | `SESSION_SECRET` | 本地开发时签名后台会话 cookie 的密钥 | 固定的开发用值 |
 | `DEV_OWNER_EMAIL` | 本地开发时以哪个邮箱登录后台 | `owner@localhost` |
-| `SHIPPING_FEE_YEN` | 可选。运费（含税日元整数），本地和 Lambda 都读取；后台能编辑店铺设置（#16）之前用它 | `800` |
+| `SHIPPING_FEE_YEN` | 可选。运费（含税日元整数），本地和 Lambda 都读取；后台能编辑店铺设置（#16）之前用它。不是整数时 API 启动即报错 | `800` |
 | `FREE_SHIPPING_THRESHOLD_YEN` | 可选。免运费门槛（含税日元整数），同上 | `20000` |
 
 Lambda 另外需要 `PHOTO_BUCKET`（照片所在的存储桶）、`SITE_URL`、`COGNITO_DOMAIN_URL`、`COGNITO_USER_POOL_ID`、`COGNITO_CLIENT_ID`、`COGNITO_CLIENT_SECRET_ARN`、`SESSION_SECRET_ARN`，都由 CDK 设置（`packages/infra/lib/shop-stack.ts`）。
