@@ -344,3 +344,188 @@ describe('listing, unlisting, archiving and restoring', () => {
     expect(await res.json()).toEqual({ error: 'not_found' });
   });
 });
+
+describe('editing a product', () => {
+  /** What the edit form sends: the product's content, and the version the owner saw. */
+  type EditBody = Parameters<Owner['client']['api']['admin']['products'][':slug']['$put']>[0]['json'];
+
+  function edit(owner: Owner, slug: string, json: EditBody) {
+    return owner.client.api.admin.products[':slug'].$put({ param: { slug }, json }, { headers: owner.headers });
+  }
+
+  function productContent(slug: string) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { slug: _, ...content } = newProduct(slug);
+    return content;
+  }
+
+  async function createListed(owner: Owner, slug: string) {
+    await create(owner, slug);
+    const res = await owner.client.api.admin.products[':slug'].list.$post(
+      { param: { slug }, json: { version: 1 } },
+      { headers: owner.headers },
+    );
+    assert(res.ok);
+  }
+
+  test('changes to a listed product’s content, variants and stock show in the store', async () => {
+    const owner = await api.owner();
+    await createListed(owner, 'edited-ring');
+    const content = productContent('edited-ring');
+
+    const res = await edit(owner, 'edited-ring', {
+      ...content,
+      name: { ja: '新月のリング', zh: '', en: 'New Moon Ring' },
+      materials: { ja: '', zh: '', en: '' },
+      categorySlug: 'necklace',
+      variants: [
+        { ...content.variants[1]!, priceYen: 26_000, onHandStock: 4 },
+        { sku: 'edited-ring-13', label: { ja: '13号', zh: '', en: '' }, priceYen: 27_000, onHandStock: 1 },
+      ],
+      version: 2,
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({
+      slug: 'edited-ring',
+      status: 'listed',
+      name: { ja: '新月のリング', en: 'New Moon Ring' },
+      materials: null,
+      categorySlug: 'necklace',
+      version: 3,
+      variants: [
+        { sku: 'edited-ring-11', priceYen: 26_000, onHandStock: 4, reservedStock: 0 },
+        { sku: 'edited-ring-13', label: { ja: '13号' }, priceYen: 27_000, onHandStock: 1, reservedStock: 0 },
+      ],
+    });
+    const page = await api.client().api.products[':slug'].$get({ param: { slug: 'edited-ring' }, query: { locale: 'en' } });
+    assert(page.ok);
+    expect((await page.json()).product).toMatchObject({
+      name: 'New Moon Ring',
+      materials: null,
+      category: { slug: 'necklace', name: 'ネックレス' },
+      variants: [
+        { sku: 'edited-ring-11', label: 'Size 11', priceYen: 26_000, stockStatus: 'in_stock' },
+        { sku: 'edited-ring-13', label: '13号', priceYen: 27_000, stockStatus: 'low_stock' },
+      ],
+    });
+  });
+
+  test('the slug cannot be changed: URLs depend on it', async () => {
+    const owner = await api.owner();
+    await create(owner, 'fixed-ring');
+
+    const res = await edit(owner, 'fixed-ring', { ...productContent('fixed-ring'), slug: 'moved-ring', version: 1 } as never);
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ slug: 'fixed-ring', version: 2 });
+    const moved = await owner.client.api.admin.products[':slug'].$get({ param: { slug: 'moved-ring' } });
+    expect(moved.status).toBe(404);
+  });
+
+  describe('a product whose variant checkouts hold stock of', () => {
+    beforeAll(async () => {
+      await api.seed.catalog.products([
+        {
+          slug: 'held-ring',
+          status: 'draft',
+          variants: [
+            { sku: 'held-ring-7', onHandStock: 2, reservedStock: 1 },
+            { sku: 'held-ring-9', onHandStock: 3 },
+          ],
+        },
+      ]);
+    });
+
+    function heldRingContent(variants: { sku: string; onHandStock: number }[]) {
+      return {
+        ...productContent('held-ring'),
+        categorySlug: null,
+        variants: variants.map((variant) => ({ ...variant, label: { ja: variant.sku }, priceYen: 10_000 })),
+      };
+    }
+
+    test('cannot lose that variant, and nothing changes', async () => {
+      const owner = await api.owner();
+
+      const res = await edit(owner, 'held-ring', { ...heldRingContent([{ sku: 'held-ring-9', onHandStock: 3 }]), version: 1 });
+
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({
+        error: 'invalid_input',
+        fields: [{ path: 'variants', code: 'variant_has_reserved_stock' }],
+      });
+      const unchanged = await owner.client.api.admin.products[':slug'].$get({ param: { slug: 'held-ring' } });
+      expect(await unchanged.json()).toMatchObject({ version: 1 });
+    });
+
+    test('keeps the reserved stock when the owner sets on-hand stock or removes another variant', async () => {
+      const owner = await api.owner();
+
+      const res = await edit(owner, 'held-ring', { ...heldRingContent([{ sku: 'held-ring-7', onHandStock: 5 }]), version: 1 });
+
+      assert(res.status === 200);
+      expect((await res.json()).variants).toEqual([
+        { sku: 'held-ring-7', label: { ja: 'held-ring-7' }, priceYen: 10_000, onHandStock: 5, reservedStock: 1 },
+      ]);
+    });
+  });
+
+  test('a variant may take an SKU the product had, but not one another product has', async () => {
+    const owner = await api.owner();
+    await create(owner, 'sku-keeper');
+    await create(owner, 'sku-swapper');
+    const content = productContent('sku-swapper');
+    const [first, second] = content.variants;
+
+    const res = await edit(owner, 'sku-swapper', {
+      ...content,
+      variants: [
+        { ...first!, sku: 'sku-swapper-11' },
+        { ...second!, sku: 'sku-swapper-9' },
+        { ...second!, sku: 'sku-keeper-9' },
+      ],
+      version: 1,
+    });
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: 'invalid_input', fields: [{ path: 'variants.2.sku', code: 'sku_taken' }] });
+  });
+
+  test('the form’s checks apply, such as the Japanese name being required', async () => {
+    const owner = await api.owner();
+    await create(owner, 'unnamed-ring');
+
+    const res = await edit(owner, 'unnamed-ring', {
+      ...productContent('unnamed-ring'),
+      name: { ja: '', zh: '', en: 'Unnamed' },
+      version: 1,
+    });
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: 'invalid_input', fields: [{ path: 'name.ja', code: 'required' }] });
+  });
+
+  test('an edit made from an outdated version is refused, so it cannot overwrite a newer one', async () => {
+    const owner = await api.owner();
+    await create(owner, 'twice-edited-ring');
+    const content = productContent('twice-edited-ring');
+    const first = await edit(owner, 'twice-edited-ring', { ...content, name: { ja: '一回目' }, version: 1 });
+    assert(first.ok);
+
+    const second = await edit(owner, 'twice-edited-ring', { ...content, name: { ja: '二回目' }, version: 1 });
+
+    expect(second.status).toBe(409);
+    expect(await second.json()).toEqual({ error: 'stale_version' });
+    const stored = await owner.client.api.admin.products[':slug'].$get({ param: { slug: 'twice-edited-ring' } });
+    expect(await stored.json()).toMatchObject({ name: { ja: '一回目' }, version: 2 });
+  });
+
+  test('a product that does not exist is not found', async () => {
+    const owner = await api.owner();
+
+    const res = await edit(owner, 'no-such-ring', { ...productContent('no-such-ring'), version: 1 });
+
+    expect(res.status).toBe(404);
+  });
+});

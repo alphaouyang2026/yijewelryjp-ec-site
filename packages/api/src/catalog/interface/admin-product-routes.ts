@@ -3,12 +3,13 @@ import { invalidInput, jsonBody } from '../../interface/json-body';
 import type {
   ChangeProductStatus,
   CreateProduct,
+  EditProduct,
   GetAdminProduct,
   ProductChange,
   RuleViolation,
   StatusChange,
 } from '../application/manage-products';
-import { newProductBody, versionBody } from './admin-catalog-input';
+import { newProductBody, productEditBody, versionBody } from './admin-catalog-input';
 
 /** Rule violations as field errors, the same shape as the form's other errors. */
 const ruleErrors = (violations: RuleViolation[]) =>
@@ -34,6 +35,7 @@ function changeResponse(c: Context, change: ProductChange) {
 export function adminProductRoutes(useCases: {
   createProduct: CreateProduct;
   getAdminProduct: GetAdminProduct;
+  editProduct: EditProduct;
   changeProductStatus: ChangeProductStatus;
 }) {
   const changeStatus = async (c: Context, slug: string, change: StatusChange, version: number) =>
@@ -52,6 +54,10 @@ export function adminProductRoutes(useCases: {
         const product = await useCases.getAdminProduct(c.req.param('slug'));
         if (!product) return c.json({ error: 'not_found' } as const, 404);
         return c.json(product, 200);
+      })
+      .put('/:slug', jsonBody(productEditBody), async (c) => {
+        const { version, ...input } = c.req.valid('json');
+        return changeResponse(c, await useCases.editProduct({ slug: c.req.param('slug'), input, version }));
       })
       // One route per status change, so each is its own typed RPC call.
       .post('/:slug/list', jsonBody(versionBody), (c) =>

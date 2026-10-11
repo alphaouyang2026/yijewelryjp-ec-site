@@ -6,6 +6,7 @@ import {
   changeStatus,
   newProduct,
   positionsWithTakenSku,
+  reviseProduct,
   type Product,
   type ProductContent,
   type ProductRepository,
@@ -82,6 +83,28 @@ export function createProduct(deps: Deps): CreateProduct {
     }
     return { outcome: 'changed', product: adminProduct(product) };
   };
+}
+
+export type EditProduct = (command: { slug: string; input: ProductInput; version: number }) => Promise<ProductChange>;
+
+/**
+ * Use case: the owner changes a product's content and variants, setting each
+ * variant's on-hand stock directly, as of its version `version`. Its slug and
+ * status stay as they are.
+ */
+export function editProduct(deps: Deps): EditProduct {
+  return ({ slug, input, version }) =>
+    changeFrom(deps, { slug, version }, async (product) => {
+      const [products, categories] = await Promise.all([deps.products.all(), deps.categories.listInDisplayOrder()]);
+      const violations = contentViolations(input, {
+        otherProducts: products.filter((other) => other.slug !== slug),
+        categorySlugs: categories.map((category) => category.slug),
+      });
+      const revised = reviseProduct(product, productContent(input), deps.clock.now());
+      if (revised === 'variant_has_reserved_stock') violations.push({ path: 'variants', rule: revised });
+      if (violations.length > 0 || typeof revised === 'string') return { outcome: 'invalid', violations };
+      return revised;
+    });
 }
 
 export type ChangeProductStatus = (command: { slug: string; change: StatusChange; version: number }) => Promise<ProductChange>;

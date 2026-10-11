@@ -90,3 +90,6 @@ export const newProductBody = productInput.extend({ slug });
 export const version = z.number({ error: 'invalid' }).int({ error: 'invalid' }).min(1, { error: 'invalid' });
 
 export const versionBody = z.object({ version });
+
+/** What the edit form sends: the product's content (not its slug, which never changes) and the version it was made from. */
+export const productEditBody = productInput.extend({ version });

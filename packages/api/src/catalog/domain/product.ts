@@ -81,6 +81,37 @@ export function newProduct(slug: string, content: ProductContent, now: Date): Pr
   };
 }
 
+/**
+ * The product with the owner's new `content` at `now`. Variants are matched by
+ * SKU: one the owner keeps keeps its reserved stock, a new one has none. A
+ * variant that checkouts in progress hold stock of cannot be removed, so the
+ * revision is refused then. The slug never changes: URLs depend on it.
+ */
+export function reviseProduct(
+  product: Product,
+  content: ProductContent,
+  now: Date,
+): Product | 'variant_has_reserved_stock' {
+  const reserved = new Map(product.variants.map((variant) => [variant.sku, variant.reservedStock]));
+  const kept = new Set(content.variants.map((variant) => variant.sku));
+  if (product.variants.some((variant) => variant.reservedStock > 0 && !kept.has(variant.sku))) {
+    return 'variant_has_reserved_stock';
+  }
+  return {
+    ...product,
+    name: content.name,
+    description: content.description,
+    materials: content.materials,
+    dimensions: content.dimensions,
+    weight: content.weight,
+    care: content.care,
+    categorySlug: content.categorySlug,
+    featured: content.featured,
+    variants: content.variants.map((variant) => ({ ...variant, reservedStock: reserved.get(variant.sku) ?? 0 })),
+    updatedAt: now,
+  };
+}
+
 /** What the owner can do to a product's status. There is no deleting: a product no longer sold is archived. */
 export type StatusChange = 'list' | 'unlist' | 'archive' | 'restore';
 
