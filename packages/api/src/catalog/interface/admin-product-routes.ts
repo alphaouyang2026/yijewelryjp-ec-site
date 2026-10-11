@@ -1,13 +1,17 @@
 import { Hono, type Context } from 'hono';
+import * as z from 'zod';
 import { invalidInput, jsonBody } from '../../interface/json-body';
-import type {
-  ChangeProductStatus,
-  CreateProduct,
-  EditProduct,
-  GetAdminProduct,
-  ProductChange,
-  RuleViolation,
-  StatusChange,
+import { localeQueryWith } from '../../interface/locale-query';
+import {
+  PRODUCT_STATUSES,
+  type ChangeProductStatus,
+  type CreateProduct,
+  type EditProduct,
+  type GetAdminProduct,
+  type ListAdminProducts,
+  type ProductChange,
+  type RuleViolation,
+  type StatusChange,
 } from '../application/manage-products';
 import { newProductBody, productEditBody, versionBody } from './admin-catalog-input';
 
@@ -31,8 +35,11 @@ function changeResponse(c: Context, change: ProductChange) {
   }
 }
 
+const productListQuery = localeQueryWith({ status: z.enum(PRODUCT_STATUSES).optional() });
+
 /** The admin's products, behind the owner-only guard (mounted in the admin route group). */
 export function adminProductRoutes(useCases: {
+  listAdminProducts: ListAdminProducts;
   createProduct: CreateProduct;
   getAdminProduct: GetAdminProduct;
   editProduct: EditProduct;
@@ -43,6 +50,7 @@ export function adminProductRoutes(useCases: {
 
   return (
     new Hono()
+      .get('/', productListQuery, async (c) => c.json(await useCases.listAdminProducts(c.req.valid('query')), 200))
       .post('/', jsonBody(newProductBody), async (c) => {
         const { slug, ...input } = c.req.valid('json');
         const change = await useCases.createProduct({ slug, input });

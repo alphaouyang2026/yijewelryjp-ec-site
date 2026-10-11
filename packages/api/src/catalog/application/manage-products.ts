@@ -1,8 +1,10 @@
 import type { Clock } from '../../shared-kernel/clock';
+import type { Locale } from '../../shared-kernel/locale';
 import type { LocalizedText } from '../../shared-kernel/localized-text';
 import { yen } from '../../shared-kernel/money';
 import type { CategoryRepository } from '../domain/category';
 import {
+  byLatestChange,
   changeStatus,
   newProduct,
   positionsWithTakenSku,
@@ -10,9 +12,10 @@ import {
   type Product,
   type ProductContent,
   type ProductRepository,
+  type ProductStatus,
   type StatusChange,
 } from '../domain/product';
-import { adminProduct, type AdminProduct } from './admin-catalog-views';
+import { adminProduct, adminProductSummary, type AdminProduct, type AdminProductSummary } from './admin-catalog-views';
 
 type Deps = { products: ProductRepository; categories: CategoryRepository; clock: Clock };
 
@@ -53,6 +56,26 @@ export type ProductChange =
   | { outcome: 'invalid_status_transition' };
 
 export type { StatusChange };
+export { PRODUCT_STATUSES } from '../domain/product';
+
+export type ListAdminProducts = (query: {
+  locale: Locale;
+  /** Only products in this status; every product without it. */
+  status?: ProductStatus;
+}) => Promise<{ products: AdminProductSummary[] }>;
+
+/** Use case: the admin's product list, in every status (or one), the most recently changed first. */
+export function listAdminProducts(deps: Pick<Deps, 'products' | 'categories'>): ListAdminProducts {
+  return async ({ locale, status }) => {
+    const [products, categories] = await Promise.all([deps.products.all(), deps.categories.listInDisplayOrder()]);
+    return {
+      products: products
+        .filter((product) => status === undefined || product.status === status)
+        .sort(byLatestChange)
+        .map((product) => adminProductSummary(product, locale, categories)),
+    };
+  };
+}
 
 export type GetAdminProduct = (slug: string) => Promise<AdminProduct | undefined>;
 

@@ -7,6 +7,7 @@ import {
   createProduct,
   editProduct,
   getAdminProduct,
+  listAdminProducts,
 } from './catalog/application/manage-products';
 import type { CategoryRepository } from './catalog/domain/category';
 import type { ProductRepository } from './catalog/domain/product';
@@ -60,6 +61,7 @@ export function createApp(deps: AppDeps) {
     .route(
       '/products',
       adminProductRoutes({
+        listAdminProducts: listAdminProducts(deps),
         createProduct: createProduct(deps),
         getAdminProduct: getAdminProduct(deps),
         editProduct: editProduct(deps),

@@ -3,7 +3,8 @@ import type { Money } from '../../shared-kernel/money';
 import { stockStatusOf, type StockStatus } from './stock-status';
 
 /** Draft: still being prepared. Listed: on sale. Archived: no longer sold, kept for order history. */
-export type ProductStatus = 'draft' | 'listed' | 'archived';
+export const PRODUCT_STATUSES = ['draft', 'listed', 'archived'] as const;
+export type ProductStatus = (typeof PRODUCT_STATUSES)[number];
 
 /** A buyable version of a product, such as one ring size or chain length. */
 export type Variant = {
@@ -178,6 +179,11 @@ export function priceRange(product: Product): { lowest: Money; varies: boolean }
   const prices = product.variants.map((variant) => variant.price.yen);
   const lowest = Math.min(...prices);
   return { lowest: { yen: lowest }, varies: prices.some((price) => price !== lowest) };
+}
+
+/** The most recently changed by the owner first; products never changed in the admin last, by slug. */
+export function byLatestChange(a: Product, b: Product): number {
+  return (b.updatedAt?.getTime() ?? 0) - (a.updatedAt?.getTime() ?? 0) || a.slug.localeCompare(b.slug);
 }
 
 /** Newest listing first; products listed at the same time by slug, so the order is stable. */
