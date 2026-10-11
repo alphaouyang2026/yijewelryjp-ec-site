@@ -38,6 +38,16 @@ export function AdminEditProductPage() {
   );
   const [errors, setErrors] = useState<FieldErrors>({});
   const [busy, setBusy] = useState(false);
+  // A new version of the product (saved, or loaded after a conflict) starts
+  // the form afresh from it, except the version a status change made: that
+  // changed only the status, so the form keeps what the owner is typing.
+  const [formKey, setFormKey] = useState(product.version);
+  const [shownVersion, setShownVersion] = useState(product.version);
+  const [statusChangedVersion, setStatusChangedVersion] = useState<number | null>(null);
+  if (product.version !== shownVersion) {
+    setShownVersion(product.version);
+    if (product.version !== statusChangedVersion) setFormKey(product.version);
+  }
 
   /** Sends a change, then shows how it ended; once it is stored, reloads the product. */
   async function send(request: () => Promise<Response>, done: 'saved' | 'statusChanged') {
@@ -48,6 +58,7 @@ export function AdminEditProductPage() {
       if (res.ok) {
         setErrors({});
         setNotice({ tone: 'done', text: done });
+        if (done === 'statusChanged') setStatusChangedVersion((body as { version: number }).version);
         await revalidator.revalidate();
       } else if (res.status === 400) {
         setErrors(fieldErrorsOf(body as Parameters<typeof fieldErrorsOf>[0]));
@@ -115,9 +126,8 @@ export function AdminEditProductPage() {
         busy={busy}
         onChange={changeStatus}
       />
-      {/* A new version (saved, or loaded after a conflict) starts the form afresh from it. */}
       <ProductForm
-        key={product.version}
+        key={formKey}
         mode="edit"
         initial={productValues(product)}
         categories={categories}

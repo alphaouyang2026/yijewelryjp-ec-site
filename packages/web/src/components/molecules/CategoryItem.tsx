@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { textValues, type LocalizedValues } from '../../adminForms';
+import { sameText, textValues, type LocalizedValues } from '../../adminForms';
 import type { AdminCategory } from '../../api';
 import type { Locale } from '../../i18n/locales';
 import { useMessages } from '../../i18n/useMessages';
@@ -30,7 +30,16 @@ export function CategoryItem({
   onRename: (name: LocalizedValues) => void;
 }) {
   const text = useMessages().admin.categories;
-  const [name, setName] = useState(() => textValues(category.name));
+  const stored = textValues(category.name);
+  const [name, setName] = useState(stored);
+  // When the stored names change (renamed here or elsewhere), the fields start
+  // afresh from them; a new version that only moved the category keeps what
+  // the owner is typing.
+  const [shown, setShown] = useState(stored);
+  if (!sameText(shown, stored)) {
+    setShown(stored);
+    setName(stored);
+  }
 
   function rename(event: FormEvent) {
     event.preventDefault();

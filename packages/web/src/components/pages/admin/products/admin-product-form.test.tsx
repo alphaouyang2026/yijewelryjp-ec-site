@@ -235,3 +235,31 @@ test('listing a draft asks the API with the version the owner saw, then shows th
   expect(requests[0]?.headers.get('X-CSRF-Token')).toBe(ownerSession.csrfToken);
   expect(await requests[0]?.json()).toEqual({ version: 3 });
 });
+
+test('changing the status keeps the owner’s unsaved edits, which are then saved onto the new version', async () => {
+  let current = moonRing;
+  const listed: AdminProduct = { ...moonRing, status: 'listed', statusChanges: ['unlist', 'archive'], version: 4 };
+  const edits: Request[] = [];
+  server.use(
+    mockApi.adminSession(ownerSession),
+    mockApi.adminCategories(categories),
+    mockApi.adminProduct(() => current),
+    mockApi.adminChangeProductStatus({ status: 200, body: listed }),
+    mockApi.adminEditProduct({ status: 200, body: { ...listed, version: 5 } }, edits),
+  );
+  const user = userEvent.setup();
+  renderRoute('/admin/products/moon-ring/edit');
+  const nameJa = () => within(screen.getByRole('group', { name: '商品名' })).getByRole('textbox', { name: '日本語（必須）' });
+  const panel = await screen.findByRole('region', { name: '販売状態' });
+  await user.clear(nameJa());
+  await user.type(nameJa(), 'まだ保存していない名前');
+
+  current = listed;
+  await user.click(within(panel).getByRole('button', { name: '販売を開始する' }));
+
+  expect(await within(panel).findByText('販売中')).toBeInTheDocument();
+  expect(nameJa()).toHaveValue('まだ保存していない名前');
+  await user.click(screen.getByRole('button', { name: '保存する' }));
+  await waitFor(() => expect(edits).toHaveLength(1));
+  expect(await edits[0]?.json()).toMatchObject({ version: 4, name: { ja: 'まだ保存していない名前' } });
+});

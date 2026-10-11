@@ -24,6 +24,9 @@ export const textValues = (text: Partial<LocalizedValues> | null): LocalizedValu
   en: text?.en ?? '',
 });
 
+/** Whether two texts, as forms edit them, are the same in every locale. */
+export const sameText = (a: LocalizedValues, b: LocalizedValues): boolean => a.ja === b.ja && a.zh === b.zh && a.en === b.en;
+
 export type VariantValues = {
   /** Tells the form's rows apart while the owner adds and removes them. */
   key: string;

@@ -145,3 +145,32 @@ test('the new-category form sends the slug and names, and shows the API’s erro
   expect(requests[0]?.headers.get('X-CSRF-Token')).toBe(ownerSession.csrfToken);
   expect(await requests[0]?.json()).toEqual({ slug: 'rings', name: { ja: '', zh: '戒指', en: '' } });
 });
+
+test('moving a category keeps the unsaved names typed into the others', async () => {
+  let current = categories;
+  const reordered: AdminCategoryList = {
+    categories: [categories.categories[1]!, categories.categories[0]!, categories.categories[2]!].map((category) => ({
+      ...category,
+      version: category.version + 1,
+    })),
+  };
+  server.use(
+    mockApi.adminSession(ownerSession),
+    mockApi.adminCategories(() => current),
+    mockApi.adminReorderCategories({ status: 200, body: reordered }),
+  );
+  const user = userEvent.setup();
+  renderRoute('/admin/categories');
+  const ringsJa = () =>
+    within(screen.getByRole('group', { name: 'リング の名前' })).getByRole('textbox', { name: '日本語（必須）' });
+  await screen.findByRole('list', { name: '並び順' });
+  await user.clear(ringsJa());
+  await user.type(ringsJa(), '指輪');
+
+  current = reordered;
+  await user.click(screen.getByRole('button', { name: 'ネックレス を上へ' }));
+
+  expect(await screen.findByRole('status')).toHaveTextContent('並び順を保存しました。');
+  await waitFor(async () => expect(await listedNames()).toEqual(['ネックレス', 'リング', 'ピアス']));
+  expect(ringsJa()).toHaveValue('指輪');
+});

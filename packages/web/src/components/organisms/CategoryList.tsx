@@ -37,8 +37,7 @@ export function CategoryList({
       ) : (
         <ol aria-labelledby={headingId} className={styles.list}>
           {categories.map((category, index) => (
-            // A new version (renamed or moved) starts the category's name fields afresh from it.
-            <li key={`${category.slug}@${category.version}`}>
+            <li key={category.slug}>
               <CategoryItem
                 category={category}
                 first={index === 0}
