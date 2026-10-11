@@ -1,0 +1,40 @@
+/* Narrow screens scroll the table sideways rather than squeezing it. */
+.scroll {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-body);
+}
+
+.table th,
+.table td {
+  padding: var(--space-1) var(--space-2);
+  border-bottom: var(--line-width) solid var(--color-hairline);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.table th {
+  color: var(--color-graphite);
+  font-size: var(--text-caption);
+  font-weight: normal;
+  letter-spacing: var(--tracking-caption);
+}
+
+.number {
+  font-variant-numeric: tabular-nums;
+}
+
+.name {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-target);
+  color: var(--color-onyx);
+}
+
+.empty {
+  color: var(--color-graphite);
+}

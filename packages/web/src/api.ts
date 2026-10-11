@@ -20,5 +20,20 @@ export type Variant = ProductDetail['variants'][number];
 
 export type AdminSession = InferResponseType<typeof api.admin.session.$get, 200>;
 
+export type AdminProductList = InferResponseType<typeof api.admin.products.$get, 200>;
+export type AdminProductSummary = AdminProductList['products'][number];
+export type ProductStatus = AdminProductSummary['status'];
+export type AdminProduct = InferResponseType<(typeof api.admin.products)[':slug']['$get'], 200>;
+export type NewProduct = InferRequestType<typeof api.admin.products.$post>['json'];
+export type ProductEdit = InferRequestType<(typeof api.admin.products)[':slug']['$put']>['json'];
+export type AdminCategoryList = InferResponseType<typeof api.admin.categories.$get, 200>;
+export type AdminCategory = AdminCategoryList['categories'][number];
+
+/** The answer (400) to an admin form with invalid fields: each field's error code, by its path in the request body. */
+export type InvalidInput = InferResponseType<typeof api.admin.products.$post, 400>;
+export type FieldErrorCode = InvalidInput['fields'][number]['code'];
+/** The answer (409) to a change made from an outdated version of a product or category. */
+export type StaleVersion = InferResponseType<(typeof api.admin.products)[':slug']['$put'], 409>;
+
 /** The header the admin's data-changing requests carry the session's CSRF token in. */
 export const CSRF_HEADER: CsrfHeader = 'X-CSRF-Token';

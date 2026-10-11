@@ -1,7 +1,19 @@
 import type { AdminUnauthorized } from '@yi/api';
 import type { InferResponseType } from 'hono/client';
 import { http, HttpResponse } from 'msw/http';
-import { api, type AdminSession, type HomeData, type ProductList, type ProductPage } from '../api';
+import {
+  api,
+  type AdminCategory,
+  type AdminCategoryList,
+  type AdminProduct,
+  type AdminProductList,
+  type AdminSession,
+  type HomeData,
+  type InvalidInput,
+  type ProductList,
+  type ProductPage,
+  type StaleVersion,
+} from '../api';
 import type { Locale } from '../i18n/locales';
 
 // Mock bodies are typed by the API's own route types, so they cannot drift from the real responses.
@@ -17,6 +29,21 @@ const productsUrl = api.products.$url().href;
 const unauthorized: AdminUnauthorized = { error: 'unauthorized' };
 
 type AdminSignedOut = InferResponseType<(typeof api.admin)['sign-out']['$post'], 200>;
+
+const adminProductsUrl = api.admin.products.$url().href;
+const adminCategoriesUrl = api.admin.categories.$url().href;
+
+/**
+ * How a mocked admin change answers: 200 (or 201 for creating) with the
+ * stored product or category, 400 with field errors, or 409 when made from an
+ * outdated version.
+ */
+export type AdminChangeReply<Changed extends Record<string, unknown>> =
+  | { status: 200 | 201; body: Changed }
+  | { status: 400; body: InvalidInput }
+  | { status: 409; body: StaleVersion | { error: 'invalid_status_transition' } };
+
+const reply = <Changed extends Record<string, unknown>>({ status, body }: AdminChangeReply<Changed>) => HttpResponse.json(body, { status });
 
 /** A signed-in owner's session, as GET /api/admin/session returns it. */
 export const ownerSession: AdminSession = { owner: { email: 'owner@yijewelry.test' }, csrfToken: 'csrf-token-1' };
@@ -68,6 +95,67 @@ export const mockApi = {
 
   /** The next sign-out request fails as if the network were down; later ones go on to other handlers. */
   adminSignOutUnreachable: () => http.post(api.admin['sign-out'].$url().href, () => HttpResponse.error(), { once: true }),
+
+  /**
+   * Answers the admin's product list requests with `list`. `requests`
+   * collects each request's URL, so a test can check the query the page sent.
+   */
+  adminProducts: (list: AdminProductList, requests: URL[] = []) =>
+    http.get(adminProductsUrl, ({ request }) => {
+      requests.push(new URL(request.url));
+      return HttpResponse.json(list);
+    }),
+
+  /** Answers the admin's requests for a product with `product` for its slug; 404 for any other. */
+  adminProduct: (product: AdminProduct) =>
+    http.get(`${adminProductsUrl}/:slug`, ({ params }) =>
+      params.slug === product.slug ? HttpResponse.json(product) : HttpResponse.json(notFound, { status: 404 }),
+    ),
+
+  /** Answers the admin's category list requests with `list`. */
+  adminCategories: (list: AdminCategoryList) => http.get(adminCategoriesUrl, () => HttpResponse.json(list)),
+
+  /** Answers requests to create a product with `answer`; `requests` collects each request. */
+  adminCreateProduct: (answer: AdminChangeReply<AdminProduct>, requests: Request[] = []) =>
+    http.post(adminProductsUrl, ({ request }) => {
+      requests.push(request);
+      return reply(answer);
+    }),
+
+  /** Answers requests to edit a product with `answer`; `requests` collects each request. */
+  adminEditProduct: (answer: AdminChangeReply<AdminProduct>, requests: Request[] = []) =>
+    http.put(`${adminProductsUrl}/:slug`, ({ request }) => {
+      requests.push(request);
+      return reply(answer);
+    }),
+
+  /** Answers requests to list, unlist, archive or restore a product with `answer`; `requests` collects each request. */
+  adminChangeProductStatus: (answer: AdminChangeReply<AdminProduct>, requests: Request[] = []) =>
+    http.post(`${adminProductsUrl}/:slug/:change`, ({ request }) => {
+      requests.push(request);
+      return reply(answer);
+    }),
+
+  /** Answers requests to create a category with `answer`; `requests` collects each request. */
+  adminCreateCategory: (answer: AdminChangeReply<Omit<AdminCategory, 'displayName'>>, requests: Request[] = []) =>
+    http.post(adminCategoriesUrl, ({ request }) => {
+      requests.push(request);
+      return reply(answer);
+    }),
+
+  /** Answers requests to rename a category with `answer`; `requests` collects each request. */
+  adminRenameCategory: (answer: AdminChangeReply<Omit<AdminCategory, 'displayName'>>, requests: Request[] = []) =>
+    http.put(`${adminCategoriesUrl}/:slug`, ({ request }) => {
+      requests.push(request);
+      return reply(answer);
+    }),
+
+  /** Answers requests to reorder the categories with `answer`; `requests` collects each request. */
+  adminReorderCategories: (answer: AdminChangeReply<AdminCategoryList>, requests: Request[] = []) =>
+    http.put(api.admin['category-order'].$url().href, ({ request }) => {
+      requests.push(request);
+      return reply(answer);
+    }),
 
   /** Answers product page requests with the page for the requested slug; 404 for any other product. */
   productPages: (pages: Record<string, ProductPage>) =>

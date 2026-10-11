@@ -1,4 +1,4 @@
-import type { ProductSort } from './api';
+import type { ProductSort, ProductStatus } from './api';
 import { DEFAULT_PRODUCT_SORT } from './productSorts';
 
 declare const pagePathBrand: unique symbol;
@@ -35,6 +35,11 @@ export const paths = {
   terms: page('/terms'),
   admin: page('/admin'),
   adminSection: (section: AdminSection) => page(`/admin/${section}`),
+  /** The admin's product list: every product, or those in `status`. */
+  adminProducts: ({ status }: { status?: ProductStatus } = {}) =>
+    page(status === undefined ? '/admin/products' : `/admin/products?status=${status}`),
+  adminNewProduct: page('/admin/products/new'),
+  adminEditProduct: (slug: string) => page(`/admin/products/${slug}/edit`),
 };
 
 /** The admin's sections, in its navigation's order. */
