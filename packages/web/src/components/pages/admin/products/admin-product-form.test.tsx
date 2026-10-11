@@ -134,7 +134,7 @@ test('editing sends the changed product with the version the owner saw, keeping 
   const first = await screen.findByRole('group', { name: 'Variant 1' });
   expect(screen.queryByRole('textbox', { name: 'Slug (URL)' })).not.toBeInTheDocument();
   expect(screen.getByText('moon-ring')).toBeInTheDocument();
-  expect(within(first).getByText('1 in checkouts')).toBeInTheDocument();
+  expect(within(first).getByText('1 reserved')).toBeInTheDocument();
   const stock = within(first).getByRole('spinbutton', { name: 'On hand' });
   await user.clear(stock);
   await user.type(stock, '7');
