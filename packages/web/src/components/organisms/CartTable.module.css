@@ -1,0 +1,132 @@
+.lines {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: var(--line-width) solid var(--color-hairline);
+}
+
+/*
+ * Phones: the photo on the left; the product and the remove button beside
+ * it, the quantity and line total below them.
+ */
+.line {
+  display: grid;
+  grid-template-columns: var(--cart-photo-width) minmax(0, 1fr) auto;
+  grid-template-areas:
+    'photo details remove'
+    'photo controls controls';
+  column-gap: var(--space-2);
+  row-gap: var(--space-2);
+  align-items: start;
+  padding: var(--space-3) 0;
+  border-bottom: var(--line-width) solid var(--color-hairline);
+}
+
+.photo {
+  grid-area: photo;
+}
+
+.details {
+  grid-area: details;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.name {
+  font-family: var(--font-heading);
+  font-size: var(--text-product-name);
+  line-height: var(--line-height-tight);
+  letter-spacing: var(--tracking-caption);
+}
+
+.variant {
+  color: var(--color-graphite);
+  font-size: var(--text-nav);
+  line-height: var(--line-height-tight);
+}
+
+/* What the API says changed: deep gold rule, onyx text. */
+.notice {
+  padding-left: var(--space-1);
+  border-left: var(--notice-rule-width) solid var(--color-deep-gold);
+  font-size: var(--text-caption);
+  line-height: var(--line-height-tight);
+}
+
+.controls {
+  grid-area: controls;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.lineTotal {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  /* Stays on the right when it wraps below the quantity. */
+  margin: 0 0 0 auto;
+  text-align: right;
+}
+
+.lineTotalTerm {
+  color: var(--color-graphite);
+  font-size: var(--text-caption);
+  line-height: var(--line-height-tight);
+}
+
+.lineTotalAmount,
+.notCounted {
+  margin: 0;
+}
+
+.lineTotalAmount {
+  font-family: var(--font-latin);
+  font-size: var(--text-price);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-tight);
+}
+
+.notCounted {
+  color: var(--color-graphite);
+  font-size: var(--text-caption);
+  line-height: var(--line-height-tight);
+}
+
+.remove {
+  grid-area: remove;
+  /* Lines the icon up with the name's first line rather than the tap target's top. */
+  margin-top: calc(var(--space-1) * -1);
+}
+
+/* A line that cannot be bought: its photo faded, so the eye goes to its notice. */
+.unavailable .photo {
+  opacity: var(--unavailable-opacity);
+}
+
+/* Desktop: one row per line. */
+@media (min-width: 768px) {
+  .line {
+    grid-template-columns: var(--cart-photo-width) minmax(0, 1fr) auto auto;
+    grid-template-areas: 'photo details controls remove';
+    column-gap: var(--space-4);
+  }
+
+  .controls {
+    flex-wrap: nowrap;
+    gap: var(--space-4);
+  }
+
+  /* Line totals line up, one under another. */
+  .lineTotal {
+    min-width: var(--cart-line-total-width);
+  }
+
+  .remove {
+    margin-top: 0;
+  }
+}

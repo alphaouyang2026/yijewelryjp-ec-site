@@ -121,7 +121,7 @@ npm run db:stop    # 停止并删除容器
 ### 两层测试
 
 - **API（`packages/api/test`）：** 像入口一样组装 API，只是换成测试适配器，在进程内通过 Hono 的 request 接口发请求。`useTestApi()` 提供会保存 cookie 的客户端（`api.client()`，类型来自 API 路由）、可以控制的时钟（`api.clock`）、内存版的身份提供方（`api.identity`）和让客户端以店主身份登录的 `api.signIn(client)`、返回已登录店主的客户端和带 CSRF 令牌的请求头的 `api.owner()`、列出全部路由的 `api.routes`（逐一检查后台路由的测试用它），以及直接写入后台做不出来的数据（结账锁定的库存、过去的上架时间等）的 `api.seed`（结果仍然只通过 API 检查）。
-- **前端（`packages/web/src/**/*.test.tsx`）：** 用 React Testing Library 渲染真实的路由表（`renderRoute('/zh/')`），用 user-event 像用户那样操作，用 MSW 在网络层拦截 `/api`。模拟响应用 `test/api-mocks.ts` 里按 API 类型编写的 handler。页面让浏览器离开 React 应用时（如去登录），测试监视 `browser.leaveFor` 看它去哪里（jsdom 不能真的跳转）。照片上传测试用 `mockApi.photoStorage` 模拟 S3；jsdom 的 `FormData`、`File` 不能由 Node 的 fetch 发送，`test/setup.ts` 在发送前把它们换成 Node 的。
+- **前端（`packages/web/src/**/*.test.tsx`）：** 用 React Testing Library 渲染真实的路由表（`renderRoute('/zh/')`），用 user-event 像用户那样操作，用 MSW 在网络层拦截 `/api`。模拟响应用 `test/api-mocks.ts` 里按 API 类型编写的 handler。前台每个页面的外框都会查询购物车（页头的件数），所以 `test/server.ts` 默认回答空购物车（`emptyCart`），重置 handler 后也保留；测试用 `server.use(mockApi.cart(...))` 换成别的购物车，修改购物车后要刷新的，传入返回当时购物车的函数。页面让浏览器离开 React 应用时（如去登录），测试监视 `browser.leaveFor` 看它去哪里（jsdom 不能真的跳转）。照片上传测试用 `mockApi.photoStorage` 模拟 S3；jsdom 的 `FormData`、`File` 不能由 Node 的 fetch 发送，`test/setup.ts` 在发送前把它们换成 Node 的。
 
 不给单个组件、领域对象或用例写单元测试：业务规则通过 API 的 HTTP 接口测试，界面行为通过页面测试。
 
@@ -140,6 +140,7 @@ npm run db:stop    # 停止并删除容器
 - 拒绝时什么都不改，也不写 cookie：商品不存在、未上架或没有这个规格时 404 `not_found`；售罄时 409 `sold_out`；数量（加入时连同购物车里已有的）超过可售数时 409 `exceeds_available`（带 `availableStock`）；已有 20 行还要加新的一行、或加入后签名 cookie 会超过 4000 字节（浏览器约 4 KB 的上限，SKU 用日文时 20 行以内也可能超出）时 409 `cart_full`；修改不在购物车里的行时 404 `not_in_cart`；请求体不是 JSON 或不合格时 400 `invalid_input`。
 - 被篡改或格式不对的 cookie 当作空购物车。购物车接口不要求 CSRF 令牌（理由见 ADR 0007）。
 - 运费和免运费门槛暂时来自配置（见"环境变量"），后台的店铺设置（#16）完成后由店主编辑。
+- 前台：在商品详情页选规格和数量加入购物车；购物车页（`/cart`、`/zh/cart`、`/en/cart`，noindex）可以修改数量、删除行，只显示 API 返回的金额和提示。页头的件数由包住所有前台页面的外框路由（`components/pages/store/`）读取 `GET /api/cart` 得到，读取失败时只是不显示件数；修改购物车成功后页面重新加载数据，件数随之更新。
 
 ## 后台登录
 

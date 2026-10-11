@@ -1,8 +1,8 @@
 import { screen, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
-import { beforeEach, expect, test } from 'vitest';
-import type { ProductPage } from '../../../api';
-import { emptyHomeData, mockApi } from '../../../test/api-mocks';
+import { beforeEach, describe, expect, test } from 'vitest';
+import type { Cart, ProductPage } from '../../../api';
+import { emptyCart, emptyHomeData, mockApi } from '../../../test/api-mocks';
 import { renderRoute } from '../../../test/render';
 import { server } from '../../../test/server';
 
@@ -181,4 +181,141 @@ test('a URL the site does not have shows the not-found page, in the URL’s loca
 
   expect(await screen.findByRole('heading', { level: 1, name: 'Page not found' })).toBeInTheDocument();
   expect(screen.getByRole('link', { name: 'Back to the home page' })).toHaveAttribute('href', '/en/');
+});
+
+describe('adding to the cart', () => {
+  /** The cart after adding three of size 9 to an empty cart, as the API answers. */
+  const cartWithThree: Cart = {
+    ...emptyCart,
+    lines: [
+      {
+        lineId: 'Y3Jlc2NlbnQtcmluZy85',
+        productSlug: 'crescent-ring',
+        sku: '9',
+        name: '三日月のリング',
+        variantLabel: '9号',
+        photo: null,
+        priceYen: 24_000,
+        quantity: 3,
+        maxQuantity: 3,
+        lineTotalYen: 72_000,
+        available: true,
+        notices: [],
+      },
+    ],
+    itemCount: 3,
+    subtotalYen: 72_000,
+    totalYen: 72_000,
+    freeShippingRemainingYen: 0,
+  };
+
+  test('adds the chosen size and quantity, says so with a link to the cart, and the header counts them', async () => {
+    const user = userEvent.setup();
+    const requests: Request[] = [];
+    server.use(
+      mockApi.cartAdd({ status: 200, body: cartWithThree }, requests),
+      mockApi.cart(() => (requests.length > 0 ? cartWithThree : emptyCart)),
+    );
+    renderRoute('/products/crescent-ring');
+
+    await user.click(await screen.findByRole('radio', { name: '9号' }));
+    const quantity = screen.getByRole('group', { name: '数量' });
+    expect(within(quantity).getByRole('button', { name: '数量を減らす' })).toBeDisabled();
+    await user.click(within(quantity).getByRole('button', { name: '数量を増やす' }));
+    await user.click(within(quantity).getByRole('button', { name: '数量を増やす' }));
+    expect(quantity).toHaveTextContent('3');
+    await user.click(screen.getByRole('button', { name: 'カートに入れる' }));
+
+    const done = await screen.findByRole('status');
+    expect(done).toHaveTextContent('カートに追加しました。');
+    expect(within(done).getByRole('link', { name: 'カートを見る' })).toHaveAttribute('href', '/cart');
+    expect(requests).toHaveLength(1);
+    expect(new URL(requests[0]?.url ?? '').searchParams.get('locale')).toBe('ja');
+    expect(await requests[0]?.json()).toEqual({ productSlug: 'crescent-ring', sku: '9', quantity: 3 });
+    expect(await within(screen.getByRole('banner')).findByRole('link', { name: 'カート（3点）' })).toBeInTheDocument();
+  });
+
+  test.each([
+    {
+      refusal: { error: 'exceeds_available', availableStock: 2 } as const,
+      text: '在庫が足りません。カート内と合わせて2点までご購入いただけます。',
+    },
+    { refusal: { error: 'sold_out' } as const, text: 'この商品は売り切れました。' },
+    { refusal: { error: 'cart_full', maxLines: 20 } as const, text: 'カートに入れられる商品は20種類までです。' },
+  ])('when the API refuses ($refusal.error), says why', async ({ refusal, text }) => {
+    const user = userEvent.setup();
+    server.use(mockApi.cartAdd({ status: 409, body: refusal }));
+    renderRoute('/products/crescent-ring');
+
+    await user.click(await screen.findByRole('button', { name: 'カートに入れる' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(text);
+    expect(within(screen.getByRole('banner')).getByRole('link', { name: 'カート' })).toBeInTheDocument();
+  });
+
+  test('when the size has just sold out, the page shows it once the API refuses', async () => {
+    const user = userEvent.setup();
+    const requests: Request[] = [];
+    const soldOut: ProductPage = {
+      ...crescentRing,
+      product: {
+        ...crescentRing.product,
+        stockStatus: 'sold_out',
+        variants: crescentRing.product.variants.map((variant) => ({ ...variant, stockStatus: 'sold_out' as const })),
+      },
+    };
+    server.use(
+      mockApi.cartAdd({ status: 409, body: { error: 'sold_out' } }, requests),
+      mockApi.productPages(() => ({ 'crescent-ring': requests.length > 0 ? soldOut : crescentRing })),
+    );
+    renderRoute('/products/crescent-ring');
+
+    await user.click(await screen.findByRole('button', { name: 'カートに入れる' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('この商品は売り切れました。');
+    expect(await screen.findByText('SOLD OUT')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'カートに入れる' })).toBeDisabled();
+  });
+
+  test('when the request fails, or the API no longer knows the product, says it could not be added', async () => {
+    const user = userEvent.setup();
+    server.use(mockApi.cartAdd({ status: 404, body: { error: 'not_found' } }), mockApi.cartAddUnreachable());
+    renderRoute('/products/crescent-ring');
+
+    const add = await screen.findByRole('button', { name: 'カートに入れる' });
+    const failed = 'カートに追加できませんでした。時間をおいて、もう一度お試しください。';
+    await user.click(add);
+    expect(await screen.findByRole('alert')).toHaveTextContent(failed);
+
+    await user.click(add);
+    expect(await screen.findByRole('alert')).toHaveTextContent(failed);
+  });
+
+  test('a product whose every size is sold out cannot be added', async () => {
+    renderRoute('/products/pearl-earrings');
+
+    expect(await screen.findByRole('button', { name: 'カートに入れる' })).toBeDisabled();
+    const quantity = screen.getByRole('group', { name: '数量' });
+    for (const button of within(quantity).getAllByRole('button')) expect(button).toBeDisabled();
+  });
+
+  test('in English, the size goes into the cart in English and the header counts it', async () => {
+    const user = userEvent.setup();
+    const requests: Request[] = [];
+    const cartWithOne = { ...cartWithThree, itemCount: 1 };
+    server.use(
+      mockApi.cartAdd({ status: 200, body: cartWithOne }, requests),
+      mockApi.cart(() => (requests.length > 0 ? cartWithOne : emptyCart)),
+    );
+    renderRoute('/en/products/crescent-ring');
+
+    await user.click(await screen.findByRole('button', { name: 'Add to cart' }));
+
+    const done = await screen.findByRole('status');
+    expect(done).toHaveTextContent('Added to your cart.');
+    expect(within(done).getByRole('link', { name: 'View cart' })).toHaveAttribute('href', '/en/cart');
+    expect(new URL(requests[0]?.url ?? '').searchParams.get('locale')).toBe('en');
+    expect(await requests[0]?.json()).toEqual({ productSlug: 'crescent-ring', sku: '7', quantity: 1 });
+    expect(await within(screen.getByRole('banner')).findByRole('link', { name: 'Cart (1 item)' })).toBeInTheDocument();
+  });
 });

@@ -1,4 +1,4 @@
-import type { FieldErrorCode } from '../../api';
+import type { CartNotice, FieldErrorCode } from '../../api';
 
 /**
  * The interface text in Japanese, the default locale. Its shape is `Messages`:
@@ -15,6 +15,7 @@ export const ja = {
   header: {
     categoriesNav: 'カテゴリー',
     cart: 'カート',
+    cartWithCount: (count: number) => `カート（${count}点）`,
   },
   localeSwitcher: {
     nav: '言語',
@@ -87,9 +88,49 @@ export const ja = {
     },
     empty: 'この条件に合う商品はまだありません。',
   },
+  quantityStepper: {
+    quantity: '数量',
+    decrease: '数量を減らす',
+    increase: '数量を増やす',
+  },
   productPage: {
     photos: '商品写真',
     sizeChoice: 'サイズを選択',
+    addToCart: 'カートに入れる',
+    added: 'カートに追加しました。',
+    viewCart: 'カートを見る',
+    soldOut: 'この商品は売り切れました。',
+    exceedsAvailable: (count: number) => `在庫が足りません。カート内と合わせて${count}点までご購入いただけます。`,
+    cartFull: (max: number) => `カートに入れられる商品は${max}種類までです。`,
+    addFailed: 'カートに追加できませんでした。時間をおいて、もう一度お試しください。',
+  },
+  cart: {
+    label: 'Cart',
+    title: 'ショッピングカート',
+    empty: 'カートに商品はありません。',
+    continueShopping: '商品を見る',
+    lines: 'カート内の商品',
+    /** A line's product and size, as the line's buttons name it. */
+    item: (name: string, variant: string | null) => (variant ? `${name}（${variant}）` : name),
+    remove: (item: string) => `${item}を削除`,
+    lineTotal: '小計',
+    notCounted: '合計に含まれません',
+    summary: 'ご注文金額',
+    subtotal: '小計',
+    shipping: '送料',
+    shippingFree: '無料',
+    total: '合計（税込）',
+    freeShippingRemaining: (amount: string) => `あと${amount}のご購入で送料無料`,
+    freeShippingReached: '送料無料でお届けします',
+    /** Each cart notice's text, by its code: a new code fails type checking until it has one. */
+    notices: {
+      unlisted: '販売を終了したため、ご購入いただけません。',
+      sold_out: '売り切れのため、ご購入いただけません。',
+      quantity_reduced: (requested: number) => `在庫が少なくなったため、数量を${requested}点から変更しました。`,
+      price_changed: (previous: string) => `価格が変更されました（変更前 ${previous}）。`,
+    } satisfies Record<CartNotice['code'], string | ((value: never) => string)>,
+    exceedsAvailable: (count: number) => `在庫が足りません。${count}点までご購入いただけます。`,
+    changeFailed: '変更できませんでした。時間をおいて、もう一度お試しください。',
   },
   notFound: {
     title: 'ページが見つかりません',

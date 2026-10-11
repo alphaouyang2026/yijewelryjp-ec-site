@@ -10,6 +10,7 @@ import { HeroSection } from '../../organisms/HeroSection';
 import { ProductGrid } from '../../organisms/ProductGrid';
 import { ServiceInfo } from '../../organisms/ServiceInfo';
 import { StoreLayout } from '../../templates/StoreLayout';
+import { useCartItemCount } from '../store/storeFrame';
 import styles from './HomePage.module.css';
 import type { homeLoader } from './homeLoader';
 
@@ -20,7 +21,7 @@ export function HomePage() {
   const newArrivalsHeadingId = useId();
 
   return (
-    <StoreLayout categories={categories}>
+    <StoreLayout categories={categories} cartItemCount={useCartItemCount()}>
       <HeroSection />
       <section aria-labelledby={newArrivalsHeadingId} className={styles.section}>
         <SectionHeading id={newArrivalsHeadingId} label={text.newArrivalsLabel} title={text.newArrivalsTitle} />

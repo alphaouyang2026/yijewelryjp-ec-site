@@ -2,8 +2,12 @@ import type { ButtonHTMLAttributes } from 'react';
 import styles from './Button.module.css';
 
 type ButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'className'> & {
-  /** On light grounds (spec #1): `primary` is onyx with light text, `secondary` is outlined in onyx. */
-  variant: 'primary' | 'secondary';
+  /**
+   * On light grounds (spec #1): `primary` is onyx with light text, `secondary`
+   * is outlined in onyx, `icon` is a bare icon in a tap target (give it an
+   * `aria-label`).
+   */
+  variant: 'primary' | 'secondary' | 'icon';
   /** For the parent's layout and spacing only; `variant` sets the look. */
   className?: string;
 };
