@@ -7,7 +7,12 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     // The local API (packages/api `npm run dev`); in production CloudFront routes /api/* the same way.
-    proxy: { '/api': 'http://127.0.0.1:8787' },
+    // The API's server also stands in for the photo bucket: uploads (/local-s3) and photos (/images).
+    proxy: {
+      '/api': 'http://127.0.0.1:8787',
+      '/local-s3': 'http://127.0.0.1:8787',
+      '/images': 'http://127.0.0.1:8787',
+    },
   },
   test: {
     environment: 'jsdom',

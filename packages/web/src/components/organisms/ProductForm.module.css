@@ -25,7 +25,8 @@
   letter-spacing: var(--tracking-caption);
 }
 
-.variants {
+/* Photos and variants: a group of boxes, one per photo or variant. */
+.group {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -35,7 +36,7 @@
   border: 0;
 }
 
-.variantsLegend {
+.groupLegend {
   margin-bottom: var(--space-1);
   padding: 0;
   font-weight: var(--font-weight-medium);
@@ -44,6 +45,27 @@
 .addVariant,
 .submit {
   align-self: flex-start;
+}
+
+/* What became of the photos the owner picked: being uploaded, or why not. */
+.uploads {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-caption);
+  line-height: var(--line-height-tight);
+}
+
+.uploading {
+  color: var(--color-graphite);
+}
+
+/* As a field's error (FieldMessage). */
+.uploadProblem {
+  padding-left: var(--space-1);
+  border-left: var(--focus-ring-width) solid var(--color-onyx);
+  color: var(--color-onyx);
+  font-weight: var(--font-weight-medium);
 }
 
 /* The featured checkbox, with its hint under it. */

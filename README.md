@@ -37,7 +37,7 @@ packages/api/src/
 - 领域层和应用层不使用 Hono、Zod、AWS SDK 和 `platform`；Hono 路由和 Zod 校验只在接口层（包括共用的 `interface`），AWS SDK 调用和 `platform` 只在基础设施层。
 - 上下文之间只通过对方的应用层交互；共享内核、`interface` 和 `platform` 不引用任何上下文。
 - 入口负责组装：选择适配器（DynamoDB 仓储、时钟、AdminIdentity），通过 `createApp` 注入应用层。测试用同样的方式注入。
-- 开发用的模块（`platform/dynamodb-local.ts`、`identity/infrastructure/dev-admin-identity.ts`）只有 `local.ts` 能导入（测试也可以用 DynamoDB Local），生产代码不会加载。
+- 开发用的模块（`platform/dynamodb-local.ts`、`identity/infrastructure/dev-admin-identity.ts`、代替照片存储桶的 `local-photo-bucket.ts`）只有 `local.ts` 能导入（测试也可以用 DynamoDB Local），生产代码不会加载。
 - 所有后台 API 都挂在 `app.ts` 里的同一个路由组下，由店主会话守卫（`identity/interface/owner-only.ts`）统一检查，见"后台登录"。
 
 ### 前端：Atomic Design（[ADR 0003](docs/adr/0003-frontend-atomic-design.md)）
@@ -102,6 +102,8 @@ npm run dev
 
 浏览器打开 http://localhost:5173/ （日语）、http://localhost:5173/zh/ 或 http://localhost:5173/en/ 。后台在 http://localhost:5173/admin （本地登录见"后台登录"）。按 Ctrl+C 停止全部进程（包括 DynamoDB Local 容器）。
 
+后台上传的商品照片在本地不进 S3：API 的本地服务器代替照片存储桶（`src/local-photo-bucket.ts`），像 S3 一样检查预签名 POST 的签名、有效期和各项条件，照片保存在内存里，在 `/images/*` 下提供；Vite 把 `/local-s3` 和 `/images` 也转给 API。和 DynamoDB Local 一样，API 重启后照片就没有了。
+
 需要示例商品时，在 `npm run dev` 运行期间另开一个终端执行 `npm run db:seed`：写入 4 个类别和 8 件示例商品（含主推、多尺寸不同价格、库存紧张、售罄、草稿、归档）。DynamoDB Local 的数据只保存在内存里，容器停止后要重新执行。
 
 ## 运行测试
@@ -119,7 +121,7 @@ npm run db:stop    # 停止并删除容器
 ### 两层测试
 
 - **API（`packages/api/test`）：** 像入口一样组装 API，只是换成测试适配器，在进程内通过 Hono 的 request 接口发请求。`useTestApi()` 提供会保存 cookie 的客户端（`api.client()`，类型来自 API 路由）、可以控制的时钟（`api.clock`）、内存版的身份提供方（`api.identity`）和让客户端以店主身份登录的 `api.signIn(client)`、返回已登录店主的客户端和带 CSRF 令牌的请求头的 `api.owner()`、列出全部路由的 `api.routes`（逐一检查后台路由的测试用它），以及直接写入后台做不出来的数据（结账锁定的库存、过去的上架时间等）的 `api.seed`（结果仍然只通过 API 检查）。
-- **前端（`packages/web/src/**/*.test.tsx`）：** 用 React Testing Library 渲染真实的路由表（`renderRoute('/zh/')`），用 user-event 像用户那样操作，用 MSW 在网络层拦截 `/api`。模拟响应用 `test/api-mocks.ts` 里按 API 类型编写的 handler。页面让浏览器离开 React 应用时（如去登录），测试监视 `browser.leaveFor` 看它去哪里（jsdom 不能真的跳转）。
+- **前端（`packages/web/src/**/*.test.tsx`）：** 用 React Testing Library 渲染真实的路由表（`renderRoute('/zh/')`），用 user-event 像用户那样操作，用 MSW 在网络层拦截 `/api`。模拟响应用 `test/api-mocks.ts` 里按 API 类型编写的 handler。页面让浏览器离开 React 应用时（如去登录），测试监视 `browser.leaveFor` 看它去哪里（jsdom 不能真的跳转）。照片上传测试用 `mockApi.photoStorage` 模拟 S3；jsdom 的 `FormData`、`File` 不能由 Node 的 fetch 发送，`test/setup.ts` 在发送前把它们换成 Node 的。
 
 不给单个组件、领域对象或用例写单元测试：业务规则通过 API 的 HTTP 接口测试，界面行为通过页面测试。
 
@@ -148,10 +150,23 @@ npm run db:stop    # 停止并删除容器
 | `GET` / `POST /api/admin/categories` | 全部类别（按店主的顺序） / 创建类别（排在最后） |
 | `PUT /api/admin/categories/:slug` | 类别改名 |
 | `PUT /api/admin/category-order?locale=…` | 按给出的顺序排列全部类别（一次最多 100 个，即一个 DynamoDB 事务的上限） |
+| `POST /api/admin/photo-uploads` | 为一张照片签发 S3 预签名 POST（见下面的"商品照片"） |
 
 - 输入由接口层的 Zod 校验：多语言文本日语必填（中文、英语留空即未填，显示时回退到日语）；价格和在库数是 0 以上的整数，价格最高 99,999,999 日元（Stripe 一次日元付款的上限）；slug 是用单个连字符连接的小写英文字母和数字，创建后不能修改；SKU 在整个目录内唯一；有锁定数的规格不能删除，在库数不能少于锁定数；每个商品至少一个规格。不合格时返回 400 `{ error: 'invalid_input', fields: [{ path: 'variants.0.priceYen', code: 'non_negative_integer' }, …] }`，前端按 `path` 把 `code` 对应的文字显示在字段旁边。
 - 路径里的 `:slug` 不符合 slug 格式（或超过 80 个字符）时和不存在的商品、类别一样返回 404。排序中出现不存在的类别是 400（`unknown_category`，类别没有删除，所以这不是“内容过时”）。
 - 每次修改都带上店主看到的 `version`。别人已经改过（或排序漏掉了别人新加的类别）时返回 409 `stale_version`，什么都不改，后台提示加载最新内容（见 [ADR 0005](docs/adr/0005-catalog-data-layout.md)）。任何状态都可以归档：归档已归档的商品返回 200，什么都不改（版本号不变）。当前状态不允许的上架、下架等返回 409 `invalid_status_transition`；后台只显示 API 给出的 `statusChanges`。
+
+### 商品照片
+
+见 [ADR 0006](docs/adr/0006-product-photo-uploads.md)。
+
+1. 店主在商品表单（新建和编辑都有）选择照片后，前端为每张照片发送 `POST /api/admin/photo-uploads`，带浏览器报告的 `{ contentType, size }`。不是 JPEG、PNG、WebP 时返回 400 `unsupported_photo_type`，超过 5 MB 时返回 400 `photo_too_large`，前端在照片区显示原因。
+2. 否则 API 生成新的 key（`images/products/<随机 UUID>.<扩展名>`，从不重复使用），返回 `{ key, url, upload: { url, fields } }`。`upload` 是 S3 预签名 POST：策略限定这个 key、这个内容类型、1 字节到 5 MB，以及一年的 `Cache-Control: public, max-age=31536000, immutable`；有效 10 分钟。签名在 Lambda 里本地计算，不请求 S3。
+3. 浏览器把文件直接 POST 到 S3（不经过 API）。S3 按策略再检查一次；失败时前端显示"上传失败"。
+4. 上传成功后照片出现在表单里，店主填写替代文字（日语必填）、调整顺序或移除，然后和商品的其他内容一起保存（`photos: [{ key, alt }]`，最多 20 张）。key 必须是第 2 步那种格式，同一张照片不能出现两次，替代文字缺日语时返回 400（如 `photos.1.alt.ja: required`）。
+5. 前台：商品详情的 `photos` 按店主的顺序列出每张照片的 `url`（`/images/products/…`，同一域名，CloudFront 从存储桶提供）和当前语言的 `alt`（没有译文时用日语）；列表、新作和主推的 `photo` 是第一张（没有照片时为 `null`，前端显示占位）。
+
+从商品中移除的照片和从未保存的上传都留在存储桶里，不删除（key 不变，缓存或打开着的页面可能还在引用）。
 
 ### 权限检查
 
@@ -209,7 +224,7 @@ Cognito 会给这个邮箱发送临时密码（3 天内有效）。第一次登�
 | `SESSION_SECRET` | 本地开发时签名后台会话 cookie 的密钥 | 固定的开发用值 |
 | `DEV_OWNER_EMAIL` | 本地开发时以哪个邮箱登录后台 | `owner@localhost` |
 
-Lambda 另外需要 `SITE_URL`、`COGNITO_DOMAIN_URL`、`COGNITO_USER_POOL_ID`、`COGNITO_CLIENT_ID`、`COGNITO_CLIENT_SECRET_ARN`、`SESSION_SECRET_ARN`，都由 CDK 设置（`packages/infra/lib/shop-stack.ts`）。
+Lambda 另外需要 `PHOTO_BUCKET`（照片所在的存储桶）、`SITE_URL`、`COGNITO_DOMAIN_URL`、`COGNITO_USER_POOL_ID`、`COGNITO_CLIENT_ID`、`COGNITO_CLIENT_SECRET_ARN`、`SESSION_SECRET_ARN`，都由 CDK 设置（`packages/infra/lib/shop-stack.ts`）。
 
 ## CI
 
@@ -227,12 +242,13 @@ CloudFront（一个域名）
 │                                                  ├→ Secrets Manager（Cognito 应用客户端密钥、会话 cookie 签名密钥，启动时读取）
 │                                                  └→ Cognito 用户池（店主登录：托管登录页、令牌端点）
 ├── /assets/*   → S3（Vite 带哈希的文件，缓存一年）
-├── /images/*   → S3（商品图片）
+├── /images/*   → S3（商品照片，key 不变，缓存一年）
 └── 其他路径     → S3 的 index.html（React 的 HTML 外壳，no-cache；由前端路由处理）
 ```
 
 - **API 的缓存：** CloudFront 只按 API 返回的 `Cache-Control` 缓存（`packages/api/src/interface/cache-control.ts`）：公开的目录数据约 60 秒，过期后先返回旧内容再刷新；其他所有响应都是 `no-store`。
-- **前端上传：** 部署时先上传带哈希的文件，再上传 `index.html` 并使 CloudFront 上的旧版本失效，所以新版本立即生效。旧的哈希文件和商品图片不会被删除。
+- **前端上传：** 部署时先上传带哈希的文件，再上传 `index.html` 并使 CloudFront 上的旧版本失效，所以新版本立即生效。旧的哈希文件和商品照片不会被删除。
+- **照片上传：** 店主的浏览器用 API 签发的预签名 POST 把照片直接上传到存储桶的 `images/products/` 下。存储桶允许来自网站的跨域 POST（没有自定义域名时允许任何 `https://*.cloudfront.net`，因为存储桶无法引用依赖它的分配的域名；授权上传的是签名的策略，不是 CORS）。Lambda 只能写 `images/products/*`。
 - **两个阶段的区别：** 同一套代码，资源名由 CDK 自动生成，互不冲突。production 的表和存储桶在删除栈时保留，表开启删除保护；staging 的会一起删除。
 - **店主登录（Cognito）：** 每个阶段一个用户池：不开放自助注册，用邮箱登录，强制 TOTP MFA，Essentials 功能计划（托管登录页和多语言页面需要它；每月 10,000 名活跃用户以内免费）。托管登录域名是 `yijewelry-<阶段>-<账号ID>.auth.ap-northeast-1.amazoncognito.com`。API 是使用授权码流程的机密应用客户端，回调 URL 是网站域名下的 `/api/admin/auth/callback`，登出后回到网站的 `/`、`/zh/`、`/en/`。应用客户端密钥由 CDK 复制到 Secrets Manager，会话签名密钥由 CDK 生成；Lambda 只能读取这两个机密，不需要任何 Cognito 权限。production 的用户池在删除栈时保留并开启删除保护。没有自定义域名时，这些 URL 使用 CloudFront 的默认域名，CloudFormation 在创建分配后再创建应用客户端。
 - **自定义域名（可选）：** 设置了 `DOMAIN_NAME`、`HOSTED_ZONE_ID`、`HOSTED_ZONE_NAME` 时，会在 us-east-1 多部署一个证书栈 `YiJewelryCertificate-<stage>`，并在 Route 53 加上 A / AAAA 别名记录。不设置时使用 CloudFront 的默认域名（`*.cloudfront.net`）。

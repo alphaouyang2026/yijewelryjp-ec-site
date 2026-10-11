@@ -12,6 +12,7 @@ import { AdminPageHeading } from '../../../molecules/AdminPageHeading';
 import { ProductForm } from '../../../organisms/ProductForm';
 import { useCsrfHeaders } from '../adminSession';
 import type { adminNewProductLoader } from './adminProductLoaders';
+import { usePhotoUpload } from './usePhotoUpload';
 import type { EditPageState } from './AdminEditProductPage';
 
 /**
@@ -23,6 +24,7 @@ export function AdminNewProductPage() {
   const messages = useMessages().admin;
   const text = messages.productForm;
   const headers = useCsrfHeaders();
+  const uploadPhoto = usePhotoUpload();
   const navigate = useNavigate();
   const locale = useLocale();
   const [initial] = useState(blankProduct);
@@ -66,6 +68,7 @@ export function AdminNewProductPage() {
         errors={errors}
         submitting={submitting}
         onSubmit={create}
+        uploadPhoto={uploadPhoto}
       />
     </>
   );

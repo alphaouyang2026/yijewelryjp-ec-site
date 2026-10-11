@@ -26,6 +26,8 @@ export type ProductItem = ProductTexts & {
   listedAt?: string; // ISO 8601
   updatedAt?: string; // ISO 8601
   variants: VariantItem[];
+  /** In the owner's order. Absent from items written before products had photos. */
+  photos?: PhotoItem[];
   /**
    * 1 when created, one more with each write; every write is conditional on
    * the version it read. Absent from items written before items had versions.
@@ -40,6 +42,9 @@ export type VariantItem = {
   onHandStock: number;
   reservedStock: number;
 };
+
+/** A photo's key in the bucket, and its alt text. */
+export type PhotoItem = { key: string; alt: LocalizedText };
 
 const PARTITION = 'PRODUCT';
 
@@ -109,6 +114,7 @@ function toProduct(item: ProductItem): Product {
       onHandStock: variant.onHandStock,
       reservedStock: variant.reservedStock,
     })),
+    photos: (item.photos ?? []).map((photo) => ({ key: photo.key, alt: photo.alt })),
     version: storedVersion(item),
   };
 }
@@ -131,6 +137,7 @@ function toItem(product: Product): ProductItem {
       onHandStock: variant.onHandStock,
       reservedStock: variant.reservedStock,
     })),
+    photos: product.photos.map((photo) => ({ key: photo.key, alt: photo.alt })),
     version: product.version,
   });
 }

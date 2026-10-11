@@ -83,10 +83,10 @@ describe('with categories and products in the catalog', () => {
     assert(res.ok);
     const body = await res.json();
     expect(body.newArrivals).toEqual([
-      { slug: 'star-necklace', name: '星のネックレス', priceYen: 30_000, priceVaries: false, stockStatus: 'low_stock' },
-      { slug: 'gold-bangle', name: 'ゴールドバングル', priceYen: 10_000, priceVaries: false, stockStatus: 'in_stock' },
-      { slug: 'pearl-earrings', name: 'パールピアス', priceYen: 18_000, priceVaries: false, stockStatus: 'sold_out' },
-      { slug: 'silver-chain', name: 'シルバーチェーン', priceYen: 10_000, priceVaries: false, stockStatus: 'in_stock' },
+      { slug: 'star-necklace', name: '星のネックレス', photo: null, priceYen: 30_000, priceVaries: false, stockStatus: 'low_stock' },
+      { slug: 'gold-bangle', name: 'ゴールドバングル', photo: null, priceYen: 10_000, priceVaries: false, stockStatus: 'in_stock' },
+      { slug: 'pearl-earrings', name: 'パールピアス', photo: null, priceYen: 18_000, priceVaries: false, stockStatus: 'sold_out' },
+      { slug: 'silver-chain', name: 'シルバーチェーン', photo: null, priceYen: 10_000, priceVaries: false, stockStatus: 'in_stock' },
     ]);
     expect(body.categories).toEqual([
       { slug: 'ring', name: 'リング' },
@@ -102,6 +102,7 @@ describe('with categories and products in the catalog', () => {
     expect((await res.json()).featured).toEqual({
       slug: 'star-necklace',
       name: 'Star Necklace',
+      photo: null,
       priceYen: 30_000,
       priceVaries: false,
       stockStatus: 'low_stock',

@@ -17,6 +17,8 @@ export type ProductSort = NonNullable<InferRequestType<typeof api.products.$get>
 export type ProductPage = InferResponseType<(typeof api.products)[':slug']['$get'], 200>;
 export type ProductDetail = ProductPage['product'];
 export type Variant = ProductDetail['variants'][number];
+/** A product photo as the store shows it: its URL, and its alt text in the page's locale. */
+export type ProductPhoto = ProductDetail['photos'][number];
 
 export type AdminSession = InferResponseType<typeof api.admin.session.$get, 200>;
 
@@ -26,6 +28,7 @@ export type ProductStatus = AdminProductSummary['status'];
 export type AdminProduct = InferResponseType<(typeof api.admin.products)[':slug']['$get'], 200>;
 export type NewProduct = InferRequestType<typeof api.admin.products.$post>['json'];
 export type ProductEdit = InferRequestType<(typeof api.admin.products)[':slug']['$put']>['json'];
+export type PhotoUpload = InferResponseType<(typeof api.admin)['photo-uploads']['$post'], 200>;
 export type AdminCategoryList = InferResponseType<typeof api.admin.categories.$get, 200>;
 export type AdminCategory = AdminCategoryList['categories'][number];
 

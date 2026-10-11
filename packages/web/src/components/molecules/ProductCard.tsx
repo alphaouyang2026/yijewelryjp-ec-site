@@ -3,13 +3,15 @@ import { formatYen } from '../../i18n/format';
 import { useMessages } from '../../i18n/useMessages';
 import { paths } from '../../paths';
 import { LocalizedLink } from '../atoms/LocalizedLink';
+import { Photo } from '../atoms/Photo';
 import { PhotoPlaceholder } from '../atoms/PhotoPlaceholder';
 import { Price } from '../atoms/Price';
 import { StockBadge } from '../atoms/StockBadge';
 import styles from './ProductCard.module.css';
 
 /**
- * A product in a grid, linking to its page: photo, name, lowest price (marked
+ * A product in a grid, linking to its page: its main photo (or the photo's
+ * place, if it has none), name, lowest price (marked
  * as a starting price when its sizes cost different amounts) and, when it is
  * low or sold out, its stock status. `headingLevel` fits the page's outline.
  */
@@ -21,7 +23,11 @@ export function ProductCard({ product, headingLevel }: { product: ProductSummary
   return (
     <LocalizedLink to={paths.product(product.slug)} variant="card">
       <div className={styles.photo}>
-        <PhotoPlaceholder shape="product" />
+        {product.photo ? (
+          <Photo src={product.photo.url} alt={product.photo.alt} shape="product" />
+        ) : (
+          <PhotoPlaceholder shape="product" />
+        )}
         {product.stockStatus !== 'in_stock' && (
           <span className={styles.badge}>
             <StockBadge status={product.stockStatus} text={text.stockStatus[product.stockStatus]} />

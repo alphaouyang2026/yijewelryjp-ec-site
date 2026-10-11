@@ -12,6 +12,7 @@ import { ProductForm } from '../../../organisms/ProductForm';
 import { ProductStatusPanel, type StatusChange } from '../../../organisms/ProductStatusPanel';
 import { useCsrfHeaders } from '../adminSession';
 import type { adminEditProductLoader } from './adminProductLoaders';
+import { usePhotoUpload } from './usePhotoUpload';
 
 /** What the page was opened with: 'created' when the owner just created the product. */
 export type EditPageState = { notice?: 'created' };
@@ -26,6 +27,7 @@ export function AdminEditProductPage() {
   const { product, categories } = useLoaderData<typeof adminEditProductLoader>();
   const text = useMessages().admin;
   const headers = useCsrfHeaders();
+  const uploadPhoto = usePhotoUpload();
   const opened = useLocation().state as EditPageState | null;
   const changes = useAdminChanges<'created' | 'saved' | 'statusChanged'>(
     opened?.notice === 'created' ? { tone: 'done', text: 'created' } : null,
@@ -90,6 +92,7 @@ export function AdminEditProductPage() {
         errors={errors}
         submitting={changes.busy}
         onSubmit={save}
+        uploadPhoto={uploadPhoto}
       />
     </>
   );

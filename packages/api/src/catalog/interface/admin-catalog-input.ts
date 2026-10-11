@@ -8,6 +8,7 @@ import {
   REQUIRED_PRODUCT_TEXTS,
   type ProductTextField,
 } from '../application/manage-products';
+import { MAX_PHOTO_BYTES, PHOTO_CONTENT_TYPES, PHOTO_KEY_PATTERN } from '../application/start-photo-upload';
 
 // What the admin's catalog forms send, validated field by field. Each error
 // message is a field error code, so the admin can say what is wrong next to
@@ -18,6 +19,7 @@ const LONG_TEXT_MAX = 5_000;
 const SLUG_MAX = 80;
 const SKU_MAX = 64;
 const VARIANTS_MAX = 50;
+const PHOTOS_MAX = 20;
 /** One reorder is one DynamoDB transaction, which writes at most 100 items. */
 const CATEGORIES_MAX = 100;
 
@@ -34,6 +36,10 @@ const CATALOG_FIELD_ERROR_CODES = [
   'at_least_one_variant',
   /** A price above ¥99,999,999, the most a card payment in yen can be. */
   'price_too_high',
+  /** A photo that is not JPEG, PNG or WebP. */
+  'unsupported_photo_type',
+  /** A photo over 5 MB. */
+  'photo_too_large',
   ...CATALOG_RULES,
 ] as const;
 
@@ -105,6 +111,18 @@ const variant = z.object(
   { error: missingOr('invalid') },
 );
 
+/**
+ * A photo of the product: a key from a photo upload, and its alt text
+ * (Japanese required). A key that no upload could have given is invalid.
+ */
+const photo = z.object(
+  {
+    key: z.string({ error: missingOr('invalid') }).regex(PHOTO_KEY_PATTERN, failsWith('invalid')),
+    alt: localizedText(SHORT_TEXT_MAX),
+  },
+  { error: missingOr('invalid') },
+);
+
 /** How long each of a product's texts may be: a line, or paragraphs. */
 const PRODUCT_TEXT_MAX: Record<ProductTextField, number> = {
   name: SHORT_TEXT_MAX,
@@ -134,9 +152,31 @@ export const productInput = z.object({
     .array(variant, { error: missingOr('invalid') })
     .min(1, failsWith('at_least_one_variant'))
     .max(VARIANTS_MAX, failsWith('too_many')),
+  /** In the owner's order, each photo once. */
+  photos: z
+    .array(photo, { error: missingOr('invalid') })
+    .max(PHOTOS_MAX, failsWith('too_many'))
+    .refine((photos) => new Set(photos.map((p) => p.key)).size === photos.length, { error: 'invalid' }),
 });
 
 export const newProductBody = productInput.extend({ slug });
+
+/**
+ * A photo the owner is about to upload: its content type and size in bytes,
+ * as the browser reports them, so a photo storage would refuse is refused
+ * at once, with the reason. Storage checks both again on the upload itself.
+ */
+export const photoUploadBody = z.object({
+  // Any string, as the browser reports it: one of the photo types, or refused as unsupported.
+  contentType: z
+    .string({ error: missingOr('invalid') })
+    .pipe(z.enum(PHOTO_CONTENT_TYPES, { error: 'unsupported_photo_type' })),
+  size: z
+    .number({ error: missingOr('invalid') })
+    .int(failsWith('invalid'))
+    .min(1, failsWith('invalid'))
+    .max(MAX_PHOTO_BYTES, failsWith('photo_too_large')),
+});
 
 /** A category's name: Japanese required, Chinese and English optional. */
 export const categoryName = localizedText(SHORT_TEXT_MAX);

@@ -1,11 +1,11 @@
 import { useLoaderData } from 'react-router';
-import { PhotoPlaceholder } from '../../atoms/PhotoPlaceholder';
+import { PhotoGallery } from '../../organisms/PhotoGallery';
 import { ProductInfo } from '../../organisms/ProductInfo';
 import { StoreLayout } from '../../templates/StoreLayout';
 import styles from './ProductDetailPage.module.css';
 import type { productLoader } from './productLoader';
 
-/** A product's page: its photo beside its information. Photos come with the photo upload ticket; a placeholder until then. */
+/** A product's page: its photos beside its information. */
 export function ProductDetailPage() {
   const { categories, product } = useLoaderData<typeof productLoader>();
 
@@ -13,7 +13,7 @@ export function ProductDetailPage() {
     <StoreLayout categories={categories}>
       <div className={styles.page}>
         <div className={styles.photo}>
-          <PhotoPlaceholder shape="product" />
+          <PhotoGallery key={product.slug} photos={product.photos} />
         </div>
         <ProductInfo key={product.slug} product={product} />
       </div>

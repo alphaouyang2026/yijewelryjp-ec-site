@@ -87,6 +87,7 @@
   --badge-padding: 4px 10px;
   --featured-photo-max-width: 520px;
   --product-photo-max-width: 560px;
+  --thumbnail-min-width: 64px; /* the product page's photo thumbnails */
   --hero-photo-min-height: 420px;
   --text-heading-product: clamp(22px, 2.4vw, 28px); /* product page title */
   --hover-opacity: 0.85; /* buttons on hover */
@@ -100,6 +101,7 @@
   /* Admin forms. Preferred widths of side-by-side fields; they stack below them. */
   --localized-field-min-width: 200px; /* one locale of a text kept per locale */
   --variant-number-min-width: 160px; /* a variant's price and stock */
+  --photo-preview-width: 120px; /* a product photo beside its alt text */
   --select-min-width: 50%; /* drop-down lists, of their field's width */
 }
 

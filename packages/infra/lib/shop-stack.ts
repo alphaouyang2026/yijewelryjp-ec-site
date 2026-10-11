@@ -43,7 +43,7 @@ import { NodejsFunction, OutputFormat } from 'aws-cdk-lib/aws-lambda-nodejs';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { AaaaRecord, ARecord, HostedZone, RecordTarget } from 'aws-cdk-lib/aws-route53';
 import { CloudFrontTarget } from 'aws-cdk-lib/aws-route53-targets';
-import { BlockPublicAccess, Bucket, BucketEncryption } from 'aws-cdk-lib/aws-s3';
+import { BlockPublicAccess, Bucket, BucketEncryption, HttpMethods } from 'aws-cdk-lib/aws-s3';
 import { BucketDeployment, CacheControl, Source } from 'aws-cdk-lib/aws-s3-deployment';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import type { Construct } from 'constructs';
@@ -141,11 +141,25 @@ export class ShopStack extends Stack {
     });
 
     // The React build under assets/ and index.html at the root, and product
-    // images under images/. Only CloudFront reads it.
+    // photos under images/products/. Only CloudFront reads it. The owner's
+    // browser posts photos straight to it with forms the API presigns
+    // (packages/api/src/catalog/infrastructure/s3-photo-storage.ts), so it
+    // allows cross-origin POSTs from the site. Without a custom domain the
+    // site's origin is the distribution's default domain, which the bucket
+    // cannot name (the distribution depends on the bucket), so any CloudFront
+    // domain may post; the presigned policy is what authorizes an upload.
     const bucket = new Bucket(this, 'SiteBucket', {
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
       encryption: BucketEncryption.S3_MANAGED,
       enforceSSL: true,
+      cors: [
+        {
+          allowedMethods: [HttpMethods.POST],
+          allowedOrigins: [config.domain ? `https://${config.domain.domainName}` : 'https://*.cloudfront.net'],
+          allowedHeaders: ['*'],
+          maxAge: 3600,
+        },
+      ],
       removalPolicy,
       autoDeleteObjects: !isProduction,
     });
@@ -164,6 +178,7 @@ export class ShopStack extends Stack {
       timeout: Duration.seconds(10),
       environment: {
         TABLE_NAME: table.tableName,
+        PHOTO_BUCKET: bucket.bucketName,
         NODE_OPTIONS: '--enable-source-maps',
       },
       bundling: {
@@ -181,6 +196,10 @@ export class ShopStack extends Stack {
     });
     // Read/write includes dynamodb:DescribeTable, which the health check uses.
     table.grantReadWriteData(api);
+    // Upload forms are signed with the function's credentials: S3 accepts an
+    // upload only if the function itself may put the object, so it may put
+    // photos, and nothing else in the bucket.
+    bucket.grantPut(api, 'images/products/*');
 
     const httpApi = new HttpApi(this, 'HttpApi', {
       description: `Y&I Jewelry API (${config.stage})`,
@@ -275,7 +294,8 @@ export class ShopStack extends Stack {
         },
         // Vite's hashed build output.
         '/assets/*': fileBehavior,
-        // Product images (uploaded by the admin, under immutable keys).
+        // Product photos: uploaded by the owner under keys that never change, each
+        // stored with a year's Cache-Control, which CloudFront and browsers follow.
         '/images/*': fileBehavior,
       },
       domainNames: config.domain ? [config.domain.domainName, ...config.domain.redirectDomainNames] : undefined,
