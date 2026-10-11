@@ -211,3 +211,136 @@ describe('the new-product form’s errors', () => {
     expect(await res.json()).toMatchObject({ slug: 'free-ring', categorySlug: null });
   });
 });
+
+describe('listing, unlisting, archiving and restoring', () => {
+  type Change = 'list' | 'unlist' | 'archive' | 'restore';
+
+  function change(owner: Owner, slug: string, action: Change, version: number) {
+    return owner.client.api.admin.products[':slug'][action].$post(
+      { param: { slug }, json: { version } },
+      { headers: owner.headers },
+    );
+  }
+
+  async function storeSlugs() {
+    const res = await api.client().api.products.$get({ query: { locale: 'ja' } });
+    assert(res.ok);
+    return (await res.json()).products.map((product) => product.slug);
+  }
+
+  async function storePage(slug: string) {
+    return api.client().api.products[':slug'].$get({ param: { slug }, query: { locale: 'en' } });
+  }
+
+  test('listing a draft puts it in the store, with its details in the requested locale', async () => {
+    api.clock.set(new Date('2026-10-01T10:00:00+09:00'));
+    const owner = await api.owner();
+    await create(owner, 'listed-ring');
+
+    const res = await change(owner, 'listed-ring', 'list', 1);
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ status: 'listed', listedAt: '2026-10-01T01:00:00.000Z', version: 2 });
+    expect(await storeSlugs()).toContain('listed-ring');
+    const page = await storePage('listed-ring');
+    assert(page.ok);
+    expect((await page.json()).product).toMatchObject({
+      name: '月のリング',
+      description: 'A ring shaped like the moon.',
+      category: { slug: 'ring', name: 'Rings' },
+      variants: [
+        { sku: 'listed-ring-9', label: 'Size 9', priceYen: 24_000, stockStatus: 'in_stock' },
+        { sku: 'listed-ring-11', label: 'Size 11', priceYen: 25_000, stockStatus: 'sold_out' },
+      ],
+    });
+  });
+
+  test('unlisting takes it out of the store; listing it again keeps when it was first listed', async () => {
+    api.clock.set(new Date('2026-10-01T10:00:00+09:00'));
+    const owner = await api.owner();
+    await create(owner, 'relisted-ring');
+    await change(owner, 'relisted-ring', 'list', 1);
+
+    const unlisted = await change(owner, 'relisted-ring', 'unlist', 2);
+
+    expect(unlisted.status).toBe(200);
+    expect(await unlisted.json()).toMatchObject({ status: 'draft', version: 3 });
+    expect(await storeSlugs()).not.toContain('relisted-ring');
+    expect((await storePage('relisted-ring')).status).toBe(404);
+
+    api.clock.set(new Date('2026-10-01T11:00:00+09:00'));
+    const relisted = await change(owner, 'relisted-ring', 'list', 3);
+    expect(await relisted.json()).toMatchObject({ status: 'listed', listedAt: '2026-10-01T01:00:00.000Z' });
+  });
+
+  test.each(['draft', 'listed'] as const)('a %s product can be archived, which takes it out of the store', async (status) => {
+    const owner = await api.owner();
+    const slug = `archived-${status}`;
+    await create(owner, slug);
+    if (status === 'listed') await change(owner, slug, 'list', 1);
+    const version = status === 'listed' ? 2 : 1;
+
+    const res = await change(owner, slug, 'archive', version);
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ status: 'archived', version: version + 1 });
+    expect(await storeSlugs()).not.toContain(slug);
+    expect((await storePage(slug)).status).toBe(404);
+  });
+
+  test('restoring an archived product makes it a draft again', async () => {
+    const owner = await api.owner();
+    await create(owner, 'restored-ring');
+    await change(owner, 'restored-ring', 'archive', 1);
+
+    const res = await change(owner, 'restored-ring', 'restore', 2);
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ status: 'draft', version: 3 });
+    expect(await storeSlugs()).not.toContain('restored-ring');
+  });
+
+  test.each([
+    { from: 'draft', action: 'unlist' },
+    { from: 'draft', action: 'restore' },
+    { from: 'listed', action: 'list' },
+    { from: 'listed', action: 'restore' },
+    { from: 'archived', action: 'list' },
+    { from: 'archived', action: 'unlist' },
+    { from: 'archived', action: 'archive' },
+  ] as const)('a $from product cannot be told to $action', async ({ from, action }) => {
+    const owner = await api.owner();
+    const slug = `${from}-cannot-${action}`;
+    await create(owner, slug);
+    if (from !== 'draft') await change(owner, slug, from === 'listed' ? 'list' : 'archive', 1);
+    const version = from === 'draft' ? 1 : 2;
+
+    const res = await change(owner, slug, action, version);
+
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: 'invalid_status_transition' });
+    const unchanged = await owner.client.api.admin.products[':slug'].$get({ param: { slug } });
+    expect(await unchanged.json()).toMatchObject({ status: from, version });
+  });
+
+  test('a change made from an outdated version is refused, and changes nothing', async () => {
+    const owner = await api.owner();
+    await create(owner, 'contested-ring');
+    await change(owner, 'contested-ring', 'list', 1);
+
+    const res = await change(owner, 'contested-ring', 'unlist', 1);
+
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: 'stale_version' });
+    expect(await storeSlugs()).toContain('contested-ring');
+  });
+
+  test('a product that does not exist is not found', async () => {
+    const owner = await api.owner();
+
+    const res = await change(owner, 'no-such-ring', 'list', 1);
+
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ error: 'not_found' });
+  });
+});

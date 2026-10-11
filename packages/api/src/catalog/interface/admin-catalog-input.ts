@@ -85,3 +85,8 @@ export const productInput = z.object({
 });
 
 export const newProductBody = productInput.extend({ slug });
+
+/** The version of the product or category the owner's change was made from. */
+export const version = z.number({ error: 'invalid' }).int({ error: 'invalid' }).min(1, { error: 'invalid' });
+
+export const versionBody = z.object({ version });

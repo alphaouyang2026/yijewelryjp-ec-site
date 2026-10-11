@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { getHomeData } from './catalog/application/get-home-data';
 import { getProduct } from './catalog/application/get-product';
 import { listProducts } from './catalog/application/list-products';
-import { createProduct, getAdminProduct } from './catalog/application/manage-products';
+import { changeProductStatus, createProduct, getAdminProduct } from './catalog/application/manage-products';
 import type { CategoryRepository } from './catalog/domain/category';
 import type { ProductRepository } from './catalog/domain/product';
 import { adminProductRoutes } from './catalog/interface/admin-product-routes';
@@ -54,7 +54,11 @@ export function createApp(deps: AppDeps) {
     .route('/', adminSessionRoutes({ signOut: signOut(deps), sessionCookie: cookies.session }))
     .route(
       '/products',
-      adminProductRoutes({ createProduct: createProduct(deps), getAdminProduct: getAdminProduct(deps) }),
+      adminProductRoutes({
+        createProduct: createProduct(deps),
+        getAdminProduct: getAdminProduct(deps),
+        changeProductStatus: changeProductStatus(deps),
+      }),
     );
 
   return new Hono()

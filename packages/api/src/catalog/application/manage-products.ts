@@ -2,7 +2,15 @@ import type { Clock } from '../../shared-kernel/clock';
 import type { LocalizedText } from '../../shared-kernel/localized-text';
 import { yen } from '../../shared-kernel/money';
 import type { CategoryRepository } from '../domain/category';
-import { newProduct, positionsWithTakenSku, type Product, type ProductContent, type ProductRepository } from '../domain/product';
+import {
+  changeStatus,
+  newProduct,
+  positionsWithTakenSku,
+  type Product,
+  type ProductContent,
+  type ProductRepository,
+  type StatusChange,
+} from '../domain/product';
 import { adminProduct, type AdminProduct } from './admin-catalog-views';
 
 type Deps = { products: ProductRepository; categories: CategoryRepository; clock: Clock };
@@ -36,7 +44,14 @@ export type RuleViolation = {
 export type ProductChange =
   | { outcome: 'changed'; product: AdminProduct }
   /** The input breaks catalog rules; nothing changed. */
-  | { outcome: 'invalid'; violations: RuleViolation[] };
+  | { outcome: 'invalid'; violations: RuleViolation[] }
+  | { outcome: 'not_found' }
+  /** The change was made from a version of the product that is no longer the stored one; nothing changed. */
+  | { outcome: 'stale' }
+  /** The product's status does not allow the status change; nothing changed. */
+  | { outcome: 'invalid_status_transition' };
+
+export type { StatusChange };
 
 export type GetAdminProduct = (slug: string) => Promise<AdminProduct | undefined>;
 
@@ -67,6 +82,40 @@ export function createProduct(deps: Deps): CreateProduct {
     }
     return { outcome: 'changed', product: adminProduct(product) };
   };
+}
+
+export type ChangeProductStatus = (command: { slug: string; change: StatusChange; version: number }) => Promise<ProductChange>;
+
+/**
+ * Use case: the owner lists, unlists, archives or restores a product, as of
+ * its version `version` (the one the owner saw).
+ */
+export function changeProductStatus(deps: Deps): ChangeProductStatus {
+  return ({ slug, change, version }) =>
+    changeFrom(deps, { slug, version }, (product) => {
+      const changed = changeStatus(product, change, deps.clock.now());
+      return changed ?? { outcome: 'invalid_status_transition' };
+    });
+}
+
+/**
+ * Applies `change` to the product `slug` and saves it, if the owner made it
+ * from the stored version (`version`): checked when the product is read, and
+ * again when it is written, in case someone changed it in between.
+ */
+async function changeFrom(
+  deps: Pick<Deps, 'products'>,
+  { slug, version }: { slug: string; version: number },
+  change: (product: Product) => Promise<Product | ProductChange> | Product | ProductChange,
+): Promise<ProductChange> {
+  const product = await deps.products.bySlug(slug);
+  if (!product) return { outcome: 'not_found' };
+  if (product.version !== version) return { outcome: 'stale' };
+
+  const changed = await change(product);
+  if ('outcome' in changed) return changed;
+  const saved = await deps.products.update(changed);
+  return saved === 'stale' ? { outcome: 'stale' } : { outcome: 'changed', product: adminProduct(saved) };
 }
 
 /** What in `input` breaks the catalog's rules, given every other product and the categories there are. */

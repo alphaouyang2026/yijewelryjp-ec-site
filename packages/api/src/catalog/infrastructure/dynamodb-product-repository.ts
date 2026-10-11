@@ -69,6 +69,24 @@ export function dynamoDbProductRepository(db: Database): ProductRepository {
         throw error;
       }
     },
+
+    async update(product) {
+      const stored = { ...product, version: product.version + 1 };
+      try {
+        await documents.send(
+          new PutCommand({
+            TableName: db.tableName,
+            Item: toItem(stored),
+            ConditionExpression: 'version = :read',
+            ExpressionAttributeValues: { ':read': product.version },
+          }),
+        );
+        return stored;
+      } catch (error) {
+        if (error instanceof ConditionalCheckFailedException) return 'stale';
+        throw error;
+      }
+    },
   };
 }
 

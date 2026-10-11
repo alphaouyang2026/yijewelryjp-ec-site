@@ -60,6 +60,13 @@ export interface ProductRepository {
   bySlug(slug: string): Promise<Product | undefined>;
   /** Stores a new product; 'slug_taken' (and nothing stored) if a product already has its slug. */
   add(product: Product): Promise<'added' | 'slug_taken'>;
+  /**
+   * Stores `product`, changed from the stored version `product.version`, as
+   * the next version, and returns it as stored. 'stale' (and nothing stored)
+   * if the stored product is no longer at that version: someone changed it
+   * since it was read.
+   */
+  update(product: Product): Promise<Product | 'stale'>;
 }
 
 /** A new product, as a draft at version 1, with `content` and nothing reserved. */
@@ -71,6 +78,33 @@ export function newProduct(slug: string, content: ProductContent, now: Date): Pr
     updatedAt: now,
     variants: content.variants.map((variant) => ({ ...variant, reservedStock: 0 })),
     version: 1,
+  };
+}
+
+/** What the owner can do to a product's status. There is no deleting: a product no longer sold is archived. */
+export type StatusChange = 'list' | 'unlist' | 'archive' | 'restore';
+
+const TRANSITIONS: Record<StatusChange, { from: readonly ProductStatus[]; to: ProductStatus }> = {
+  list: { from: ['draft'], to: 'listed' },
+  unlist: { from: ['listed'], to: 'draft' },
+  archive: { from: ['draft', 'listed'], to: 'archived' },
+  restore: { from: ['archived'], to: 'draft' },
+};
+
+/**
+ * The product after `change` at `now`, or undefined if its status does not
+ * allow it. Listing: draft to listed, and the first listing sets when it was
+ * listed (new arrivals are ordered by it). Unlisting: listed to draft.
+ * Archiving: draft or listed to archived. Restoring: archived to draft.
+ */
+export function changeStatus(product: Product, change: StatusChange, now: Date): Product | undefined {
+  const { from, to } = TRANSITIONS[change];
+  if (!from.includes(product.status)) return undefined;
+  return {
+    ...product,
+    status: to,
+    listedAt: to === 'listed' ? (product.listedAt ?? now) : product.listedAt,
+    updatedAt: now,
   };
 }
 
