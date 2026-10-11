@@ -74,6 +74,21 @@ export function newProduct(slug: string, content: ProductContent, now: Date): Pr
   };
 }
 
+/**
+ * SKUs are unique across the whole catalog. The positions in `variants` whose
+ * SKU is taken: by an earlier variant in the list, or by a variant of any of
+ * `others` (every other product).
+ */
+export function positionsWithTakenSku(variants: readonly { sku: string }[], others: readonly Product[]): number[] {
+  const taken = new Set(others.flatMap((product) => product.variants.map((variant) => variant.sku)));
+  const positions: number[] = [];
+  variants.forEach(({ sku }, position) => {
+    if (taken.has(sku)) positions.push(position);
+    taken.add(sku);
+  });
+  return positions;
+}
+
 /** Customers see listed products only; drafts and archived products never appear. */
 export function isListed(product: Product): boolean {
   return product.status === 'listed';
