@@ -529,3 +529,30 @@ describe('editing a product', () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe('featuring a product', () => {
+  async function homeFeatured() {
+    const res = await api.client().api.home.$get({ query: { locale: 'ja' } });
+    assert(res.ok);
+    return (await res.json()).featured?.slug ?? null;
+  }
+
+  test('a listed product the owner features is the home page’s pick, until the owner stops featuring it', async () => {
+    const owner = await api.owner();
+    const { slug, ...content } = { ...newProduct('featured-ring'), featured: true };
+    const created = await owner.client.api.admin.products.$post({ json: { slug, ...content } }, { headers: owner.headers });
+    assert(created.status === 201);
+    expect(await created.json()).toMatchObject({ featured: true });
+    expect(await homeFeatured()).toBeNull();
+
+    await owner.client.api.admin.products[':slug'].list.$post({ param: { slug }, json: { version: 1 } }, { headers: owner.headers });
+    expect(await homeFeatured()).toBe('featured-ring');
+
+    const unfeatured = await owner.client.api.admin.products[':slug'].$put(
+      { param: { slug }, json: { ...content, featured: false, version: 2 } },
+      { headers: owner.headers },
+    );
+    expect(unfeatured.status).toBe(200);
+    expect(await homeFeatured()).toBeNull();
+  });
+});
