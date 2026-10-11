@@ -17,6 +17,7 @@ const crescentRing: ProductPage = {
     dimensions: '幅 約2mm',
     weight: null,
     care: '着用後は柔らかい布で拭いてください。',
+    photos: [],
     category: { slug: 'rings', name: 'リング' },
     stockStatus: 'in_stock',
     variants: [
@@ -26,6 +27,20 @@ const crescentRing: ProductPage = {
       { sku: '13', label: '13号', priceYen: 25_000, stockStatus: 'sold_out' },
     ],
   },
+  categories,
+};
+
+const front = { url: '/images/products/front.jpg', alt: '正面から見た三日月のリング' };
+const side = { url: '/images/products/side.jpg', alt: '横から見た三日月のリング' };
+const worn = { url: '/images/products/worn.jpg', alt: '指につけた三日月のリング' };
+
+const photographedRing: ProductPage = {
+  product: { ...crescentRing.product, slug: 'photographed-ring', photos: [front, side, worn] },
+  categories,
+};
+
+const onePhotoRing: ProductPage = {
+  product: { ...crescentRing.product, slug: 'one-photo-ring', photos: [front] },
   categories,
 };
 
@@ -42,7 +57,12 @@ const soldOutEarrings: ProductPage = {
 
 beforeEach(() => {
   server.use(
-    mockApi.productPages({ 'crescent-ring': crescentRing, 'pearl-earrings': soldOutEarrings }),
+    mockApi.productPages({
+      'crescent-ring': crescentRing,
+      'pearl-earrings': soldOutEarrings,
+      'photographed-ring': photographedRing,
+      'one-photo-ring': onePhotoRing,
+    }),
     mockApi.home(emptyHomeData),
   );
 });
@@ -59,6 +79,55 @@ test('shows the product with its details and the price in yen, tax included', as
   // The owner left the weight out, so it is not listed.
   expect(within(main).queryByText('重量')).not.toBeInTheDocument();
   expect(within(main).getByRole('link', { name: 'リング' })).toHaveAttribute('href', '/categories/rings');
+});
+
+test('the gallery shows the first photo large, and pressing a thumbnail shows that photo instead', async () => {
+  const user = userEvent.setup();
+  renderRoute('/products/photographed-ring');
+
+  const thumbnails = await screen.findByRole('list', { name: '商品写真' });
+  const large = () => {
+    const shown = within(screen.getByRole('main'))
+      .getAllByRole('img')
+      .filter((img) => !thumbnails.contains(img));
+    expect(shown).toHaveLength(1);
+    return shown[0];
+  };
+  const buttons = within(thumbnails).getAllByRole('button');
+  expect(buttons.map((button) => button.getAttribute('aria-pressed'))).toEqual(['true', 'false', 'false']);
+  expect(large()).toHaveAttribute('src', front.url);
+  expect(large()).toHaveAccessibleName(front.alt);
+
+  await user.click(within(thumbnails).getByRole('button', { name: worn.alt }));
+
+  expect(large()).toHaveAttribute('src', worn.url);
+  expect(large()).toHaveAccessibleName(worn.alt);
+  expect(within(thumbnails).getByRole('button', { name: worn.alt })).toHaveAttribute('aria-pressed', 'true');
+  expect(within(thumbnails).getByRole('button', { name: front.alt })).toHaveAttribute('aria-pressed', 'false');
+});
+
+test('every photo on the page says what it shows', async () => {
+  renderRoute('/products/photographed-ring');
+
+  const main = await screen.findByRole('main');
+  await within(main).findByRole('list', { name: '商品写真' });
+  const images = within(main).getAllByRole('img');
+  expect(images).toHaveLength(4);
+  for (const image of images) expect(image.getAttribute('alt')).toMatch(/\S/);
+});
+
+test('a product with one photo shows it with no thumbnails; one without photos shows the photo’s place', async () => {
+  const { unmount } = renderRoute('/products/one-photo-ring');
+
+  const main = await screen.findByRole('main');
+  expect(within(main).getByRole('img', { name: front.alt })).toHaveAttribute('src', front.url);
+  expect(within(main).queryByRole('list', { name: '商品写真' })).not.toBeInTheDocument();
+  unmount();
+
+  renderRoute('/products/crescent-ring');
+  const bare = await screen.findByRole('main');
+  await within(bare).findByRole('heading', { level: 1, name: '三日月のリング' });
+  expect(within(bare).queryByRole('img')).not.toBeInTheDocument();
 });
 
 test('a sold-out size cannot be chosen; choosing another size shows its price and stock', async () => {

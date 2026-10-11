@@ -15,9 +15,16 @@ const allProducts: ProductList = {
   category: null,
   categories,
   products: [
-    { slug: 'crescent-ring', name: '三日月のリング', priceYen: 24_000, priceVaries: true, stockStatus: 'in_stock' },
-    { slug: 'starlight-necklace', name: '星明かりのネックレス', priceYen: 32_000, priceVaries: false, stockStatus: 'low_stock' },
-    { slug: 'pearl-earrings', name: 'パールピアス', priceYen: 28_000, priceVaries: false, stockStatus: 'sold_out' },
+    {
+      slug: 'crescent-ring',
+      name: '三日月のリング',
+      photo: { url: '/images/products/crescent.jpg', alt: '正面から見た三日月のリング' },
+      priceYen: 24_000,
+      priceVaries: true,
+      stockStatus: 'in_stock',
+    },
+    { slug: 'starlight-necklace', name: '星明かりのネックレス', photo: null, priceYen: 32_000, priceVaries: false, stockStatus: 'low_stock' },
+    { slug: 'pearl-earrings', name: 'パールピアス', photo: null, priceYen: 28_000, priceVaries: false, stockStatus: 'sold_out' },
   ],
 };
 
@@ -36,6 +43,12 @@ test('/products lists every product, newest first, with prices, stock and sort o
     'パールピアス',
   ]);
   expect(within(items[0]!).getByRole('link')).toHaveAttribute('href', '/products/crescent-ring');
+  // Each card shows the product's first photo, with its alt text; a product without photos shows none.
+  expect(within(items[0]!).getByRole('img', { name: '正面から見た三日月のリング' })).toHaveAttribute(
+    'src',
+    '/images/products/crescent.jpg',
+  );
+  expect(within(items[1]!).queryByRole('img')).not.toBeInTheDocument();
   // Prices differ between the ring's sizes: the lowest one, marked as a starting price.
   expect(within(items[0]!).getByText('¥24,000〜')).toBeInTheDocument();
   expect(within(items[1]!).getByText('残りわずか')).toBeInTheDocument();

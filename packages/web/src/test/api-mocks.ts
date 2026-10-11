@@ -1,3 +1,4 @@
+import { File as NodeFile } from 'node:buffer';
 import type { AdminUnauthorized } from '@yi/api';
 import type { InferResponseType } from 'hono/client';
 import { http, HttpResponse } from 'msw/http';
@@ -10,6 +11,7 @@ import {
   type AdminSession,
   type HomeData,
   type InvalidInput,
+  type PhotoUpload,
   type ProductList,
   type ProductPage,
   type StaleVersion,
@@ -44,6 +46,33 @@ export type AdminChangeReply<Changed extends Record<string, unknown>> =
   | { status: 409; body: StaleVersion | { error: 'invalid_status_transition' } };
 
 const reply = <Changed extends Record<string, unknown>>({ status, body }: AdminChangeReply<Changed>) => HttpResponse.json(body, { status });
+
+/** Where mocked upload forms post photos: photo storage (S3 in production). */
+export const PHOTO_STORAGE_URL = 'https://yijewelry-photos.s3.ap-northeast-1.amazonaws.com/';
+
+/** An upload form for a photo with `key`, as POST /api/admin/photo-uploads returns it. */
+export function photoUploadForm(key: string, contentType = 'image/jpeg'): PhotoUpload {
+  return {
+    key,
+    url: `/${key}`,
+    upload: { url: PHOTO_STORAGE_URL, fields: { key, 'Content-Type': contentType, Policy: 'cG9saWN5', 'X-Amz-Signature': 'abc' } },
+  };
+}
+
+/**
+ * The form a request posted. Node's parser makes its files with the global
+ * File, which it needs to be Node's, not jsdom's (see test/setup.ts); so
+ * Node's stands in while it parses.
+ */
+async function formDataOf(request: Request): Promise<FormData> {
+  const jsdomFile = globalThis.File;
+  globalThis.File = NodeFile as unknown as typeof File;
+  try {
+    return await request.formData();
+  } finally {
+    globalThis.File = jsdomFile;
+  }
+}
 
 /** A signed-in owner's session, as GET /api/admin/session returns it. */
 export const ownerSession: AdminSession = { owner: { email: 'owner@yijewelry.test' }, csrfToken: 'csrf-token-1' };
@@ -139,6 +168,28 @@ export const mockApi = {
     http.post(`${adminProductsUrl}/:slug/:change`, ({ request }) => {
       requests.push(request);
       return reply(answer);
+    }),
+
+  /**
+   * Answers requests for photo upload forms with `answers` in turn (the last
+   * one again once they run out): an upload form, or 400 with field errors.
+   * `requests` collects each request.
+   */
+  adminPhotoUploads: (answers: (PhotoUpload | InvalidInput)[], requests: Request[] = []) =>
+    http.post(api.admin['photo-uploads'].$url().href, ({ request }) => {
+      requests.push(request);
+      const answer = answers[Math.min(requests.length, answers.length) - 1];
+      return answer && 'error' in answer ? HttpResponse.json(answer, { status: 400 }) : HttpResponse.json(answer);
+    }),
+
+  /**
+   * Answers uploads to photo storage with `status` (S3 answers 204 to an
+   * upload it takes). `uploads` collects each upload's form.
+   */
+  photoStorage: (status: number, uploads: FormData[] = []) =>
+    http.post(PHOTO_STORAGE_URL, async ({ request }) => {
+      uploads.push(await formDataOf(request));
+      return new HttpResponse(null, { status });
     }),
 
   /** Answers requests to create a category with `answer`; `requests` collects each request. */

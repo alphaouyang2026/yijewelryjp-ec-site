@@ -5,12 +5,13 @@ import { useMessages } from '../../i18n/useMessages';
 import { paths } from '../../paths';
 import { Label } from '../atoms/Label';
 import { LocalizedLink } from '../atoms/LocalizedLink';
+import { Photo } from '../atoms/Photo';
 import { PhotoPlaceholder } from '../atoms/PhotoPlaceholder';
 import { Price } from '../atoms/Price';
 import { DetailList } from '../molecules/DetailList';
 import styles from './FeaturedProduct.module.css';
 
-/** The product the owner picked for the home page (dark area): photo, name, description, materials, sizes, price, and a link to its page. */
+/** The product the owner picked for the home page (dark area): its main photo, name, description, materials, sizes, price, and a link to its page. */
 export function FeaturedProduct({ product }: { product: Featured }) {
   const text = useMessages();
   const nameId = useId();
@@ -20,7 +21,11 @@ export function FeaturedProduct({ product }: { product: Featured }) {
     <section aria-labelledby={nameId} className={styles.band}>
       <div className={styles.inner}>
         <div className={styles.photo}>
-          <PhotoPlaceholder shape="product" ground="dark" />
+          {product.photo ? (
+            <Photo src={product.photo.url} alt={product.photo.alt} shape="product" ground="dark" />
+          ) : (
+            <PhotoPlaceholder shape="product" ground="dark" />
+          )}
         </div>
         <div className={styles.copy}>
           <Label ground="dark">{text.home.featuredLabel}</Label>

@@ -1,0 +1,42 @@
+/* Drawn as a secondary button (Button.module.css); the file input stays in the page for keyboards and screen readers. */
+.picker {
+  display: inline-flex;
+  align-self: flex-start;
+}
+
+.input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.face {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--button-height);
+  padding: 0 var(--space-5);
+  border: var(--line-width) solid var(--color-onyx);
+  font-family: var(--font-body);
+  font-size: var(--text-nav);
+  letter-spacing: var(--tracking-nav);
+  cursor: pointer;
+}
+
+.face:hover {
+  opacity: var(--hover-opacity);
+}
+
+.input:disabled + .face {
+  border-color: var(--color-linen);
+  background: var(--color-linen);
+  color: var(--color-graphite);
+  cursor: default;
+  opacity: 1;
+}
+
+.input:focus-visible + .face {
+  outline: var(--focus-ring-width) solid var(--color-onyx);
+  outline-offset: var(--focus-ring-offset);
+}

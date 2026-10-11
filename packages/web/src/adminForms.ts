@@ -64,13 +64,25 @@ export type VariantValues = {
   reservedStock: number;
 };
 
+/** A photo of the product, uploaded: its key, the URL it is served at (for the preview), and its alt text. */
+export type PhotoValues = { key: string; url: string; alt: LocalizedValues };
+
 export type ProductFormValues = ProductTextValues & {
   slug: string;
   /** '' for no category. */
   categorySlug: string;
   featured: boolean;
   variants: VariantValues[];
+  /** In the owner's order: the first is the one lists and the home page show. */
+  photos: PhotoValues[];
 };
+
+/**
+ * How uploading a photo the owner picked ended: the photo, ready for its alt
+ * text, or why it was not uploaded: the API's reason (a type other than
+ * JPEG, PNG or WebP, or over 5 MB), or 'failed' for anything else.
+ */
+export type PhotoUploadResult = { photo: PhotoValues } | { problem: FieldErrorCode | 'failed' };
 
 let lastVariantKey = 0;
 
@@ -87,6 +99,7 @@ export function blankProduct(): ProductFormValues {
     categorySlug: '',
     featured: false,
     variants: [blankVariant()],
+    photos: [],
   };
 }
 
@@ -105,6 +118,7 @@ export function productValues(product: AdminProduct): ProductFormValues {
       onHandStock: String(variant.onHandStock),
       reservedStock: variant.reservedStock,
     })),
+    photos: product.photos.map((photo) => ({ key: photo.key, url: photo.url, alt: textValues(photo.alt) })),
   };
 }
 
@@ -126,5 +140,6 @@ export function productContent(values: ProductFormValues): Omit<NewProduct, 'slu
       priceYen: numberAsTyped(variant.priceYen),
       onHandStock: numberAsTyped(variant.onHandStock),
     })),
+    photos: values.photos.map((photo) => ({ key: photo.key, alt: photo.alt })),
   };
 }

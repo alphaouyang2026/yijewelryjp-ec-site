@@ -74,8 +74,15 @@ test('new arrivals show each product with its price and stock, and link to every
     mockApi.home({
       ...emptyHomeData,
       newArrivals: [
-        { slug: 'crescent-ring', name: '三日月のリング', priceYen: 24_000, priceVaries: true, stockStatus: 'in_stock' },
-        { slug: 'pearl-earrings', name: 'パールピアス', priceYen: 28_000, priceVaries: false, stockStatus: 'sold_out' },
+        {
+          slug: 'crescent-ring',
+          name: '三日月のリング',
+          photo: { url: '/images/products/crescent.jpg', alt: '正面から見た三日月のリング' },
+          priceYen: 24_000,
+          priceVaries: true,
+          stockStatus: 'in_stock',
+        },
+        { slug: 'pearl-earrings', name: 'パールピアス', photo: null, priceYen: 28_000, priceVaries: false, stockStatus: 'sold_out' },
       ],
     }),
   );
@@ -86,6 +93,11 @@ test('new arrivals show each product with its price and stock, and link to every
   const items = within(newArrivals).getAllByRole('listitem');
   expect(items.map((item) => within(item).getByRole('heading').textContent)).toEqual(['三日月のリング', 'パールピアス']);
   expect(within(items[0]!).getByRole('link')).toHaveAttribute('href', '/products/crescent-ring');
+  expect(within(items[0]!).getByRole('img', { name: '正面から見た三日月のリング' })).toHaveAttribute(
+    'src',
+    '/images/products/crescent.jpg',
+  );
+  expect(within(items[1]!).queryByRole('img')).not.toBeInTheDocument();
   expect(within(items[0]!).getByText('¥24,000〜').parentElement).toHaveTextContent('¥24,000〜（税込）');
   expect(within(items[1]!).getByText('SOLD OUT')).toBeInTheDocument();
   expect(within(newArrivals).getByRole('link', { name: 'すべての新作を見る' })).toHaveAttribute('href', '/products');
@@ -98,6 +110,7 @@ test('the featured product is picked up with its description, details and a link
       featured: {
         slug: 'crescent-ring',
         name: '三日月のリング',
+        photo: { url: '/images/products/crescent-worn.jpg', alt: '指につけた三日月のリング' },
         priceYen: 24_000,
         priceVaries: true,
         stockStatus: 'in_stock',
@@ -112,6 +125,10 @@ test('the featured product is picked up with its description, details and a link
 
   const featured = await screen.findByRole('region', { name: '三日月のリング' });
   expect(within(featured).getByText('Pick Up')).toBeInTheDocument();
+  expect(within(featured).getByRole('img', { name: '指につけた三日月のリング' })).toHaveAttribute(
+    'src',
+    '/images/products/crescent-worn.jpg',
+  );
   expect(within(featured).getByText('細い三日月をかたどったリングです。')).toBeInTheDocument();
   expect(within(featured).getByText('素材').nextElementSibling).toHaveTextContent('K18イエローゴールド');
   expect(within(featured).getByText('サイズ').nextElementSibling).toHaveTextContent('7号 / 9号 / 11号');

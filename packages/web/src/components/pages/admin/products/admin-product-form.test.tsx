@@ -31,6 +31,7 @@ const moonRing: AdminProduct = {
     { sku: 'moon-9', label: { ja: '9号' }, priceYen: 24_000, onHandStock: 3, reservedStock: 1 },
     { sku: 'moon-11', label: { ja: '11号' }, priceYen: 25_000, onHandStock: 0, reservedStock: 0 },
   ],
+  photos: [],
 };
 
 /** The fieldset (group) of a text kept per locale, or of a variant. */
@@ -77,6 +78,7 @@ test('the new-product form sends what the owner entered, with the CSRF token, th
     categorySlug: 'rings',
     featured: true,
     variants: [{ sku: 'moon-9', label: { ...blank, ja: '9号' }, priceYen: 24_000, onHandStock: 3 }],
+    photos: [],
   });
 });
 
