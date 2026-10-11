@@ -21,7 +21,7 @@
 /* One line per locale on wide screens, stacked on narrow ones. */
 .row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(var(--localized-field-min-width), 1fr));
   gap: var(--space-2);
 }
 

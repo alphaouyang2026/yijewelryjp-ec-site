@@ -1,5 +1,5 @@
 .select {
-  min-width: 50%;
+  min-width: var(--select-min-width);
   min-height: var(--tap-target);
   padding: 0 var(--space-1);
   border: var(--line-width) solid var(--color-hairline);

@@ -16,7 +16,7 @@
 
 .numbers {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(var(--variant-number-min-width), 1fr));
   gap: var(--space-2);
 }
 
