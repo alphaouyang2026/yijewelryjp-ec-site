@@ -1,0 +1,14 @@
+.checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--tap-target);
+  cursor: pointer;
+}
+
+.checkbox input {
+  width: var(--space-2);
+  height: var(--space-2);
+  margin: 0;
+  accent-color: var(--color-onyx);
+}

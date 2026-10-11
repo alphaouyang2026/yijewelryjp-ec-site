@@ -1,0 +1,25 @@
+.variant {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-2);
+  border: var(--line-width) solid var(--color-hairline);
+  background: var(--color-porcelain);
+}
+
+.legend {
+  padding: 0 var(--space-1);
+  font-family: var(--font-heading);
+}
+
+.numbers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-2);
+}
+
+.remove {
+  align-self: flex-start;
+}

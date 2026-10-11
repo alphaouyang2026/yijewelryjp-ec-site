@@ -1,0 +1,11 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.label {
+  font-size: var(--text-caption);
+  letter-spacing: var(--tracking-caption);
+}

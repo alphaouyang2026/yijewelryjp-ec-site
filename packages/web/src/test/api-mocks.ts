@@ -106,11 +106,15 @@ export const mockApi = {
       return HttpResponse.json(list);
     }),
 
-  /** Answers the admin's requests for a product with `product` for its slug; 404 for any other. */
-  adminProduct: (product: AdminProduct) =>
-    http.get(`${adminProductsUrl}/:slug`, ({ params }) =>
-      params.slug === product.slug ? HttpResponse.json(product) : HttpResponse.json(notFound, { status: 404 }),
-    ),
+  /**
+   * Answers the admin's requests for a product with `product` (or what it
+   * returns at the time, for a product that changes) for its slug; 404 for any other.
+   */
+  adminProduct: (product: AdminProduct | (() => AdminProduct)) =>
+    http.get(`${adminProductsUrl}/:slug`, ({ params }) => {
+      const current = typeof product === 'function' ? product() : product;
+      return params.slug === current.slug ? HttpResponse.json(current) : HttpResponse.json(notFound, { status: 404 });
+    }),
 
   /** Answers the admin's category list requests with `list`. */
   adminCategories: (list: AdminCategoryList) => http.get(adminCategoriesUrl, () => HttpResponse.json(list)),

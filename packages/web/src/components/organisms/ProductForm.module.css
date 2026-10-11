@@ -1,0 +1,47 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.hint {
+  color: var(--color-graphite);
+  font-size: var(--text-caption);
+  line-height: var(--line-height-tight);
+}
+
+.slug {
+  font-size: var(--text-caption);
+}
+
+.slugLabel {
+  color: var(--color-graphite);
+  letter-spacing: var(--tracking-caption);
+}
+
+.variants {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.variantsLegend {
+  margin-bottom: var(--space-1);
+  padding: 0;
+  font-weight: var(--font-weight-medium);
+}
+
+.addVariant,
+.submit {
+  align-self: flex-start;
+}
