@@ -6,6 +6,7 @@ import type { CategoryRepository } from '../domain/category';
 import {
   byLatestChange,
   changeStatus,
+  leavesStatusAsIs,
   newProduct,
   positionsWithTakenSku,
   reviseProduct,
@@ -135,28 +136,35 @@ export type ChangeProductStatus = (command: { slug: string; change: StatusChange
 
 /**
  * Use case: the owner lists, unlists, archives or restores a product, as of
- * its version `version` (the one the owner saw).
+ * its version `version` (the one the owner saw). Archiving an archived
+ * product succeeds and changes nothing, whatever version the owner saw: the
+ * product is as the owner wants it, and nothing newer is overwritten.
  */
 export function changeProductStatus(deps: Deps): ChangeProductStatus {
   return ({ slug, change, version }) =>
-    changeFrom(deps, { slug, version }, (product) => {
-      const changed = changeStatus(product, change, deps.clock.now());
-      return changed ?? { outcome: 'invalid_status_transition' };
-    });
+    changeFrom(
+      deps,
+      { slug, version },
+      (product) => changeStatus(product, change, deps.clock.now()) ?? { outcome: 'invalid_status_transition' },
+      (product) => leavesStatusAsIs(product, change),
+    );
 }
 
 /**
  * Applies `change` to the product `slug` and saves it, if the owner made it
  * from the stored version (`version`): checked when the product is read, and
- * again when it is written, in case someone changed it in between.
+ * again when it is written, in case someone changed it in between. If
+ * `leavesAsIs` the product, it succeeds without saving anything.
  */
 async function changeFrom(
   deps: Pick<Deps, 'products'>,
   { slug, version }: { slug: string; version: number },
   change: (product: Product) => Promise<Product | ProductChange> | Product | ProductChange,
+  leavesAsIs: (product: Product) => boolean = () => false,
 ): Promise<ProductChange> {
   const product = await deps.products.bySlug(slug);
   if (!product) return { outcome: 'not_found' };
+  if (leavesAsIs(product)) return { outcome: 'changed', product: adminProduct(product) };
   if (product.version !== version) return { outcome: 'stale' };
 
   const changed = await change(product);

@@ -313,6 +313,20 @@ describe('listing, unlisting, archiving and restoring', () => {
     expect((await storePage(slug)).status).toBe(404);
   });
 
+  test('archiving an archived product succeeds and changes nothing, even from an outdated version', async () => {
+    const owner = await api.owner();
+    await create(owner, 'twice-archived-ring');
+    await change(owner, 'twice-archived-ring', 'archive', 1);
+
+    const again = await change(owner, 'twice-archived-ring', 'archive', 2);
+    const fromOutdated = await change(owner, 'twice-archived-ring', 'archive', 1);
+
+    expect(again.status).toBe(200);
+    expect(await again.json()).toMatchObject({ status: 'archived', statusChanges: ['restore'], version: 2 });
+    expect(fromOutdated.status).toBe(200);
+    expect(await fromOutdated.json()).toMatchObject({ status: 'archived', version: 2 });
+  });
+
   test('restoring an archived product makes it a draft again', async () => {
     const owner = await api.owner();
     await create(owner, 'restored-ring');
@@ -332,7 +346,6 @@ describe('listing, unlisting, archiving and restoring', () => {
     { from: 'listed', action: 'restore' },
     { from: 'archived', action: 'list' },
     { from: 'archived', action: 'unlist' },
-    { from: 'archived', action: 'archive' },
   ] as const)('a $from product cannot be told to $action', async ({ from, action }) => {
     const owner = await api.owner();
     const slug = `${from}-cannot-${action}`;

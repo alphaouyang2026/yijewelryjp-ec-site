@@ -132,14 +132,29 @@ export function reviseProduct(product: Product, content: ProductContent, now: Da
 /** What the owner can do to a product's status. There is no deleting: a product no longer sold is archived. */
 export type StatusChange = 'list' | 'unlist' | 'archive' | 'restore';
 
-const TRANSITIONS: Record<StatusChange, { from: readonly ProductStatus[]; to: ProductStatus }> = {
+/**
+ * Each status change: the statuses it changes, and to what. A change that
+ * `repeats` also succeeds on a product already in its status, leaving it as
+ * it is: any product can be archived, an archived one too.
+ */
+const TRANSITIONS: Record<StatusChange, { from: readonly ProductStatus[]; to: ProductStatus; repeats?: true }> = {
   list: { from: ['draft'], to: 'listed' },
   unlist: { from: ['listed'], to: 'draft' },
-  archive: { from: ['draft', 'listed'], to: 'archived' },
+  archive: { from: ['draft', 'listed'], to: 'archived', repeats: true },
   restore: { from: ['archived'], to: 'draft' },
 };
 
-/** The status changes the product's status allows, in a fixed order (list, unlist, archive, restore). */
+/** Whether `change` succeeds on the product without changing it: archiving an archived product. */
+export function leavesStatusAsIs(product: Product, change: StatusChange): boolean {
+  const { to, repeats } = TRANSITIONS[change];
+  return repeats === true && product.status === to;
+}
+
+/**
+ * The status changes that change the product's status, in a fixed order
+ * (list, unlist, archive, restore). Archiving an archived product is not
+ * among them: it would leave the product as it is.
+ */
 export function allowedStatusChanges(product: Product): StatusChange[] {
   return (Object.keys(TRANSITIONS) as StatusChange[]).filter((change) =>
     TRANSITIONS[change].from.includes(product.status),
