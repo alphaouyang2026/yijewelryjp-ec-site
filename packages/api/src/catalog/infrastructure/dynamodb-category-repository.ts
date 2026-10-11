@@ -1,8 +1,9 @@
-import { ConditionalCheckFailedException, TransactionCanceledException } from '@aws-sdk/client-dynamodb';
+import { ConditionalCheckFailedException } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand, TransactWriteCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { queryPartition, withoutUndefined, type Database } from '../../platform/dynamodb';
 import type { LocalizedText } from '../../shared-kernel/localized-text';
 import type { Category, CategoryRepository } from '../domain/category';
+import { isStaleWrite, onVersion, storedVersion } from './versioned-writes';
 
 /**
  * A category's item: every category in partition CATEGORY, keyed by its slug,
@@ -14,17 +15,14 @@ export type CategoryItem = {
   name: LocalizedText;
   /** Categories are listed by it, lowest first. */
   position: number;
-  /** 1 when created, one more with each write; every write is conditional on the version it read. */
-  version: number;
+  /**
+   * 1 when created, one more with each write; every write is conditional on
+   * the version it read. Absent from items written before items had versions.
+   */
+  version?: number;
 };
 
 const PARTITION = 'CATEGORY';
-
-/** Whether a write failed because an item was no longer at the version the write was conditional on. */
-const isStale = (error: unknown) =>
-  error instanceof ConditionalCheckFailedException ||
-  (error instanceof TransactionCanceledException &&
-    (error.CancellationReasons ?? []).some((reason) => reason.Code === 'ConditionalCheckFailed'));
 
 export function dynamoDbCategoryRepository(db: Database): CategoryRepository {
   const documents = DynamoDBDocumentClient.from(db.client);
@@ -63,24 +61,25 @@ export function dynamoDbCategoryRepository(db: Database): CategoryRepository {
     },
 
     async update(category) {
+      const written = onVersion(category.version);
       try {
         await documents.send(
           new UpdateCommand({
             TableName: db.tableName,
             Key: { pk: PARTITION, sk: category.slug },
             UpdateExpression: 'SET #name = :name, version = :next',
-            ConditionExpression: 'version = :read',
+            ConditionExpression: written.ConditionExpression,
             ExpressionAttributeNames: { '#name': 'name' },
             ExpressionAttributeValues: {
+              ...written.ExpressionAttributeValues,
               ':name': withoutUndefined(category.name),
-              ':read': category.version,
               ':next': category.version + 1,
             },
           }),
         );
         return { ...category, version: category.version + 1 };
       } catch (error) {
-        if (isStale(error)) return 'stale';
+        if (isStaleWrite(error)) return 'stale';
         throw error;
       }
     },
@@ -91,21 +90,28 @@ export function dynamoDbCategoryRepository(db: Database): CategoryRepository {
       try {
         await documents.send(
           new TransactWriteCommand({
-            TransactItems: order.map(({ slug, version }, index) => ({
-              Update: {
-                TableName: db.tableName,
-                Key: { pk: PARTITION, sk: slug },
-                UpdateExpression: 'SET #position = :position, version = :next',
-                ConditionExpression: 'version = :read',
-                ExpressionAttributeNames: { '#position': 'position' },
-                ExpressionAttributeValues: { ':position': index + 1, ':read': version, ':next': version + 1 },
-              },
-            })),
+            TransactItems: order.map(({ slug, version }, index) => {
+              const written = onVersion(version);
+              return {
+                Update: {
+                  TableName: db.tableName,
+                  Key: { pk: PARTITION, sk: slug },
+                  UpdateExpression: 'SET #position = :position, version = :next',
+                  ConditionExpression: written.ConditionExpression,
+                  ExpressionAttributeNames: { '#position': 'position' },
+                  ExpressionAttributeValues: {
+                    ...written.ExpressionAttributeValues,
+                    ':position': index + 1,
+                    ':next': version + 1,
+                  },
+                },
+              };
+            }),
           }),
         );
         return 'reordered';
       } catch (error) {
-        if (isStale(error)) return 'stale';
+        if (isStaleWrite(error)) return 'stale';
         throw error;
       }
     },
@@ -113,5 +119,5 @@ export function dynamoDbCategoryRepository(db: Database): CategoryRepository {
 }
 
 function toCategory(item: CategoryItem): Category {
-  return { slug: item.sk, name: item.name, version: item.version };
+  return { slug: item.sk, name: item.name, version: storedVersion(item) };
 }

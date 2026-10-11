@@ -5,8 +5,9 @@ export type Category = {
   readonly slug: string;
   readonly name: LocalizedText;
   /**
-   * Which stored version of the category this is: 1 when created, one more
-   * with each change (renaming, or moving in the order). A change is saved
+   * Which stored version of the category this is: 1 when created (0 if
+   * stored before categories had versions), one more with each change
+   * (renaming, or moving in the order). A change is saved
    * only onto the version it was made from.
    */
   readonly version: number;

@@ -37,8 +37,8 @@ export type Product = {
   readonly updatedAt?: Date;
   readonly variants: readonly Variant[];
   /**
-   * Which stored version of the product this is: 1 when created, one more with
-   * each change. A change is saved only onto the version it was made from, so
+   * Which stored version of the product this is: 1 when created (0 if stored
+   * before products had versions), one more with each change. A change is saved only onto the version it was made from, so
    * an owner editing an outdated copy cannot overwrite a newer one.
    */
   readonly version: number;

@@ -176,3 +176,44 @@ describe('ordering categories', () => {
     expect(await res.json()).toEqual({ error: 'invalid_input', fields: [{ path: 'categories', code: 'invalid' }] });
   });
 });
+
+describe('categories stored before categories had versions', () => {
+  const api = useTestApi();
+
+  beforeAll(async () => {
+    await api.seed.catalog.categories([
+      { slug: 'ring', position: 1, name: { ja: 'リング' }, version: undefined },
+      { slug: 'necklace', position: 2, name: { ja: 'ネックレス' }, version: undefined },
+    ]);
+  });
+
+  test('read as version 0, and the owner can rename and reorder them from that version', async () => {
+    const owner = await api.owner();
+    expect((await adminCategories(owner)).map(({ slug, version }) => ({ slug, version }))).toEqual([
+      { slug: 'ring', version: 0 },
+      { slug: 'necklace', version: 0 },
+    ]);
+
+    const renamed = await owner.client.api.admin.categories[':slug'].$put(
+      { param: { slug: 'ring' }, json: { name: { ja: '指輪', zh: '', en: '' }, version: 0 } },
+      { headers: owner.headers },
+    );
+    const reordered = await owner.client.api.admin['category-order'].$put(
+      {
+        query: { locale: 'ja' },
+        json: {
+          categories: [
+            { slug: 'necklace', version: 0 },
+            { slug: 'ring', version: 1 },
+          ],
+        },
+      },
+      { headers: owner.headers },
+    );
+
+    expect(renamed.status).toBe(200);
+    expect(await renamed.json()).toMatchObject({ name: { ja: '指輪' }, version: 1 });
+    expect(reordered.status).toBe(200);
+    expect((await storeCategories(api)).map((category) => category.slug)).toEqual(['necklace', 'ring']);
+  });
+});

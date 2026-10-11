@@ -4,6 +4,7 @@ import { queryPartition, withoutUndefined, type Database } from '../../platform/
 import type { LocalizedText } from '../../shared-kernel/localized-text';
 import { yen } from '../../shared-kernel/money';
 import type { Product, ProductRepository, ProductStatus } from '../domain/product';
+import { isStaleWrite, onVersion, storedVersion } from './versioned-writes';
 
 /**
  * A product's item: every product in partition PRODUCT, keyed by its slug, with
@@ -25,8 +26,11 @@ export type ProductItem = {
   listedAt?: string; // ISO 8601
   updatedAt?: string; // ISO 8601
   variants: VariantItem[];
-  /** 1 when created, one more with each write; every write is conditional on the version it read. */
-  version: number;
+  /**
+   * 1 when created, one more with each write; every write is conditional on
+   * the version it read. Absent from items written before items had versions.
+   */
+  version?: number;
 };
 
 export type VariantItem = {
@@ -77,13 +81,12 @@ export function dynamoDbProductRepository(db: Database): ProductRepository {
           new PutCommand({
             TableName: db.tableName,
             Item: toItem(stored),
-            ConditionExpression: 'version = :read',
-            ExpressionAttributeValues: { ':read': product.version },
+            ...onVersion(product.version),
           }),
         );
         return stored;
       } catch (error) {
-        if (error instanceof ConditionalCheckFailedException) return 'stale';
+        if (isStaleWrite(error)) return 'stale';
         throw error;
       }
     },
@@ -111,7 +114,7 @@ function toProduct(item: ProductItem): Product {
       onHandStock: variant.onHandStock,
       reservedStock: variant.reservedStock,
     })),
-    version: item.version,
+    version: storedVersion(item),
   };
 }
 

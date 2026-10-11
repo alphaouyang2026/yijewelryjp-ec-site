@@ -89,8 +89,11 @@ export const newProductBody = productInput.extend({ slug });
 /** A category's name: Japanese required, Chinese and English optional. */
 export const categoryName = localizedText(SHORT_TEXT_MAX);
 
-/** The version of the product or category the owner's change was made from. */
-export const version = z.number({ error: 'invalid' }).int({ error: 'invalid' }).min(1, { error: 'invalid' });
+/**
+ * The version of the product or category the owner's change was made from:
+ * 0 for one stored before products and categories had versions.
+ */
+export const version = z.number({ error: 'invalid' }).int({ error: 'invalid' }).min(0, { error: 'invalid' });
 
 export const versionBody = z.object({ version });
 

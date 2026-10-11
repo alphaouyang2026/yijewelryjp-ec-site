@@ -582,3 +582,50 @@ describe('featuring a product', () => {
     expect(await homeFeatured()).toBeNull();
   });
 });
+
+describe('a product stored before products had versions', () => {
+  beforeAll(async () => {
+    await api.seed.catalog.products([
+      { slug: 'old-ring', status: 'draft', version: undefined },
+      { slug: 'old-pendant', status: 'draft', version: undefined },
+    ]);
+  });
+
+  test('reads as version 0, and the owner can edit it from that version', async () => {
+    const owner = await api.owner();
+    const read = await owner.client.api.admin.products[':slug'].$get({ param: { slug: 'old-ring' } });
+    assert(read.status === 200);
+    const product = await read.json();
+    expect(product).toMatchObject({ slug: 'old-ring', version: 0 });
+
+    const res = await owner.client.api.admin.products[':slug'].$put(
+      {
+        param: { slug: 'old-ring' },
+        json: {
+          name: { ja: '古いリング' },
+          description: product.description,
+          categorySlug: null,
+          featured: false,
+          variants: product.variants,
+          version: 0,
+        },
+      },
+      { headers: owner.headers },
+    );
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ name: { ja: '古いリング' }, version: 1 });
+  });
+
+  test('can have its status changed from version 0', async () => {
+    const owner = await api.owner();
+
+    const res = await owner.client.api.admin.products[':slug'].list.$post(
+      { param: { slug: 'old-pendant' }, json: { version: 0 } },
+      { headers: owner.headers },
+    );
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ status: 'listed', version: 1 });
+  });
+});
