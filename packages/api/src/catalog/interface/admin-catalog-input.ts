@@ -1,6 +1,6 @@
 import * as z from 'zod';
 import type { FieldErrorCode } from '../../interface/json-body';
-import { MAX_PRICE_YEN } from '../domain/product';
+import { MAX_PRICE_YEN } from '../application/manage-products';
 
 // What the admin's catalog forms send, validated field by field. Each error
 // message is a field error code, so the admin can say what is wrong next to

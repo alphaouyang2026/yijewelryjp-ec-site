@@ -57,7 +57,7 @@ export type ProductChange =
   | { outcome: 'invalid_status_transition' };
 
 export type { StatusChange };
-export { PRODUCT_STATUSES } from '../domain/product';
+export { MAX_PRICE_YEN, PRODUCT_STATUSES } from '../domain/product';
 
 export type ListAdminProducts = (query: {
   locale: Locale;
