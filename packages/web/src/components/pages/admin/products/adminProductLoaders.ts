@@ -1,12 +1,12 @@
 import { data, type LoaderFunctionArgs } from 'react-router';
 import { api } from '../../../../api';
 import { localeOfPath, type Locale } from '../../../../i18n/locales';
+import { fetchAdminCategories } from '../categories/adminCategoriesLoader';
 
 /** The categories a product can be in, named in `locale`, in the owner's order. */
 async function categoryChoices(locale: Locale) {
-  const res = await api.admin.categories.$get({ query: { locale } });
-  if (!res.ok) throw new Error(`Admin category list request failed with status ${res.status}`);
-  return (await res.json()).categories.map((category) => ({ slug: category.slug, name: category.displayName }));
+  const { categories } = await fetchAdminCategories(locale);
+  return categories.map((category) => ({ slug: category.slug, name: category.displayName }));
 }
 
 /** What the new-product form needs: the categories to choose from. */

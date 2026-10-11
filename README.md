@@ -54,6 +54,7 @@ packages/web/src/
 ├── i18n/             语言、语言前缀的路径、三种语言的翻译资源、按语言加载的字体
 ├── api.ts            Hono RPC 客户端和由 API 推出的响应类型
 ├── adminForms.ts     后台表单的值与 API 请求体之间的转换、API 返回的字段错误
+├── adminChanges.ts   后台页面发送修改、显示结果（完成、输入错误、版本冲突）并在保存后重新加载数据的 hook
 ├── paths.ts          页面路径（`PagePath` 类型，不带语言前缀）
 ├── brand.ts          logo 和品牌名
 ├── browser.ts        离开 React 应用、转到它不处理的页面（如 API 的登录入口）
