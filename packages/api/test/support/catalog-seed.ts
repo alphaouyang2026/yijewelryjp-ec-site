@@ -5,16 +5,17 @@ import type { Database } from '../../src/platform/dynamodb';
 import type { LocalizedText } from '../../src/shared-kernel/localized-text';
 
 /** A product to seed: its slug, and whatever the test cares about; the rest gets a plain default. */
-export type ProductSeed = Partial<Omit<ProductItem, 'pk' | 'sk' | 'listedAt' | 'variants'>> & {
+export type ProductSeed = Partial<Omit<ProductItem, 'pk' | 'sk' | 'listedAt' | 'updatedAt' | 'variants'>> & {
   slug: string;
   listedAt?: Date;
   variants?: (Partial<VariantItem> & { priceYen?: number })[];
 };
 
 /**
- * Puts catalog data straight into a test's table, for tests that need a
- * catalog before the API can build one (the admin comes in a later ticket).
- * Tests still check results only through the API.
+ * Puts catalog data straight into a test's table, for tests that need
+ * catalog data the admin cannot make: reserved stock (checkouts make it),
+ * listing times in the past, or many products at once. Tests still check
+ * results only through the API.
  */
 export function catalogSeed(db: Database) {
   const documents = DynamoDBDocumentClient.from(db.client);
@@ -48,6 +49,7 @@ function productItem({ slug, listedAt, variants, ...product }: ProductSeed): Pro
     name: { ja: slug },
     description: { ja: `${slug}の説明` },
     featured: false,
+    version: 1,
     ...product,
     listedAt: (listedAt ?? (status === 'listed' ? new Date('2026-09-01T10:00:00+09:00') : undefined))?.toISOString(),
     variants: (variants ?? [{}]).map((variant, index) => ({

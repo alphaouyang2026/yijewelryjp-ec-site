@@ -108,6 +108,18 @@ export function useTestApi({ withTable = true }: { withTable?: boolean } = {}) {
       const code = adminIdentity.issueCode(owner);
       return client.api.admin.auth.callback.$get({ query: { code, state } });
     },
+    /**
+     * A new client signed in as an owner, and the headers its data-changing
+     * admin requests send: the session's CSRF token, as the admin sends it.
+     */
+    async owner() {
+      const ownerClient = client();
+      await this.signIn(ownerClient);
+      const session = await ownerClient.api.admin.session.$get();
+      if (session.status !== 200) throw new Error(`Expected a session, got ${session.status}`);
+      const headers = { 'X-CSRF-Token': (await session.json()).csrfToken };
+      return { client: ownerClient, headers };
+    },
   };
 
   function client() {

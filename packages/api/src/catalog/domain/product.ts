@@ -32,13 +32,46 @@ export type Product = {
   readonly featured: boolean;
   /** When the product was first listed; new arrivals are ordered by it. */
   readonly listedAt?: Date;
+  /** When the owner last changed the product, if ever. */
+  readonly updatedAt?: Date;
   readonly variants: readonly Variant[];
+  /**
+   * Which stored version of the product this is: 1 when created, one more with
+   * each change. A change is saved only onto the version it was made from, so
+   * an owner editing an outdated copy cannot overwrite a newer one.
+   */
+  readonly version: number;
 };
+
+/** What the owner enters for a product: everything but its slug, status, listing time and reserved stock. */
+export type ProductContent = Pick<
+  Product,
+  'name' | 'description' | 'materials' | 'dimensions' | 'weight' | 'care' | 'categorySlug' | 'featured'
+> & {
+  readonly variants: readonly VariantContent[];
+};
+
+/** What the owner enters for a variant; its reserved stock is the checkouts'. */
+export type VariantContent = Omit<Variant, 'reservedStock'>;
 
 export interface ProductRepository {
   /** Every product, in any status and order. The catalog is small (well under 500 products). */
   all(): Promise<Product[]>;
   bySlug(slug: string): Promise<Product | undefined>;
+  /** Stores a new product; 'slug_taken' (and nothing stored) if a product already has its slug. */
+  add(product: Product): Promise<'added' | 'slug_taken'>;
+}
+
+/** A new product, as a draft at version 1, with `content` and nothing reserved. */
+export function newProduct(slug: string, content: ProductContent, now: Date): Product {
+  return {
+    ...content,
+    slug,
+    status: 'draft',
+    updatedAt: now,
+    variants: content.variants.map((variant) => ({ ...variant, reservedStock: 0 })),
+    version: 1,
+  };
 }
 
 /** Customers see listed products only; drafts and archived products never appear. */

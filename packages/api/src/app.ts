@@ -2,8 +2,10 @@ import { Hono } from 'hono';
 import { getHomeData } from './catalog/application/get-home-data';
 import { getProduct } from './catalog/application/get-product';
 import { listProducts } from './catalog/application/list-products';
+import { createProduct, getAdminProduct } from './catalog/application/manage-products';
 import type { CategoryRepository } from './catalog/domain/category';
 import type { ProductRepository } from './catalog/domain/product';
+import { adminProductRoutes } from './catalog/interface/admin-product-routes';
 import { homeRoutes } from './catalog/interface/home-routes';
 import { productRoutes } from './catalog/interface/product-routes';
 import { resumeSession } from './identity/application/resume-session';
@@ -49,7 +51,11 @@ export function createApp(deps: AppDeps) {
   // none can forget the rules.
   const admin = new Hono()
     .use(ownerOnly({ resumeSession: resumeSession(deps), sessionCookie: cookies.session }))
-    .route('/', adminSessionRoutes({ signOut: signOut(deps), sessionCookie: cookies.session }));
+    .route('/', adminSessionRoutes({ signOut: signOut(deps), sessionCookie: cookies.session }))
+    .route(
+      '/products',
+      adminProductRoutes({ createProduct: createProduct(deps), getAdminProduct: getAdminProduct(deps) }),
+    );
 
   return new Hono()
     .basePath('/api')

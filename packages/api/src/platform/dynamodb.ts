@@ -39,3 +39,19 @@ export async function queryPartition<Item>(
   }
   return items.slice(0, limit);
 }
+
+/**
+ * `item` without its undefined properties, at any depth, so optional
+ * attributes are left out rather than refused: DynamoDB stores no undefined.
+ * (The document client's removeUndefinedValues option is no way round this:
+ * every document client on one DynamoDB client shares one set of options.)
+ */
+export function withoutUndefined<Item>(item: Item): Item {
+  if (Array.isArray(item)) return item.map(withoutUndefined) as Item;
+  if (item === null || typeof item !== 'object' || item instanceof Date) return item;
+  return Object.fromEntries(
+    Object.entries(item)
+      .filter(([, value]) => value !== undefined)
+      .map(([key, value]) => [key, withoutUndefined(value)]),
+  ) as Item;
+}

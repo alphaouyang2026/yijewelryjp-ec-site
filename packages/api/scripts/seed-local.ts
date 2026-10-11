@@ -1,7 +1,7 @@
 // Fills the local DynamoDB table with sample categories and products, for
 // local development only (`npm run db:seed`, with DynamoDB Local running).
-// Every sample is written with the same layout the API reads; running it again
-// overwrites them. The admin (a later ticket) will replace this for real data.
+// Every sample is written with the same layout the API reads, at version 1;
+// running it again overwrites them. Real data is entered in the admin.
 import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
 import type { CategoryItem } from '../src/catalog/infrastructure/dynamodb-category-repository';
 import type { ProductItem, VariantItem } from '../src/catalog/infrastructure/dynamodb-product-repository';
@@ -39,8 +39,8 @@ const sample = (text: { ja: string; zh: string; en: string }) => ({
 const product = (
   slug: string,
   listedAt: string | undefined,
-  fields: Omit<ProductItem, 'pk' | 'sk' | 'listedAt'>,
-): ProductItem => ({ pk: 'PRODUCT', sk: slug, listedAt, ...fields });
+  fields: Omit<ProductItem, 'pk' | 'sk' | 'listedAt' | 'version'>,
+): ProductItem => ({ pk: 'PRODUCT', sk: slug, listedAt, version: 1, ...fields });
 
 const products: ProductItem[] = [
   product('crescent-ring', '2026-09-20T10:00:00+09:00', {

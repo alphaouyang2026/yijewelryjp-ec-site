@@ -1,5 +1,6 @@
-import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb';
-import { queryPartition, type Database } from '../../platform/dynamodb';
+import { ConditionalCheckFailedException } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
+import { queryPartition, withoutUndefined, type Database } from '../../platform/dynamodb';
 import type { LocalizedText } from '../../shared-kernel/localized-text';
 import { yen } from '../../shared-kernel/money';
 import type { Product, ProductRepository, ProductStatus } from '../domain/product';
@@ -22,7 +23,10 @@ export type ProductItem = {
   categorySlug?: string;
   featured: boolean;
   listedAt?: string; // ISO 8601
+  updatedAt?: string; // ISO 8601
   variants: VariantItem[];
+  /** 1 when created, one more with each write; every write is conditional on the version it read. */
+  version: number;
 };
 
 export type VariantItem = {
@@ -49,6 +53,22 @@ export function dynamoDbProductRepository(db: Database): ProductRepository {
       );
       return Item ? toProduct(Item as ProductItem) : undefined;
     },
+
+    async add(product) {
+      try {
+        await documents.send(
+          new PutCommand({
+            TableName: db.tableName,
+            Item: toItem(product),
+            ConditionExpression: 'attribute_not_exists(pk)',
+          }),
+        );
+        return 'added';
+      } catch (error) {
+        if (error instanceof ConditionalCheckFailedException) return 'slug_taken';
+        throw error;
+      }
+    },
   };
 }
 
@@ -65,6 +85,7 @@ function toProduct(item: ProductItem): Product {
     categorySlug: item.categorySlug,
     featured: item.featured,
     listedAt: item.listedAt ? new Date(item.listedAt) : undefined,
+    updatedAt: item.updatedAt ? new Date(item.updatedAt) : undefined,
     variants: item.variants.map((variant) => ({
       sku: variant.sku,
       label: variant.label,
@@ -72,5 +93,33 @@ function toProduct(item: ProductItem): Product {
       onHandStock: variant.onHandStock,
       reservedStock: variant.reservedStock,
     })),
+    version: item.version,
   };
+}
+
+/** The product's item; details the product does not have are left out. */
+function toItem(product: Product): ProductItem {
+  return withoutUndefined({
+    pk: PARTITION,
+    sk: product.slug,
+    status: product.status,
+    name: product.name,
+    description: product.description,
+    materials: product.materials,
+    dimensions: product.dimensions,
+    weight: product.weight,
+    care: product.care,
+    categorySlug: product.categorySlug,
+    featured: product.featured,
+    listedAt: product.listedAt?.toISOString(),
+    updatedAt: product.updatedAt?.toISOString(),
+    variants: product.variants.map((variant) => ({
+      sku: variant.sku,
+      label: variant.label,
+      priceYen: variant.price.yen,
+      onHandStock: variant.onHandStock,
+      reservedStock: variant.reservedStock,
+    })),
+    version: product.version,
+  });
 }
