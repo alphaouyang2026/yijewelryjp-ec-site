@@ -1,4 +1,5 @@
 import type { LocalizedText } from '../../shared-kernel/localized-text';
+import type { VersionedSlug } from './versioned-slug';
 
 /** A group of products, such as rings or necklaces, that the site's navigation lists in the owner's order. */
 export type Category = {
@@ -12,9 +13,6 @@ export type Category = {
    */
   readonly version: number;
 };
-
-/** A category's place in the order, as the owner saw it: its slug and version. */
-export type CategoryOrderEntry = { readonly slug: string; readonly version: number };
 
 export interface CategoryRepository {
   /** Every category, in the order the shop owner arranged them. */
@@ -32,7 +30,7 @@ export interface CategoryRepository {
    * or none: 'stale' (and nothing changed) if any is no longer at the version
    * given. `order` names every category once.
    */
-  reorder(order: readonly CategoryOrderEntry[]): Promise<'reordered' | 'stale'>;
+  reorder(order: readonly VersionedSlug[]): Promise<'reordered' | 'stale'>;
 }
 
 /** A new category, at version 1. */
@@ -42,7 +40,7 @@ export function newCategory(slug: string, name: LocalizedText): Category {
 
 /** The positions in `order` of slugs no category has. Categories are never deleted, so such an order is not merely outdated. */
 export function positionsOfUnknownCategories(
-  order: readonly CategoryOrderEntry[],
+  order: readonly VersionedSlug[],
   categories: readonly Category[],
 ): number[] {
   const slugs = new Set(categories.map((category) => category.slug));
@@ -53,7 +51,7 @@ export function positionsOfUnknownCategories(
  * Whether `order` names exactly the categories there are, each once. An order
  * made before a category was added (or that leaves one out) does not.
  */
-export function namesEveryCategory(order: readonly CategoryOrderEntry[], categories: readonly Category[]): boolean {
+export function namesEveryCategory(order: readonly VersionedSlug[], categories: readonly Category[]): boolean {
   const slugs = new Set(order.map((entry) => entry.slug));
   return (
     slugs.size === order.length &&

@@ -17,6 +17,7 @@ import {
   type RevisionProblem,
   type StatusChange,
 } from '../domain/product';
+import type { VersionedSlug } from '../domain/versioned-slug';
 import { adminProduct, adminProductSummary, type AdminProduct, type AdminProductSummary } from './admin-catalog-views';
 import type { CatalogChange, RuleViolation } from './catalog-changes';
 
@@ -41,7 +42,7 @@ export type ProductInput = {
 /** How a change the owner asked for to a product ended. */
 export type ProductChange = CatalogChange<AdminProduct>;
 
-export type { StatusChange };
+export type { StatusChange, VersionedSlug };
 export { CATALOG_RULES } from './catalog-changes';
 export { MAX_PRICE_YEN, PRODUCT_STATUSES } from '../domain/product';
 
@@ -95,19 +96,19 @@ export function createProduct(deps: Deps): CreateProduct {
   };
 }
 
-export type EditProduct = (command: { slug: string; input: ProductInput; version: number }) => Promise<ProductChange>;
+export type EditProduct = (command: { product: VersionedSlug; input: ProductInput }) => Promise<ProductChange>;
 
 /**
  * Use case: the owner changes a product's content and variants, setting each
- * variant's on-hand stock directly, as of its version `version`. Its slug and
- * status stay as they are.
+ * variant's on-hand stock directly, as of the version the owner saw. Its slug
+ * and status stay as they are.
  */
 export function editProduct(deps: Deps): EditProduct {
-  return ({ slug, input, version }) =>
-    changeFrom(deps, { slug, version }, async (product) => {
+  return ({ product: seen, input }) =>
+    changeFrom(deps, seen, async (product) => {
       const [products, categories] = await Promise.all([deps.products.all(), deps.categories.listInDisplayOrder()]);
       const violations = contentViolations(input, {
-        otherProducts: products.filter((other) => other.slug !== slug),
+        otherProducts: products.filter((other) => other.slug !== seen.slug),
         categorySlugs: categories.map((category) => category.slug),
       });
       const revised = reviseProduct(product, productContent(input), deps.clock.now());
@@ -117,33 +118,33 @@ export function editProduct(deps: Deps): EditProduct {
     });
 }
 
-export type ChangeProductStatus = (command: { slug: string; change: StatusChange; version: number }) => Promise<ProductChange>;
+export type ChangeProductStatus = (command: { product: VersionedSlug; change: StatusChange }) => Promise<ProductChange>;
 
 /**
  * Use case: the owner lists, unlists, archives or restores a product, as of
- * its version `version` (the one the owner saw). Archiving an archived
+ * the version the owner saw. Archiving an archived
  * product succeeds and changes nothing, whatever version the owner saw: the
  * product is as the owner wants it, and nothing newer is overwritten.
  */
 export function changeProductStatus(deps: Deps): ChangeProductStatus {
-  return ({ slug, change, version }) =>
+  return ({ product, change }) =>
     changeFrom(
       deps,
-      { slug, version },
+      product,
       (product) => changeStatus(product, change, deps.clock.now()) ?? { outcome: 'invalid_status_transition' },
       (product) => leavesStatusAsIs(product, change),
     );
 }
 
 /**
- * Applies `change` to the product `slug` and saves it, if the owner made it
- * from the stored version (`version`): checked when the product is read, and
+ * Applies `change` to the product the owner saw and saves it, if the owner
+ * made it from the stored version: checked when the product is read, and
  * again when it is written, in case someone changed it in between. If
  * `leavesAsIs` the product, it succeeds without saving anything.
  */
 async function changeFrom(
   deps: Pick<Deps, 'products'>,
-  { slug, version }: { slug: string; version: number },
+  { slug, version }: VersionedSlug,
   change: (product: Product) => Promise<Product | ProductChange> | Product | ProductChange,
   leavesAsIs: (product: Product) => boolean = () => false,
 ): Promise<ProductChange> {

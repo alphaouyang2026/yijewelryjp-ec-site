@@ -25,7 +25,14 @@ export function adminCategoryRoutes(useCases: {
       changeResponse(c, await useCases.createCategory(c.req.valid('json')), 201),
     )
     .put('/:slug', slugParam, catalogJsonBody(renameBody), async (c) =>
-      changeResponse(c, await useCases.renameCategory({ ...c.req.valid('param'), ...c.req.valid('json') }), 200),
+      changeResponse(
+        c,
+        await useCases.renameCategory({
+          category: { slug: c.req.valid('param').slug, version: c.req.valid('json').version },
+          name: c.req.valid('json').name,
+        }),
+        200,
+      ),
     );
 }
 

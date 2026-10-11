@@ -9,6 +9,7 @@ import {
   type GetAdminProduct,
   type ListAdminProducts,
   type StatusChange,
+  type VersionedSlug,
 } from '../application/manage-products';
 import { catalogJsonBody, newProductBody, productEditBody, slugParam, versionBody } from './admin-catalog-input';
 import { changeResponse } from './catalog-change-response';
@@ -23,8 +24,8 @@ export function adminProductRoutes(useCases: {
   editProduct: EditProduct;
   changeProductStatus: ChangeProductStatus;
 }) {
-  const changeStatus = async (c: Context, slug: string, change: StatusChange, version: number) =>
-    changeResponse(c, await useCases.changeProductStatus({ slug, change, version }), 200);
+  const changeStatus = async (c: Context, product: VersionedSlug, change: StatusChange) =>
+    changeResponse(c, await useCases.changeProductStatus({ product, change }), 200);
 
   return (
     new Hono()
@@ -40,20 +41,24 @@ export function adminProductRoutes(useCases: {
       })
       .put('/:slug', slugParam, catalogJsonBody(productEditBody), async (c) => {
         const { version, ...input } = c.req.valid('json');
-        return changeResponse(c, await useCases.editProduct({ slug: c.req.valid('param').slug, input, version }), 200);
+        return changeResponse(
+          c,
+          await useCases.editProduct({ product: { slug: c.req.valid('param').slug, version }, input }),
+          200,
+        );
       })
       // One route per status change, so each is its own typed RPC call.
       .post('/:slug/list', slugParam, catalogJsonBody(versionBody), (c) =>
-        changeStatus(c, c.req.valid('param').slug, 'list', c.req.valid('json').version),
+        changeStatus(c, { slug: c.req.valid('param').slug, version: c.req.valid('json').version }, 'list'),
       )
       .post('/:slug/unlist', slugParam, catalogJsonBody(versionBody), (c) =>
-        changeStatus(c, c.req.valid('param').slug, 'unlist', c.req.valid('json').version),
+        changeStatus(c, { slug: c.req.valid('param').slug, version: c.req.valid('json').version }, 'unlist'),
       )
       .post('/:slug/archive', slugParam, catalogJsonBody(versionBody), (c) =>
-        changeStatus(c, c.req.valid('param').slug, 'archive', c.req.valid('json').version),
+        changeStatus(c, { slug: c.req.valid('param').slug, version: c.req.valid('json').version }, 'archive'),
       )
       .post('/:slug/restore', slugParam, catalogJsonBody(versionBody), (c) =>
-        changeStatus(c, c.req.valid('param').slug, 'restore', c.req.valid('json').version),
+        changeStatus(c, { slug: c.req.valid('param').slug, version: c.req.valid('json').version }, 'restore'),
       )
   );
 }

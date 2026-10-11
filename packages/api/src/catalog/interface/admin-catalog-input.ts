@@ -37,7 +37,8 @@ type FieldErrorCode = GenericFieldErrorCode | (typeof CATALOG_FIELD_ERROR_CODES)
 export const catalogJsonBody = <Schema extends z.ZodType>(schema: Schema) =>
   jsonBody(schema, CATALOG_FIELD_ERROR_CODES);
 
-const code = (error: FieldErrorCode) => ({ error });
+/** Zod's error option for a check that fails with field error `code`. */
+const failsWith = (code: FieldErrorCode) => ({ error: code });
 
 /** A missing value is 'required'; a value of the wrong type, 'invalid'. */
 const missingOr =
@@ -45,8 +46,8 @@ const missingOr =
   (issue: { input?: unknown }): FieldErrorCode =>
     issue.input === undefined || issue.input === null ? 'required' : wrongType;
 
-const text = (max: number) => z.string({ error: missingOr('invalid') }).trim().max(max, code('too_long'));
-const requiredText = (max: number) => text(max).min(1, code('required'));
+const text = (max: number) => z.string({ error: missingOr('invalid') }).trim().max(max, failsWith('too_long'));
+const requiredText = (max: number) => text(max).min(1, failsWith('required'));
 /** A translation: blank means not entered, and then the Japanese text is shown. */
 const translation = (max: number) =>
   text(max)
@@ -72,7 +73,7 @@ const optionalLocalizedText = (max: number) =>
     })
     .transform((value) => (value?.ja ? { ja: value.ja, zh: value.zh, en: value.en } : undefined));
 
-export const slug = requiredText(SLUG_MAX).regex(SLUG_PATTERN, code('invalid_slug'));
+export const slug = requiredText(SLUG_MAX).regex(SLUG_PATTERN, failsWith('invalid_slug'));
 
 /**
  * The `:slug` of a product's or category's path. Anything that cannot be a
@@ -83,17 +84,17 @@ export const slugParam = zValidator('param', z.object({ slug }), (result, c) => 
 });
 
 /** Yen or units: a whole number, zero or more. */
-const count = z
+const nonNegativeInteger = z
   .number({ error: missingOr('non_negative_integer') })
-  .int(code('non_negative_integer'))
-  .min(0, code('non_negative_integer'));
+  .int(failsWith('non_negative_integer'))
+  .min(0, failsWith('non_negative_integer'));
 
 const variant = z.object(
   {
     sku: requiredText(SKU_MAX),
     label: localizedText(SHORT_TEXT_MAX),
-    priceYen: count.max(MAX_PRICE_YEN, code('price_too_high')),
-    onHandStock: count,
+    priceYen: nonNegativeInteger.max(MAX_PRICE_YEN, failsWith('price_too_high')),
+    onHandStock: nonNegativeInteger,
   },
   { error: missingOr('invalid') },
 );
@@ -111,8 +112,8 @@ export const productInput = z.object({
   featured: z.boolean({ error: 'invalid' }),
   variants: z
     .array(variant, { error: missingOr('invalid') })
-    .min(1, code('at_least_one_variant'))
-    .max(VARIANTS_MAX, code('too_many')),
+    .min(1, failsWith('at_least_one_variant'))
+    .max(VARIANTS_MAX, failsWith('too_many')),
 });
 
 export const newProductBody = productInput.extend({ slug });
@@ -128,11 +129,14 @@ export const version = z.number({ error: 'invalid' }).int({ error: 'invalid' }).
 
 export const versionBody = z.object({ version });
 
+/** A product or category as the owner saw it: its slug, and the version it was at. */
+const versionedSlug = z.object({ slug, version });
+
 /** The categories' new order: each category once, with the version the owner saw. */
 export const categoryOrderBody = z.object({
   categories: z
-    .array(z.object({ slug, version }), { error: missingOr('invalid') })
-    .max(CATEGORIES_MAX, code('too_many'))
+    .array(versionedSlug, { error: missingOr('invalid') })
+    .max(CATEGORIES_MAX, failsWith('too_many'))
     .refine((order) => new Set(order.map((entry) => entry.slug)).size === order.length, { error: 'invalid' }),
 });
 

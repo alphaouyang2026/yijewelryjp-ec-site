@@ -100,10 +100,10 @@ export function productValues(product: AdminProduct): ProductFormValues {
 }
 
 /**
- * A count as typed. A blank or non-numeric one becomes NaN, which JSON sends as
+ * A number as the owner typed it. A blank or non-numeric one becomes NaN, which JSON sends as
  * null, and the API answers 'required' or 'non_negative_integer' for it.
  */
-const count = (typed: string) => (typed.trim() === '' ? Number.NaN : Number(typed));
+const numberAsTyped = (typed: string) => (typed.trim() === '' ? Number.NaN : Number(typed));
 
 /** The product's content as the API takes it, for creating (with the slug) or editing it. */
 export function productContent(values: ProductFormValues): Omit<NewProduct, 'slug'> {
@@ -119,8 +119,8 @@ export function productContent(values: ProductFormValues): Omit<NewProduct, 'slu
     variants: values.variants.map((variant) => ({
       sku: variant.sku,
       label: variant.label,
-      priceYen: count(variant.priceYen),
-      onHandStock: count(variant.onHandStock),
+      priceYen: numberAsTyped(variant.priceYen),
+      onHandStock: numberAsTyped(variant.onHandStock),
     })),
   };
 }

@@ -4,9 +4,9 @@ import {
   namesEveryCategory,
   newCategory,
   positionsOfUnknownCategories,
-  type CategoryOrderEntry,
   type CategoryRepository,
 } from '../domain/category';
+import type { VersionedSlug } from '../domain/versioned-slug';
 import { adminCategory, adminCategoryEntry, type AdminCategory, type AdminCategoryEntry } from './admin-catalog-views';
 import type { CatalogChange } from './catalog-changes';
 
@@ -40,21 +40,21 @@ export function createCategory(deps: Deps): CreateCategory {
   };
 }
 
-export type RenameCategory = (command: { slug: string; name: LocalizedText; version: number }) => Promise<CategoryChange>;
+export type RenameCategory = (command: { category: VersionedSlug; name: LocalizedText }) => Promise<CategoryChange>;
 
-/** Use case: the owner renames a category, as of its version `version`. Its slug stays: URLs depend on it. */
+/** Use case: the owner renames a category, as of the version the owner saw. Its slug stays: URLs depend on it. */
 export function renameCategory(deps: Deps): RenameCategory {
-  return async ({ slug, name, version }) => {
-    const category = (await deps.categories.listInDisplayOrder()).find((c) => c.slug === slug);
+  return async ({ category: seen, name }) => {
+    const category = (await deps.categories.listInDisplayOrder()).find((c) => c.slug === seen.slug);
     if (!category) return { outcome: 'not_found' };
-    if (category.version !== version) return { outcome: 'stale' };
+    if (category.version !== seen.version) return { outcome: 'stale' };
     const saved = await deps.categories.update({ ...category, name });
     return saved === 'stale' ? { outcome: 'stale' } : { outcome: 'changed', changed: adminCategory(saved) };
   };
 }
 
 export type ReorderCategories = (command: {
-  order: readonly CategoryOrderEntry[];
+  order: readonly VersionedSlug[];
   locale: Locale;
 }) => Promise<CatalogChange<{ categories: AdminCategoryEntry[] }, 'invalid' | 'stale'>>;
 
