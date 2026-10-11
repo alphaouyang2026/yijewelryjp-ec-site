@@ -10,7 +10,7 @@ import {
   type Product,
   type StatusChange,
 } from '../domain/product';
-import { categoryEntry, type CatalogEntry } from './catalog-views';
+import { categoryEntry, photoUrl, type CatalogEntry } from './catalog-views';
 
 // How the use cases show the catalog to the owner in the admin: every text in
 // every locale it was entered in (the forms edit each one), money as yen, and
@@ -39,6 +39,8 @@ export type AdminProduct = AdminProductTexts & {
   listedAt: string | null;
   version: number;
   variants: { sku: string; label: LocalizedText; priceYen: number; onHandStock: number; reservedStock: number }[];
+  /** In the owner's order, each with the URL it is served at, for the form's previews. */
+  photos: { key: string; url: string; alt: LocalizedText }[];
 };
 
 export function adminProduct(product: Product): AdminProduct {
@@ -58,6 +60,7 @@ export function adminProduct(product: Product): AdminProduct {
       onHandStock: variant.onHandStock,
       reservedStock: variant.reservedStock,
     })),
+    photos: product.photos.map((photo) => ({ key: photo.key, url: photoUrl(photo.key), alt: photo.alt })),
   };
 }
 

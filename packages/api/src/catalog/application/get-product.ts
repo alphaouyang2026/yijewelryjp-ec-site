@@ -3,7 +3,7 @@ import { textIn, type LocalizedText } from '../../shared-kernel/localized-text';
 import type { CategoryRepository } from '../domain/category';
 import { isListed, productStockStatus, variantStockStatus, type ProductRepository } from '../domain/product';
 import type { StockStatus } from '../domain/stock-status';
-import { categoryEntry, type CatalogEntry } from './catalog-views';
+import { categoryEntry, photoView, type CatalogEntry, type PhotoView } from './catalog-views';
 
 export type ProductDetail = {
   slug: string;
@@ -14,6 +14,8 @@ export type ProductDetail = {
   dimensions: string | null;
   weight: string | null;
   care: string | null;
+  /** In the owner's order: the first is the main photo. */
+  photos: PhotoView[];
   category: CatalogEntry | null;
   stockStatus: StockStatus;
   variants: { sku: string; label: string; priceYen: number; stockStatus: StockStatus }[];
@@ -48,6 +50,7 @@ export function getProduct(deps: { categories: CategoryRepository; products: Pro
         dimensions: optional(product.dimensions),
         weight: optional(product.weight),
         care: optional(product.care),
+        photos: product.photos.map((photo) => photoView(photo, locale)),
         category: category ? categoryEntry(category, locale) : null,
         stockStatus: productStockStatus(product),
         variants: product.variants.map((variant) => ({

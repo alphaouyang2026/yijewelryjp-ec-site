@@ -28,6 +28,7 @@ function newProduct(slug: string) {
       { sku: `${slug}-9`, label: { ja: '9号', zh: '', en: 'Size 9' }, priceYen: 24_000, onHandStock: 3 },
       { sku: `${slug}-11`, label: { ja: '11号', zh: '', en: 'Size 11' }, priceYen: 25_000, onHandStock: 0 },
     ],
+    photos: [],
   };
 }
 
@@ -62,6 +63,7 @@ describe('creating a product', () => {
         { sku: 'moon-ring-9', label: { ja: '9号', en: 'Size 9' }, priceYen: 24_000, onHandStock: 3, reservedStock: 0 },
         { sku: 'moon-ring-11', label: { ja: '11号', en: 'Size 11' }, priceYen: 25_000, onHandStock: 0, reservedStock: 0 },
       ],
+      photos: [],
     };
     expect(await res.json()).toEqual(created);
 
@@ -674,6 +676,7 @@ describe('a product stored before products had versions', () => {
           categorySlug: null,
           featured: false,
           variants: product.variants,
+          photos: product.photos,
           version: 0,
         },
       },

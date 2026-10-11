@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { S3Client } from '@aws-sdk/client-s3';
 import { Hono } from 'hono';
 import { hc } from 'hono/client';
 import { setCookie } from 'hono/cookie';
@@ -6,6 +7,7 @@ import { CookieJar } from 'tough-cookie';
 import { afterAll, beforeAll, beforeEach } from 'vitest';
 import * as z from 'zod';
 import { createApp, type AppDeps } from '../../src/app';
+import { s3PhotoStorage } from '../../src/catalog/infrastructure/s3-photo-storage';
 import { dynamoDbAdapters } from '../../src/dynamodb-adapters';
 import { signedCookies, type SignedCookies } from '../../src/interface/signed-cookies';
 import { createTable, deleteTable, localDynamoClient } from '../../src/platform/dynamodb-local';
@@ -18,6 +20,14 @@ import { createTestClock } from './test-clock';
 const ORIGIN = 'https://shop.test';
 
 const TEST_COOKIE_SECRET = 'test-cookie-secret';
+
+/**
+ * The bucket test upload forms are for. Signing a form is computed locally,
+ * so tests use the production adapter with made-up credentials; nothing is
+ * uploaded, and the bucket need not exist.
+ */
+export const TEST_PHOTO_BUCKET = 'yijewelry-test-photos';
+export const TEST_PHOTO_CREDENTIALS = { accessKeyId: 'test-access-key', secretAccessKey: 'test-secret-key' };
 
 // Every test starts at this instant unless it sets the clock itself.
 const DEFAULT_NOW = new Date('2026-01-01T00:00:00+09:00');
@@ -53,8 +63,8 @@ type TestApp = ReturnType<typeof createTestApp>;
  * Builds the API the way its entry points do, with test adapters, for the
  * enclosing test file (or describe block): the DynamoDB adapters on a fresh
  * DynamoDB Local table, created before its tests and deleted after, and a
- * clock the tests control, and an in-memory identity provider owners sign in
- * with. The test-only routes are mounted too, and `seed`
+ * clock the tests control, an in-memory identity provider owners sign in
+ * with, and S3 upload forms for a test bucket. The test-only routes are mounted too, and `seed`
  * puts data the API cannot create yet into the table.
  */
 export function useTestApi({ withTable = true }: { withTable?: boolean } = {}) {
@@ -63,6 +73,10 @@ export function useTestApi({ withTable = true }: { withTable?: boolean } = {}) {
   const adminIdentity = createInMemoryAdminIdentity();
   const app = createTestApp({
     ...dynamoDbAdapters(db),
+    photoStorage: s3PhotoStorage({
+      client: new S3Client({ region: 'ap-northeast-1', credentials: TEST_PHOTO_CREDENTIALS }),
+      bucket: TEST_PHOTO_BUCKET,
+    }),
     clock,
     adminIdentity,
     signedCookies: signedCookies(TEST_COOKIE_SECRET),

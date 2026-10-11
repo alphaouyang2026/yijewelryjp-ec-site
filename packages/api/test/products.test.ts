@@ -52,9 +52,9 @@ describe('product list', () => {
     expect(await res.json()).toEqual({
       category: null,
       products: [
-        { slug: 'star-necklace', name: '星のネックレス', priceYen: 30_000, priceVaries: false, stockStatus: 'low_stock' },
-        { slug: 'pearl-ring', name: 'パールリング', priceYen: 8_000, priceVaries: true, stockStatus: 'sold_out' },
-        { slug: 'moon-ring', name: '月のリング', priceYen: 12_000, priceVaries: false, stockStatus: 'in_stock' },
+        { slug: 'star-necklace', name: '星のネックレス', photo: null, priceYen: 30_000, priceVaries: false, stockStatus: 'low_stock' },
+        { slug: 'pearl-ring', name: 'パールリング', photo: null, priceYen: 8_000, priceVaries: true, stockStatus: 'sold_out' },
+        { slug: 'moon-ring', name: '月のリング', photo: null, priceYen: 12_000, priceVaries: false, stockStatus: 'in_stock' },
       ],
       categories: categoryEntries,
     });
@@ -152,6 +152,7 @@ describe('product detail', () => {
         dimensions: '幅 2mm',
         weight: '約1.5g',
         care: '使用後は柔らかい布で拭いてください。',
+        photos: [],
         category: { slug: 'ring', name: 'リング' },
         stockStatus: 'in_stock',
         variants: [

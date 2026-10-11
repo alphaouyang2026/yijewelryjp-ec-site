@@ -37,6 +37,7 @@ async function createDraft(slug: string) {
         categorySlug: null,
         featured: false,
         variants: [{ sku: slug, label: { ja: 'フリー', zh: '', en: '' }, priceYen: 5_000, onHandStock: 1 }],
+        photos: [],
       },
     },
     { headers: owner.headers },

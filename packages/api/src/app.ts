@@ -15,9 +15,12 @@ import {
   getAdminProduct,
   listAdminProducts,
 } from './catalog/application/manage-products';
+import { startPhotoUpload } from './catalog/application/start-photo-upload';
 import type { CategoryRepository } from './catalog/domain/category';
+import type { PhotoStorage } from './catalog/domain/photo';
 import type { ProductRepository } from './catalog/domain/product';
 import { adminCategoryRoutes, categoryOrderRoutes } from './catalog/interface/admin-category-routes';
+import { adminPhotoUploadRoutes } from './catalog/interface/admin-photo-routes';
 import { adminProductRoutes } from './catalog/interface/admin-product-routes';
 import { homeRoutes } from './catalog/interface/home-routes';
 import { productRoutes } from './catalog/interface/product-routes';
@@ -44,6 +47,8 @@ import type { Clock } from './shared-kernel/clock';
 export type AppDeps = {
   categories: CategoryRepository;
   products: ProductRepository;
+  /** Where product photos are uploaded to and served from. Production: S3. */
+  photoStorage: PhotoStorage;
   databaseProbe: DatabaseProbe;
   clock: Clock;
   adminIdentity: AdminIdentity;
@@ -75,6 +80,7 @@ export function createApp(deps: AppDeps) {
         changeProductStatus: changeProductStatus(deps),
       }),
     )
+    .route('/photo-uploads', adminPhotoUploadRoutes({ startPhotoUpload: startPhotoUpload(deps) }))
     .route(
       '/categories',
       adminCategoryRoutes({

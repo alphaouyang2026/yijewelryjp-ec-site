@@ -32,6 +32,8 @@ export type ProductInput = ProductTexts & {
   categorySlug: string | null;
   featured: boolean;
   variants: { sku: string; label: LocalizedText; priceYen: number; onHandStock: number }[];
+  /** In the owner's order, each a photo uploaded with a key from startPhotoUpload. */
+  photos: { key: string; alt: LocalizedText }[];
 };
 
 /** How a change the owner asked for to a product ended. */

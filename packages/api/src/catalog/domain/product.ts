@@ -1,5 +1,6 @@
 import type { LocalizedText } from '../../shared-kernel/localized-text';
 import type { Money } from '../../shared-kernel/money';
+import type { ProductPhoto } from './photo';
 import { stockStatusOf, type StockStatus } from './stock-status';
 
 /** Draft: still being prepared. Listed: on sale. Archived: no longer sold, kept for order history. */
@@ -55,6 +56,8 @@ export type Product = ProductTexts & {
   /** When the owner last changed the product, if ever. */
   readonly updatedAt?: Date;
   readonly variants: readonly Variant[];
+  /** In the owner's order; the first is the one lists and the home page show. */
+  readonly photos: readonly ProductPhoto[];
   /**
    * Which stored version of the product this is: 1 when created (0 if stored
    * before products had versions), one more with each change. A change is
@@ -66,7 +69,7 @@ export type Product = ProductTexts & {
 
 /** What the owner enters for a product: everything but its slug, status, listing time and reserved stock. */
 export type ProductContent = ProductTexts &
-  Pick<Product, 'categorySlug' | 'featured'> & {
+  Pick<Product, 'categorySlug' | 'featured' | 'photos'> & {
   readonly variants: readonly VariantContent[];
 };
 
@@ -135,6 +138,7 @@ export function reviseProduct(product: Product, content: ProductContent, now: Da
     categorySlug: content.categorySlug,
     featured: content.featured,
     variants,
+    photos: content.photos,
     updatedAt: now,
   };
 }
@@ -206,6 +210,11 @@ export function positionsWithTakenSku(variants: readonly { sku: string }[], othe
 /** Customers see listed products only; drafts and archived products never appear. */
 export function isListed(product: Product): boolean {
   return product.status === 'listed';
+}
+
+/** The photo lists and the home page show for the product: its first, if it has any. */
+export function mainPhoto(product: Product): ProductPhoto | undefined {
+  return product.photos[0];
 }
 
 /** On-hand stock less reserved stock, never negative. */
