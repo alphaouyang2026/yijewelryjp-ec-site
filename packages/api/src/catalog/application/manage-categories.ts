@@ -8,16 +8,12 @@ import {
   type CategoryRepository,
 } from '../domain/category';
 import { adminCategory, adminCategoryEntry, type AdminCategory, type AdminCategoryEntry } from './admin-catalog-views';
-import type { RuleViolation } from './manage-products';
+import type { CatalogChange } from './catalog-changes';
 
 type Deps = { categories: CategoryRepository };
 
 /** How a change to a category ended. */
-export type CategoryChange =
-  | { outcome: 'changed'; category: AdminCategory }
-  | { outcome: 'invalid'; violations: RuleViolation[] }
-  | { outcome: 'not_found' }
-  | { outcome: 'stale' };
+export type CategoryChange = CatalogChange<AdminCategory, 'invalid' | 'not_found' | 'stale'>;
 
 export type ListAdminCategories = (query: { locale: Locale }) => Promise<{ categories: AdminCategoryEntry[] }>;
 
@@ -28,7 +24,10 @@ export function listAdminCategories(deps: Deps): ListAdminCategories {
   });
 }
 
-export type CreateCategory = (command: { slug: string; name: LocalizedText }) => Promise<CategoryChange>;
+export type CreateCategory = (command: {
+  slug: string;
+  name: LocalizedText;
+}) => Promise<CatalogChange<AdminCategory, 'invalid'>>;
 
 /** Use case: the owner creates a category. It comes after every other, in the admin and in the store. */
 export function createCategory(deps: Deps): CreateCategory {
@@ -37,7 +36,7 @@ export function createCategory(deps: Deps): CreateCategory {
     if ((await deps.categories.add(category)) === 'slug_taken') {
       return { outcome: 'invalid', violations: [{ path: 'slug', rule: 'slug_taken' }] };
     }
-    return { outcome: 'changed', category: adminCategory(category) };
+    return { outcome: 'changed', changed: adminCategory(category) };
   };
 }
 
@@ -50,18 +49,14 @@ export function renameCategory(deps: Deps): RenameCategory {
     if (!category) return { outcome: 'not_found' };
     if (category.version !== version) return { outcome: 'stale' };
     const saved = await deps.categories.update({ ...category, name });
-    return saved === 'stale' ? { outcome: 'stale' } : { outcome: 'changed', category: adminCategory(saved) };
+    return saved === 'stale' ? { outcome: 'stale' } : { outcome: 'changed', changed: adminCategory(saved) };
   };
 }
 
 export type ReorderCategories = (command: {
   order: readonly CategoryOrderEntry[];
   locale: Locale;
-}) => Promise<
-  | { outcome: 'changed'; categories: AdminCategoryEntry[] }
-  | { outcome: 'invalid'; violations: RuleViolation[] }
-  | { outcome: 'stale' }
->;
+}) => Promise<CatalogChange<{ categories: AdminCategoryEntry[] }, 'invalid' | 'stale'>>;
 
 /**
  * Use case: the owner puts the categories in a new order, giving each one's
@@ -81,6 +76,6 @@ export function reorderCategories(deps: Deps): ReorderCategories {
     }
     if (!namesEveryCategory(order, categories)) return { outcome: 'stale' };
     if ((await deps.categories.reorder(order)) === 'stale') return { outcome: 'stale' };
-    return { outcome: 'changed', ...(await listAdminCategories(deps)({ locale })) };
+    return { outcome: 'changed', changed: await listAdminCategories(deps)({ locale }) };
   };
 }

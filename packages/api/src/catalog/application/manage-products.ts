@@ -18,6 +18,7 @@ import {
   type StatusChange,
 } from '../domain/product';
 import { adminProduct, adminProductSummary, type AdminProduct, type AdminProductSummary } from './admin-catalog-views';
+import type { CatalogChange, RuleViolation } from './catalog-changes';
 
 type Deps = { products: ProductRepository; categories: CategoryRepository; clock: Clock };
 
@@ -37,25 +38,8 @@ export type ProductInput = {
   variants: { sku: string; label: LocalizedText; priceYen: number; onHandStock: number }[];
 };
 
-/**
- * A field of the owner's input that breaks a catalog rule, named by its path
- * in the input ('slug', 'variants.1.sku', …).
- */
-export type RuleViolation = {
-  path: string;
-  rule: 'slug_taken' | 'sku_taken' | 'unknown_category' | 'variant_has_reserved_stock' | 'below_reserved_stock';
-};
-
-/** How a change the owner asked for ended. */
-export type ProductChange =
-  | { outcome: 'changed'; product: AdminProduct }
-  /** The input breaks catalog rules; nothing changed. */
-  | { outcome: 'invalid'; violations: RuleViolation[] }
-  | { outcome: 'not_found' }
-  /** The change was made from a version of the product that is no longer the stored one; nothing changed. */
-  | { outcome: 'stale' }
-  /** The product's status does not allow the status change; nothing changed. */
-  | { outcome: 'invalid_status_transition' };
+/** How a change the owner asked for to a product ended. */
+export type ProductChange = CatalogChange<AdminProduct>;
 
 export type { StatusChange };
 export { MAX_PRICE_YEN, PRODUCT_STATUSES } from '../domain/product';
@@ -89,7 +73,7 @@ export function getAdminProduct(deps: Pick<Deps, 'products'>): GetAdminProduct {
   };
 }
 
-export type CreateProduct = (command: { slug: string; input: ProductInput }) => Promise<ProductChange>;
+export type CreateProduct = (command: { slug: string; input: ProductInput }) => Promise<CatalogChange<AdminProduct, 'invalid'>>;
 
 /** Use case: the owner creates a product. It starts as a draft, which customers do not see. */
 export function createProduct(deps: Deps): CreateProduct {
@@ -106,7 +90,7 @@ export function createProduct(deps: Deps): CreateProduct {
     if ((await deps.products.add(product)) === 'slug_taken') {
       return { outcome: 'invalid', violations: [{ path: 'slug', rule: 'slug_taken' }] };
     }
-    return { outcome: 'changed', product: adminProduct(product) };
+    return { outcome: 'changed', changed: adminProduct(product) };
   };
 }
 
@@ -164,13 +148,13 @@ async function changeFrom(
 ): Promise<ProductChange> {
   const product = await deps.products.bySlug(slug);
   if (!product) return { outcome: 'not_found' };
-  if (leavesAsIs(product)) return { outcome: 'changed', product: adminProduct(product) };
+  if (leavesAsIs(product)) return { outcome: 'changed', changed: adminProduct(product) };
   if (product.version !== version) return { outcome: 'stale' };
 
   const changed = await change(product);
   if ('outcome' in changed) return changed;
   const saved = await deps.products.update(changed);
-  return saved === 'stale' ? { outcome: 'stale' } : { outcome: 'changed', product: adminProduct(saved) };
+  return saved === 'stale' ? { outcome: 'stale' } : { outcome: 'changed', changed: adminProduct(saved) };
 }
 
 /** What in `input` breaks the catalog's rules, given every other product and the categories there are. */

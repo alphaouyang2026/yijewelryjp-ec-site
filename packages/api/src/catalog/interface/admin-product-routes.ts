@@ -1,6 +1,6 @@
 import { Hono, type Context } from 'hono';
 import * as z from 'zod';
-import { invalidInput, jsonBody } from '../../interface/json-body';
+import { jsonBody } from '../../interface/json-body';
 import { localeQueryWith } from '../../interface/locale-query';
 import {
   PRODUCT_STATUSES,
@@ -9,31 +9,10 @@ import {
   type EditProduct,
   type GetAdminProduct,
   type ListAdminProducts,
-  type ProductChange,
-  type RuleViolation,
   type StatusChange,
 } from '../application/manage-products';
 import { newProductBody, productEditBody, slugParam, versionBody } from './admin-catalog-input';
-
-/** Rule violations as field errors, the same shape as the form's other errors. */
-const ruleErrors = (violations: RuleViolation[]) =>
-  invalidInput(violations.map(({ path, rule }) => ({ path, code: rule })));
-
-/** The answer to a change of an existing product: the product as now stored, or why nothing changed. */
-function changeResponse(c: Context, change: ProductChange) {
-  switch (change.outcome) {
-    case 'changed':
-      return c.json(change.product, 200);
-    case 'invalid':
-      return c.json(ruleErrors(change.violations), 400);
-    case 'not_found':
-      return c.json({ error: 'not_found' } as const, 404);
-    case 'stale':
-      return c.json({ error: 'stale_version' } as const, 409);
-    case 'invalid_status_transition':
-      return c.json({ error: 'invalid_status_transition' } as const, 409);
-  }
-}
+import { changeResponse } from './catalog-change-response';
 
 const productListQuery = localeQueryWith({ status: z.enum(PRODUCT_STATUSES).optional() });
 
@@ -46,17 +25,14 @@ export function adminProductRoutes(useCases: {
   changeProductStatus: ChangeProductStatus;
 }) {
   const changeStatus = async (c: Context, slug: string, change: StatusChange, version: number) =>
-    changeResponse(c, await useCases.changeProductStatus({ slug, change, version }));
+    changeResponse(c, await useCases.changeProductStatus({ slug, change, version }), 200);
 
   return (
     new Hono()
       .get('/', productListQuery, async (c) => c.json(await useCases.listAdminProducts(c.req.valid('query')), 200))
       .post('/', jsonBody(newProductBody), async (c) => {
         const { slug, ...input } = c.req.valid('json');
-        const change = await useCases.createProduct({ slug, input });
-        if (change.outcome === 'invalid') return c.json(ruleErrors(change.violations), 400);
-        if (change.outcome !== 'changed') throw new Error(`Creating a product cannot end ${change.outcome}`);
-        return c.json(change.product, 201);
+        return changeResponse(c, await useCases.createProduct({ slug, input }), 201);
       })
       .get('/:slug', slugParam, async (c) => {
         const product = await useCases.getAdminProduct(c.req.valid('param').slug);
@@ -65,7 +41,7 @@ export function adminProductRoutes(useCases: {
       })
       .put('/:slug', slugParam, jsonBody(productEditBody), async (c) => {
         const { version, ...input } = c.req.valid('json');
-        return changeResponse(c, await useCases.editProduct({ slug: c.req.valid('param').slug, input, version }));
+        return changeResponse(c, await useCases.editProduct({ slug: c.req.valid('param').slug, input, version }), 200);
       })
       // One route per status change, so each is its own typed RPC call.
       .post('/:slug/list', slugParam, jsonBody(versionBody), (c) =>
