@@ -157,7 +157,7 @@ describe('a product’s photos', () => {
       { headers: owner.headers },
     );
 
-    expect(res.status).toBe(201);
+    assert(res.status === 201);
     const photos = [
       { key: front, url: `/${front}`, alt: { ja: '正面から見たリング', en: 'The ring from the front' } },
       { key: side, url: `/${side}`, alt: { ja: '横から見たリング', zh: '从侧面看的戒指' } },

@@ -167,7 +167,10 @@ export const newProductBody = productInput.extend({ slug });
  * at once, with the reason. Storage checks both again on the upload itself.
  */
 export const photoUploadBody = z.object({
-  contentType: z.enum(PHOTO_CONTENT_TYPES, { error: missingOr('unsupported_photo_type') }),
+  // Any string, as the browser reports it: one of the photo types, or refused as unsupported.
+  contentType: z
+    .string({ error: missingOr('invalid') })
+    .pipe(z.enum(PHOTO_CONTENT_TYPES, { error: 'unsupported_photo_type' })),
   size: z
     .number({ error: missingOr('invalid') })
     .int(failsWith('invalid'))
