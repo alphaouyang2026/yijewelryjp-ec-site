@@ -1,17 +1,20 @@
 // What the admin's catalog use cases (products, categories, their order)
 // share: how an owner's change ended, and the catalog rules input can break.
 
-/** A catalog rule the owner's input can break, beyond the form of each field. */
-export type CatalogRule =
+/** The catalog rules the owner's input can break, beyond the form of each field. */
+export const CATALOG_RULES = [
   /** Another product or category already has the slug. */
-  | 'slug_taken'
+  'slug_taken',
   /** Another variant, of this product or any other, already has the SKU. */
-  | 'sku_taken'
-  | 'unknown_category'
+  'sku_taken',
+  'unknown_category',
   /** A variant that checkouts in progress hold stock of cannot be removed. */
-  | 'variant_has_reserved_stock'
+  'variant_has_reserved_stock',
   /** On-hand stock cannot be below what checkouts in progress hold. */
-  | 'below_reserved_stock';
+  'below_reserved_stock',
+] as const;
+
+export type CatalogRule = (typeof CATALOG_RULES)[number];
 
 /**
  * A field of the owner's input that breaks a catalog rule, named by its path

@@ -42,6 +42,7 @@ export type ProductInput = {
 export type ProductChange = CatalogChange<AdminProduct>;
 
 export type { StatusChange };
+export { CATALOG_RULES } from './catalog-changes';
 export { MAX_PRICE_YEN, PRODUCT_STATUSES } from '../domain/product';
 
 export type ListAdminProducts = (query: {

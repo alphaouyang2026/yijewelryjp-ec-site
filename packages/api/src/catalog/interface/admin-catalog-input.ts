@@ -1,7 +1,7 @@
 import { zValidator } from '@hono/zod-validator';
 import * as z from 'zod';
-import type { FieldErrorCode } from '../../interface/json-body';
-import { MAX_PRICE_YEN } from '../application/manage-products';
+import { jsonBody, type GenericFieldErrorCode } from '../../interface/json-body';
+import { CATALOG_RULES, MAX_PRICE_YEN } from '../application/manage-products';
 
 // What the admin's catalog forms send, validated field by field. Each error
 // message is a field error code, so the admin can say what is wrong next to
@@ -17,6 +17,25 @@ const CATEGORIES_MAX = 100;
 
 /** Lowercase letters and digits, joined by single hyphens: the product's or category's part of its URLs. */
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+/**
+ * Why a field of an admin catalog form was refused: a generic code (see
+ * json-body), one of these, or a catalog rule the input breaks.
+ */
+const CATALOG_FIELD_ERROR_CODES = [
+  /** Not lowercase letters and digits joined by single hyphens. */
+  'invalid_slug',
+  'at_least_one_variant',
+  /** A price above ¥99,999,999, the most a card payment in yen can be. */
+  'price_too_high',
+  ...CATALOG_RULES,
+] as const;
+
+type FieldErrorCode = GenericFieldErrorCode | (typeof CATALOG_FIELD_ERROR_CODES)[number];
+
+/** Validates an admin catalog form's JSON body with `schema`: 400 with field errors if invalid. */
+export const catalogJsonBody = <Schema extends z.ZodType>(schema: Schema) =>
+  jsonBody(schema, CATALOG_FIELD_ERROR_CODES);
 
 const code = (error: FieldErrorCode) => ({ error });
 
