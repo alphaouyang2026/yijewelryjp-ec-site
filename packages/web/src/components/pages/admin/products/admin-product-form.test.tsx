@@ -263,3 +263,15 @@ test('changing the status keeps the owner’s unsaved edits, which are then save
   await waitFor(() => expect(edits).toHaveLength(1));
   expect(await edits[0]?.json()).toMatchObject({ version: 4, name: { ja: 'まだ保存していない名前' } });
 });
+
+test.each([
+  { path: '/admin/products/new', name: 'トップページでピックアップする', hint: '最も新しく販売を開始した1点だけ' },
+  { path: '/zh/admin/products/new', name: '在首页主推', hint: '只显示最近上架的一件主推商品' },
+  { path: '/en/admin/products/new', name: 'Feature on the home page', hint: 'only the most recently listed featured product' },
+])('the featured checkbox says the home page shows one featured product only ($path)', async ({ path, name, hint }) => {
+  server.use(mockApi.adminSession(ownerSession), mockApi.adminCategories(categories));
+
+  renderRoute(path);
+
+  expect(await screen.findByRole('checkbox', { name })).toHaveAccessibleDescription(expect.stringContaining(hint));
+});

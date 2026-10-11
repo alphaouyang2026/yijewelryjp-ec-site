@@ -166,6 +166,7 @@ export const zh: Messages = {
       category: '类别',
       noCategory: '无',
       featured: '在首页主推',
+      featuredHint: '首页只显示最近上架的一件主推商品。',
       variants: '规格',
       variant: (number) => `规格 ${number}`,
       variantLabel: '规格名称（例：9号）',

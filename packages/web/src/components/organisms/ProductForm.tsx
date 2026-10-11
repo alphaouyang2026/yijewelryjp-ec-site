@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useId, useState, type FormEvent } from 'react';
 import type { FieldErrors, LocalizedValues, ProductFormValues, VariantValues } from '../../adminForms';
 import { blankVariant } from '../../adminForms';
 import type { Locale } from '../../i18n/locales';
@@ -39,6 +39,7 @@ export function ProductForm({
   const messages = useMessages().admin;
   const text = messages.productForm;
   const [values, setValues] = useState(initial);
+  const featuredHintId = useId();
   // Field errors name variants by position, so they no longer fit once rows are added or removed.
   const [variantsChanged, setVariantsChanged] = useState(false);
 
@@ -121,9 +122,18 @@ export function ProductForm({
             </SelectInput>
           )}
         </FormField>
-        <Checkbox checked={values.featured} onChange={(featured) => setValues({ ...values, featured })}>
-          {text.featured}
-        </Checkbox>
+        <div className={styles.featured}>
+          <Checkbox
+            checked={values.featured}
+            onChange={(featured) => setValues({ ...values, featured })}
+            describedBy={featuredHintId}
+          >
+            {text.featured}
+          </Checkbox>
+          <FieldMessage id={featuredHintId} tone="hint">
+            {text.featuredHint}
+          </FieldMessage>
+        </div>
       </section>
 
       <fieldset className={styles.variants}>

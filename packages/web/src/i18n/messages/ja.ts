@@ -174,6 +174,7 @@ export const ja = {
       category: 'カテゴリー',
       noCategory: 'なし',
       featured: 'トップページでピックアップする',
+      featuredHint: 'トップページには、ピックアップした商品のうち最も新しく販売を開始した1点だけが表示されます。',
       variants: '規格',
       variant: (number: number) => `規格 ${number}`,
       variantLabel: '規格名（例：9号）',

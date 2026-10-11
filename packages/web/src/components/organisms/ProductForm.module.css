@@ -45,3 +45,9 @@
 .submit {
   align-self: flex-start;
 }
+
+/* The featured checkbox, with its hint under it. */
+.featured {
+  display: flex;
+  flex-direction: column;
+}

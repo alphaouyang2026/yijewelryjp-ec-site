@@ -166,6 +166,7 @@ export const en: Messages = {
       category: 'Category',
       noCategory: 'None',
       featured: 'Feature on the home page',
+      featuredHint: 'The home page shows only the most recently listed featured product.',
       variants: 'Variants',
       variant: (number) => `Variant ${number}`,
       variantLabel: 'Variant name (e.g. Size 9)',
