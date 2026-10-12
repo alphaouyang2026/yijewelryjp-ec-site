@@ -11,6 +11,9 @@ const icons = {
   ],
   lock: ['M5 10.5h14v10H5z', 'M8 10.5V8a4 4 0 0 1 8 0v2.5'],
   mail: ['M3 5.5h18v13H3z', 'M3 6.5l9 7 9-7'],
+  minus: ['M6 12h12'],
+  plus: ['M6 12h12', 'M12 6v12'],
+  close: ['M6.5 6.5l11 11', 'M17.5 6.5l-11 11'],
 };
 
 export type IconName = keyof typeof icons;

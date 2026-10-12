@@ -33,6 +33,11 @@ export type SignedCookie<Content> = {
   clear(c: Context): void;
   /** Whether `response` already sets (or drops) the cookie. */
   isSetIn(response: Response): boolean;
+  /**
+   * The size in bytes of the cookie's name and value with `content`, at most,
+   * as the browser keeps it: browsers drop a cookie over about 4 KB.
+   */
+  byteLength(content: Content): number;
 };
 
 /** Makes the API's signed cookies, all from one secret. */
@@ -71,10 +76,19 @@ export function signedCookies(secret: string): SignedCookies {
         isSetIn(response) {
           return response.headers.getSetCookie().some((cookie) => cookie.startsWith(prefixed));
         },
+        byteLength(content) {
+          // As setSignedCookie writes it: the JSON, a dot and the signature (44 base64
+          // characters, here each one that URL-encoding lengthens most), URL-encoded.
+          const value = encodeURIComponent(`${JSON.stringify(content)}.${'='.repeat(SIGNATURE_LENGTH)}`);
+          return new TextEncoder().encode(`${prefixed}${value}`).length;
+        },
       };
     },
   };
 }
+
+/** The length of a cookie's signature: an HMAC-SHA256, in base64. */
+const SIGNATURE_LENGTH = 44;
 
 function parseJson(value: string): unknown {
   try {

@@ -1,5 +1,7 @@
 import type { RouteObject } from 'react-router';
 import { AdminErrorPage } from '../components/pages/admin/AdminErrorPage';
+import { CartPage } from '../components/pages/cart/CartPage';
+import { cartLoader } from '../components/pages/cart/cartLoader';
 import { HomePage } from '../components/pages/home/HomePage';
 import { homeLoader } from '../components/pages/home/homeLoader';
 import { ProductDetailPage } from '../components/pages/product/ProductDetailPage';
@@ -7,6 +9,8 @@ import { productLoader } from '../components/pages/product/productLoader';
 import { ProductListPage } from '../components/pages/products/ProductListPage';
 import { productListLoader } from '../components/pages/products/productListLoader';
 import { NotFoundPage } from '../components/pages/status/NotFoundPage';
+import { StoreFramePage } from '../components/pages/store/StoreFramePage';
+import { storeFrameLoader } from '../components/pages/store/storeFrameLoader';
 import { LOCALES, localizedPath } from '../i18n/locales';
 import { paths, type AdminSection, type AdminSectionHandle } from '../paths';
 import { BlankHydrateFallback } from './BlankHydrateFallback';
@@ -110,22 +114,34 @@ function signInFailedPage(): RouteObject {
   };
 }
 
-/** The storefront's pages, relative to a locale's root (the paths match paths.ts). */
-function storePages(): RouteObject[] {
-  return [
-    adminPages(),
-    signInFailedPage(),
-    pageWithData({ index: true, loader: homeLoader, Component: HomePage }),
-    pageWithData({ path: 'products', loader: productListLoader, Component: ProductListPage }),
-    pageWithData({ path: 'categories/:slug', loader: productListLoader, Component: ProductListPage }),
-    pageWithData({ path: 'products/:slug', loader: productLoader, Component: ProductDetailPage }),
-    { path: '*', Component: NotFoundPage },
-  ];
+/**
+ * The store's pages, in the frame that reads the cart for their header. The
+ * frame's loader never fails, so its error page only shows when a page fails
+ * to render.
+ */
+function storeFrame(): RouteObject {
+  return pageWithData({
+    loader: storeFrameLoader,
+    Component: StoreFramePage,
+    children: [
+      pageWithData({ index: true, loader: homeLoader, Component: HomePage }),
+      pageWithData({ path: 'products', loader: productListLoader, Component: ProductListPage }),
+      pageWithData({ path: 'categories/:slug', loader: productListLoader, Component: ProductListPage }),
+      pageWithData({ path: 'products/:slug', loader: productLoader, Component: ProductDetailPage }),
+      pageWithData({ path: 'cart', loader: cartLoader, Component: CartPage }),
+      { path: '*', Component: NotFoundPage },
+    ],
+  });
+}
+
+/** The site's pages, relative to a locale's root (the paths match paths.ts): the admin's, and the store's. */
+function sitePages(): RouteObject[] {
+  return [adminPages(), signInFailedPage(), storeFrame()];
 }
 
 /** The same pages under each locale's root: '/' (Japanese), '/zh/' and '/en/'. */
 export const routes: RouteObject[] = LOCALES.map((locale) => ({
   path: localizedPath(locale, paths.home),
   Component: LocaleRoot,
-  children: storePages(),
+  children: sitePages(),
 }));

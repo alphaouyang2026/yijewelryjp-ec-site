@@ -24,8 +24,27 @@
 }
 
 .cart {
+  position: relative;
   grid-column: 3;
   justify-self: end;
+}
+
+/* The cart's item count: a small gold badge at the bag's top right. */
+.cartCount {
+  position: absolute;
+  top: var(--cart-count-offset);
+  right: var(--cart-count-offset);
+  min-width: var(--cart-count-size);
+  height: var(--cart-count-size);
+  padding: 0 var(--cart-count-padding);
+  border-radius: calc(var(--cart-count-size) / 2);
+  background: var(--color-brand-gold);
+  color: var(--color-onyx);
+  font-size: var(--text-caption-small);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--cart-count-size);
+  letter-spacing: 0;
+  text-align: center;
 }
 
 .nav {

@@ -1,0 +1,15 @@
+/* −, the quantity, + in one outlined box, as tall as a tap target. */
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  border: var(--line-width) solid var(--color-hairline);
+  background: var(--color-porcelain);
+}
+
+.value {
+  min-width: var(--space-4);
+  font-family: var(--font-latin);
+  font-size: var(--text-price);
+  line-height: var(--line-height-tight);
+  text-align: center;
+}

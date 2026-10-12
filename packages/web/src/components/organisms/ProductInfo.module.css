@@ -18,6 +18,24 @@
   white-space: pre-line;
 }
 
+/* The quantity beside the add-to-cart button, which takes the rest of the column. */
+.purchase {
+  display: flex;
+  align-self: stretch;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.addToCart {
+  flex: 1 1 var(--add-to-cart-min-width);
+}
+
+/* The notice spans the column too. */
+.notice {
+  align-self: stretch;
+}
+
 /* The details span the column, not just their content. */
 .info > dl {
   align-self: stretch;

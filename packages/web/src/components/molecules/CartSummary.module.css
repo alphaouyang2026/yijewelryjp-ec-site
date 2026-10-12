@@ -1,0 +1,61 @@
+/* The amounts on a mist block, the total set apart by a hairline. */
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--color-mist);
+}
+
+.heading {
+  font-family: var(--font-heading);
+  font-size: var(--text-product-name);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-tight);
+  letter-spacing: var(--tracking-heading);
+}
+
+.amounts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.row dd {
+  margin: 0;
+}
+
+.amount {
+  font-family: var(--font-latin);
+  font-size: var(--text-price);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-tight);
+}
+
+/* "Free" is words, not figures. */
+.free {
+  font-size: var(--text-body);
+}
+
+.total {
+  margin-top: var(--space-1);
+  padding-top: var(--space-2);
+  border-top: var(--line-width) solid var(--color-hairline);
+}
+
+.total .amount {
+  font-size: var(--text-price-detail);
+}
+
+.freeShipping {
+  color: var(--color-deep-gold);
+  font-size: var(--text-nav);
+}

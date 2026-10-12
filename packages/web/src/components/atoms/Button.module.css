@@ -25,6 +25,28 @@
   color: var(--color-onyx);
 }
 
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--tap-target);
+  min-height: var(--tap-target);
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-onyx);
+  cursor: pointer;
+}
+
+.icon:hover:not(:disabled) {
+  color: var(--color-deep-gold);
+}
+
+.icon:disabled {
+  color: var(--color-hairline);
+  cursor: default;
+}
+
 .button:hover:not(:disabled) {
   opacity: var(--hover-opacity);
 }

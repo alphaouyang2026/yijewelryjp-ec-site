@@ -11,6 +11,9 @@ import { s3PhotoStorage } from '../../src/catalog/infrastructure/s3-photo-storag
 import { dynamoDbAdapters } from '../../src/dynamodb-adapters';
 import { signedCookies, type SignedCookies } from '../../src/interface/signed-cookies';
 import { createTable, deleteTable, localDynamoClient } from '../../src/platform/dynamodb-local';
+import { yen } from '../../src/shared-kernel/money';
+import type { ShippingRates } from '../../src/store/domain/store-settings';
+import { configuredStoreSettings } from '../../src/store/infrastructure/configured-store-settings';
 import { catalogSeed } from './catalog-seed';
 import type { Owner } from '../../src/identity/domain/owner';
 import { createInMemoryAdminIdentity } from './in-memory-admin-identity';
@@ -29,6 +32,9 @@ const TEST_COOKIE_SECRET = 'test-cookie-secret';
 export const TEST_PHOTO_BUCKET = 'yijewelry-test-photos';
 export const TEST_PHOTO_CREDENTIALS = { accessKeyId: 'test-access-key', secretAccessKey: 'test-secret-key' };
 
+/** The shipping rates in the test API's store settings: ¥800, free from ¥20,000. */
+export const TEST_SHIPPING_RATES: ShippingRates = { fee: yen(800), freeShippingThreshold: yen(20_000) };
+
 // Every test starts at this instant unless it sets the clock itself.
 const DEFAULT_NOW = new Date('2026-01-01T00:00:00+09:00');
 
@@ -38,9 +44,11 @@ const DEFAULT_NOW = new Date('2026-01-01T00:00:00+09:00');
  * so tests can check the test client itself. POST /session-cookie sets the
  * session cookie to the JSON body, signed with the session cookie's key
  * whatever its shape, as only someone with the signing secret could.
+ * POST /cart-cookie does the same for the cart cookie.
  */
 function testOnlyRoutes(cookies: SignedCookies) {
   const anySessionCookie = cookies.cookie('yi_admin_session', z.unknown());
+  const anyCartCookie = cookies.cookie('yi_cart', z.unknown());
   return new Hono()
     .post('/cookie', (c) => {
       setCookie(c, 'probe', 'set-by-api');
@@ -49,6 +57,10 @@ function testOnlyRoutes(cookies: SignedCookies) {
     .get('/cookie', (c) => c.json({ cookie: c.req.header('cookie') ?? null }, 200))
     .post('/session-cookie', async (c) => {
       await anySessionCookie.write(c, await c.req.json(), 60);
+      return c.body(null, 204);
+    })
+    .post('/cart-cookie', async (c) => {
+      await anyCartCookie.write(c, await c.req.json(), 60);
       return c.body(null, 204);
     });
 }
@@ -64,7 +76,8 @@ type TestApp = ReturnType<typeof createTestApp>;
  * enclosing test file (or describe block): the DynamoDB adapters on a fresh
  * DynamoDB Local table, created before its tests and deleted after, and a
  * clock the tests control, an in-memory identity provider owners sign in
- * with, and S3 upload forms for a test bucket. The test-only routes are mounted too, and `seed`
+ * with, S3 upload forms for a test bucket, and the store settings' shipping
+ * rates fixed at TEST_SHIPPING_RATES. The test-only routes are mounted too, and `seed`
  * puts data the API cannot create yet into the table.
  */
 export function useTestApi({ withTable = true }: { withTable?: boolean } = {}) {
@@ -80,6 +93,7 @@ export function useTestApi({ withTable = true }: { withTable?: boolean } = {}) {
     clock,
     adminIdentity,
     signedCookies: signedCookies(TEST_COOKIE_SECRET),
+    storeSettings: configuredStoreSettings(TEST_SHIPPING_RATES),
   });
 
   beforeAll(async () => {

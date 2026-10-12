@@ -10,9 +10,15 @@ import { NavLinkList } from '../molecules/NavLinkList';
 import styles from './SiteHeader.module.css';
 import { useCategoryLinks } from './useCategoryLinks';
 
-export function SiteHeader({ categories }: { categories: Category[] }) {
+/**
+ * The store's header: locale switcher, logo, the cart (with how many it
+ * holds, once there are any; `cartQuantity` is null when that is not known)
+ * and the category navigation.
+ */
+export function SiteHeader({ categories, cartQuantity }: { categories: Category[]; cartQuantity: number | null }) {
   const text = useMessages().header;
   const categoryLinks = useCategoryLinks(categories);
+  const count = cartQuantity ?? 0;
 
   return (
     <header className={styles.header}>
@@ -21,8 +27,18 @@ export function SiteHeader({ categories }: { categories: Category[] }) {
         <LocalizedLink to={paths.home} className={styles.logoLink}>
           <Logo alt={BRAND_NAME} size="header" />
         </LocalizedLink>
-        <LocalizedLink to={paths.cart} aria-label={text.cart} variant="icon" className={styles.cart}>
+        <LocalizedLink
+          to={paths.cart}
+          aria-label={count > 0 ? text.cartWithCount(count) : text.cart}
+          variant="icon"
+          className={styles.cart}
+        >
           <Icon name="bag" />
+          {count > 0 && (
+            <span aria-hidden="true" className={styles.cartCount}>
+              {count}
+            </span>
+          )}
         </LocalizedLink>
       </div>
       <nav aria-label={text.categoriesNav} className={styles.nav}>

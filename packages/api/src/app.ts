@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { findCartVariants } from './catalog/application/find-cart-variants';
 import { getHomeData } from './catalog/application/get-home-data';
 import { getProduct } from './catalog/application/get-product';
 import { listProducts } from './catalog/application/list-products';
@@ -38,7 +39,12 @@ import type { SignedCookies } from './interface/signed-cookies';
 import { checkHealth } from './operations/application/check-health';
 import type { DatabaseProbe } from './operations/domain/database-probe';
 import { healthRoutes } from './operations/interface/health-routes';
+import { addToCart, changeCartQuantity, removeFromCart, viewCart } from './ordering/application/manage-cart';
+import { cartCookie } from './ordering/interface/cart-cookie';
+import { cartRoutes } from './ordering/interface/cart-routes';
 import type { Clock } from './shared-kernel/clock';
+import { getShippingRates } from './store/application/get-shipping-rates';
+import type { StoreSettings } from './store/domain/store-settings';
 
 /**
  * The adapters the API runs on. Each entry point (local, Lambda) chooses them,
@@ -54,6 +60,8 @@ export type AppDeps = {
   adminIdentity: AdminIdentity;
   /** Signs the API's cookies, each with its own key. Production derives the keys from a secret in Secrets Manager. */
   signedCookies: SignedCookies;
+  /** The store settings, such as the shipping rates. Until the owner can edit them (#16), configured defaults. */
+  storeSettings: StoreSettings;
 };
 
 /** The API: each module's routes, wired to its use cases. */
@@ -61,7 +69,11 @@ export function createApp(deps: AppDeps) {
   const cookies = {
     session: sessionCookie(deps.signedCookies),
     signIn: signInCookie(deps.signedCookies),
+    cart: cartCookie(deps.signedCookies),
   };
+
+  // The ordering context uses the catalog and the store settings through their application layers.
+  const cartDeps = { findCartVariants: findCartVariants(deps), shippingRates: getShippingRates(deps) };
 
   // The admin's routes, every one behind the owner-only guard: 401 without a
   // signed-in owner's session, 403 for a data-changing request without the
@@ -97,6 +109,16 @@ export function createApp(deps: AppDeps) {
     .route('/health', healthRoutes(checkHealth(deps)))
     .route('/home', homeRoutes(getHomeData(deps)))
     .route('/products', productRoutes(listProducts(deps), getProduct(deps)))
+    .route(
+      '/cart',
+      cartRoutes({
+        viewCart: viewCart(cartDeps),
+        addToCart: addToCart(cartDeps),
+        changeCartQuantity: changeCartQuantity(cartDeps),
+        removeFromCart: removeFromCart(cartDeps),
+        cartCookie: cookies.cart,
+      }),
+    )
     // The owner's way in, open to everyone. Mounted before the admin group, so
     // these routes answer before its guard (which also matches /admin/auth/*).
     .route(

@@ -72,6 +72,9 @@
   --icon-stroke-width: 1.2; /* in the icons' 24-unit grid */
   --logo-header: 88px;
   --logo-footer: 96px;
+  --cart-count-size: 18px; /* the header's cart item count badge */
+  --cart-count-padding: 5px;
+  --cart-count-offset: 2px;
   --footer-brand-width: 260px; /* preferred widths; the footer columns wrap below them */
   --footer-column-width: 220px;
 
@@ -88,7 +91,15 @@
   --featured-photo-max-width: 520px;
   --product-photo-max-width: 560px;
   --thumbnail-min-width: 64px; /* the product page's photo thumbnails */
+  --add-to-cart-min-width: 200px; /* the product page's add-to-cart button, beside the quantity */
   --hero-photo-min-height: 420px;
+
+  /* Cart */
+  --cart-photo-width: 96px; /* a cart line's photo */
+  --cart-line-total-width: 120px;
+  --cart-summary-width: 340px; /* beside the lines on desktop; below them on phones */
+  --notice-rule-width: 2px; /* the rule beside a cart line's notice */
+  --unavailable-opacity: 0.5; /* the photo of a cart line that cannot be bought */
   --text-heading-product: clamp(22px, 2.4vw, 28px); /* product page title */
   --hover-opacity: 0.85; /* buttons on hover */
   --line-height-display: 1.6; /* the home page's brand message */
@@ -121,5 +132,6 @@
     --gutter: var(--space-2);
     --section-spacing: var(--space-9);
     --logo-header: 72px;
+    --cart-photo-width: 80px;
   }
 }

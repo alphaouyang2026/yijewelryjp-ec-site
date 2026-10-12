@@ -20,6 +20,16 @@ export type Variant = ProductDetail['variants'][number];
 /** A product photo as the store shows it: its URL, and its alt text in the page's locale. */
 export type ProductPhoto = ProductDetail['photos'][number];
 
+/** The customer's cart, its lines checked against the catalog, with the amounts the API computed. */
+export type Cart = InferResponseType<typeof api.cart.$get, 200>;
+export type CartLine = Cart['lines'][number];
+/** Why a cart line is not as the customer left it (sold out, no longer sold, fewer in stock, a new price). */
+export type CartNotice = CartLine['notices'][number];
+/** Why adding to the cart changed nothing (409). */
+export type CartAddRefusal = InferResponseType<typeof api.cart.lines.$post, 409>;
+/** Why changing a cart line's quantity changed nothing (409). */
+export type CartQuantityRefusal = InferResponseType<(typeof api.cart.lines)[':lineId']['$put'], 409>;
+
 export type AdminSession = InferResponseType<typeof api.admin.session.$get, 200>;
 
 export type AdminProductList = InferResponseType<typeof api.admin.products.$get, 200>;

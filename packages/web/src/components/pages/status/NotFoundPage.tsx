@@ -1,6 +1,7 @@
 import { useMessages } from '../../../i18n/useMessages';
 import { PageMessage } from '../../organisms/PageMessage';
 import { StoreLayout } from '../../templates/StoreLayout';
+import { useCartQuantity } from '../store/storeFrame';
 
 /**
  * Shown for a URL the site does not have and for a product or category the
@@ -10,7 +11,7 @@ import { StoreLayout } from '../../templates/StoreLayout';
 export function NotFoundPage() {
   const text = useMessages().notFound;
   return (
-    <StoreLayout categories={[]}>
+    <StoreLayout categories={[]} cartQuantity={useCartQuantity()}>
       <PageMessage title={text.title} text={text.text} homeLink={text.home} />
     </StoreLayout>
   );

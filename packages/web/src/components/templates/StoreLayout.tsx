@@ -4,12 +4,23 @@ import { AnnouncementBar } from '../organisms/AnnouncementBar';
 import { SiteFooter } from '../organisms/SiteFooter';
 import { SiteHeader } from '../organisms/SiteHeader';
 
-/** The storefront's page frame: announcement bar, header, the page's content, footer. */
-export function StoreLayout({ categories, children }: { categories: Category[]; children: ReactNode }) {
+/**
+ * The storefront's page frame: announcement bar, header, the page's content,
+ * footer. `cartQuantity` is how many the cart holds (null when not known).
+ */
+export function StoreLayout({
+  categories,
+  cartQuantity,
+  children,
+}: {
+  categories: Category[];
+  cartQuantity: number | null;
+  children: ReactNode;
+}) {
   return (
     <>
       <AnnouncementBar />
-      <SiteHeader categories={categories} />
+      <SiteHeader categories={categories} cartQuantity={cartQuantity} />
       <main>{children}</main>
       <SiteFooter categories={categories} />
     </>

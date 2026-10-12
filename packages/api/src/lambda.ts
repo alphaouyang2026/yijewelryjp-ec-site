@@ -11,6 +11,7 @@ import { cognitoAdminIdentity } from './identity/infrastructure/cognito-admin-id
 import { signedCookies } from './interface/signed-cookies';
 import { readSecretString } from './platform/secrets-manager';
 import { systemClock } from './shared-kernel/clock';
+import { configuredStoreSettings, shippingRatesFromEnv } from './store/infrastructure/configured-store-settings';
 
 // Set by packages/infra (lib/shop-stack.ts).
 const env = requiredEnv(
@@ -44,6 +45,8 @@ const app = createApp({
     returnUrls: adminReturnUrls(env.SITE_URL),
   }),
   signedCookies: signedCookies(sessionSecret),
+  // SHIPPING_FEE_YEN and FREE_SHIPPING_THRESHOLD_YEN may set other rates; the stack sets neither.
+  storeSettings: configuredStoreSettings(shippingRatesFromEnv(process.env)),
 });
 
 export const handler = handle(app);

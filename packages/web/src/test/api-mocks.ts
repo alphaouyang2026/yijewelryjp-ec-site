@@ -9,6 +9,9 @@ import {
   type AdminProduct,
   type AdminProductList,
   type AdminSession,
+  type Cart,
+  type CartAddRefusal,
+  type CartQuantityRefusal,
   type HomeData,
   type InvalidInput,
   type PhotoUpload,
@@ -46,6 +49,35 @@ export type AdminChangeReply<Changed extends Record<string, unknown>> =
   | { status: 409; body: StaleVersion | { error: 'invalid_status_transition' } };
 
 const reply = <Changed extends Record<string, unknown>>({ status, body }: AdminChangeReply<Changed>) => HttpResponse.json(body, { status });
+
+/**
+ * An empty cart, as GET /api/cart answers without a cart cookie: no lines,
+ * nothing to pay, ¥20,000 to go to free shipping (the API tests' rates).
+ */
+export const emptyCart: Cart = {
+  lines: [],
+  quantity: 0,
+  subtotalYen: 0,
+  shippingYen: 0,
+  totalYen: 0,
+  freeShippingThresholdYen: 20_000,
+  freeShippingRemainingYen: 20_000,
+};
+
+type CartAddNotFound = InferResponseType<typeof api.cart.lines.$post, 404>;
+type CartLineNotInCart = InferResponseType<(typeof api.cart.lines)[':lineId']['$put'], 404>;
+
+/**
+ * How a mocked cart change answers: 200 with the whole cart after the change,
+ * or the refusal the API answers with (409, or 404 for a product or line it
+ * does not know).
+ */
+export type CartChangeReply<Refusal, NotFound = never> =
+  | { status: 200; body: Cart }
+  | { status: 409; body: Refusal }
+  | { status: 404; body: NotFound };
+
+const cartLinesUrl = api.cart.lines.$url().href;
 
 /** Where mocked upload forms post photos: photo storage (S3 in production). */
 export const PHOTO_STORAGE_URL = 'https://yijewelry-photos.s3.ap-northeast-1.amazonaws.com/';
@@ -213,10 +245,52 @@ export const mockApi = {
       return reply(answer);
     }),
 
-  /** Answers product page requests with the page for the requested slug; 404 for any other product. */
-  productPages: (pages: Record<string, ProductPage>) =>
+  /**
+   * Answers cart requests with `cart` (or what it returns at the time, for a
+   * cart that changes). `requests` collects each request's URL, so a test can
+   * check the locale the page asked for. test/server.ts answers with an empty
+   * cart unless a test says otherwise.
+   */
+  cart: (cart: Cart | (() => Cart), requests: URL[] = []) =>
+    http.get(api.cart.$url().href, ({ request }) => {
+      requests.push(new URL(request.url));
+      return HttpResponse.json(typeof cart === 'function' ? cart() : cart);
+    }),
+
+  /** Answers cart requests with a server error, as when the API is unavailable. */
+  cartFails: () => http.get(api.cart.$url().href, () => HttpResponse.json({ error: 'internal' }, { status: 500 })),
+
+  /** Answers requests to add to the cart with `answer`; `requests` collects each request. */
+  cartAdd: (answer: CartChangeReply<CartAddRefusal, CartAddNotFound>, requests: Request[] = []) =>
+    http.post(cartLinesUrl, ({ request }) => {
+      requests.push(request);
+      return HttpResponse.json(answer.body, { status: answer.status });
+    }),
+
+  /** The next request to add to the cart fails as if the network were down; later ones go on to other handlers. */
+  cartAddUnreachable: () => http.post(cartLinesUrl, () => HttpResponse.error(), { once: true }),
+
+  /** Answers requests to change a cart line's quantity with `answer`; `requests` collects each request. */
+  cartSetQuantity: (answer: CartChangeReply<CartQuantityRefusal, CartLineNotInCart>, requests: Request[] = []) =>
+    http.put(`${cartLinesUrl}/:lineId`, ({ request }) => {
+      requests.push(request);
+      return HttpResponse.json(answer.body, { status: answer.status });
+    }),
+
+  /** Answers requests to remove a cart line with `cart`, the cart without it; `requests` collects each request. */
+  cartRemove: (cart: Cart, requests: Request[] = []) =>
+    http.delete(`${cartLinesUrl}/:lineId`, ({ request }) => {
+      requests.push(request);
+      return HttpResponse.json(cart);
+    }),
+
+  /**
+   * Answers product page requests with the page for the requested slug (from
+   * what `pages` returns at the time, for pages that change); 404 for any other product.
+   */
+  productPages: (pages: Record<string, ProductPage> | (() => Record<string, ProductPage>)) =>
     http.get(`${productsUrl}/:slug`, ({ params }) => {
-      const page = pages[String(params.slug)];
+      const page = (typeof pages === 'function' ? pages() : pages)[String(params.slug)];
       return page ? HttpResponse.json(page) : HttpResponse.json(notFound, { status: 404 });
     }),
 };
