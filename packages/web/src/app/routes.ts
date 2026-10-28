@@ -2,6 +2,9 @@ import type { RouteObject } from 'react-router';
 import { AdminErrorPage } from '../components/pages/admin/AdminErrorPage';
 import { CartPage } from '../components/pages/cart/CartPage';
 import { cartLoader } from '../components/pages/cart/cartLoader';
+import { checkoutCancelledLoader } from '../components/pages/checkout/checkoutCancelledLoader';
+import { CheckoutCompletePage } from '../components/pages/checkout/CheckoutCompletePage';
+import { checkoutCompleteLoader } from '../components/pages/checkout/checkoutCompleteLoader';
 import { HomePage } from '../components/pages/home/HomePage';
 import { homeLoader } from '../components/pages/home/homeLoader';
 import { ProductDetailPage } from '../components/pages/product/ProductDetailPage';
@@ -129,6 +132,9 @@ function storeFrame(): RouteObject {
       pageWithData({ path: 'categories/:slug', loader: productListLoader, Component: ProductListPage }),
       pageWithData({ path: 'products/:slug', loader: productLoader, Component: ProductDetailPage }),
       pageWithData({ path: 'cart', loader: cartLoader, Component: CartPage }),
+      pageWithData({ path: 'checkout/complete', loader: checkoutCompleteLoader, Component: CheckoutCompletePage }),
+      // Only cancels the checkout, then sends the browser on to the cart.
+      pageWithData({ path: 'checkout/cancelled', loader: checkoutCancelledLoader }),
       { path: '*', Component: NotFoundPage },
     ],
   });

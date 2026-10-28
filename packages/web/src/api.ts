@@ -30,6 +30,11 @@ export type CartAddRefusal = InferResponseType<typeof api.cart.lines.$post, 409>
 /** Why changing a cart line's quantity changed nothing (409). */
 export type CartQuantityRefusal = InferResponseType<(typeof api.cart.lines)[':lineId']['$put'], 409>;
 
+/** Why checkout did not start (409): the cart is empty, or some lines cannot be bought as they are. */
+export type CheckoutRefusal = InferResponseType<typeof api.checkout.$post, 409>;
+/** The order the thank-you page shows. */
+export type CheckoutOrder = InferResponseType<(typeof api.checkout.orders)[':orderId']['$get'], 200>;
+
 export type AdminSession = InferResponseType<typeof api.admin.session.$get, 200>;
 
 export type AdminProductList = InferResponseType<typeof api.admin.products.$get, 200>;
