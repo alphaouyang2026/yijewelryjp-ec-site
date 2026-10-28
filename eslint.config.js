@@ -33,10 +33,10 @@ const COMPOSITION_ROOT = forbid(
   'Only the entry points assemble the API; layers never import the composition root.',
 );
 // DynamoDB Local, the dev identity (signs anyone in as an owner, without
-// Cognito) and the photo bucket's stand-in exist for local development, and
-// DynamoDB Local for tests too.
+// Cognito), the dev payments (no payment service) and the photo bucket's
+// stand-in exist for local development, and DynamoDB Local for tests too.
 const LOCAL_ONLY = forbid(
-  '(^|/)(dynamodb-local|dev-admin-identity|local-photo-bucket)$',
+  '(^|/)(dynamodb-local|dev-admin-identity|dev-payments|local-photo-bucket)$',
   'For local development (and tests) only: only src/local.ts loads it, production code never does.',
 );
 const HTTP_OUTSIDE_INTERFACE = forbid(

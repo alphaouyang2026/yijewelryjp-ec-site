@@ -1,6 +1,6 @@
 import type { Locale } from '../../shared-kernel/locale';
 import { adminHome, isAdminPage } from './admin-pages';
-import { randomToken } from './random-token';
+import { randomToken } from '../../shared-kernel/random-token';
 
 /** A sign-in must come back from the identity provider within this long of starting. */
 export const SIGN_IN_TIMEOUT_MS = 10 * 60 * 1000;

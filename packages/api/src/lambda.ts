@@ -9,6 +9,8 @@ import { dynamoDbAdapters } from './dynamodb-adapters';
 import { adminReturnUrls } from './identity/infrastructure/admin-urls';
 import { cognitoAdminIdentity } from './identity/infrastructure/cognito-admin-identity';
 import { signedCookies } from './interface/signed-cookies';
+import { checkoutReturnUrls } from './ordering/infrastructure/checkout-urls';
+import { stripePayments } from './ordering/infrastructure/stripe-payments';
 import { readSecretString } from './platform/secrets-manager';
 import { systemClock } from './shared-kernel/clock';
 import { configuredStoreSettings, shippingRatesFromEnv } from './store/infrastructure/configured-store-settings';
@@ -23,13 +25,15 @@ const env = requiredEnv(
   'COGNITO_CLIENT_ID',
   'COGNITO_CLIENT_SECRET_ARN',
   'SESSION_SECRET_ARN',
+  'STRIPE_SECRET_KEY_ARN',
 );
 
 // Secrets are read once, when the Lambda instance starts.
 const secrets = new SecretsManagerClient({});
-const [clientSecret, sessionSecret] = await Promise.all([
+const [clientSecret, sessionSecret, stripeSecretKey] = await Promise.all([
   readSecretString(secrets, env.COGNITO_CLIENT_SECRET_ARN),
   readSecretString(secrets, env.SESSION_SECRET_ARN),
+  readSecretString(secrets, env.STRIPE_SECRET_KEY_ARN),
 ]);
 
 const app = createApp({
@@ -47,6 +51,9 @@ const app = createApp({
   signedCookies: signedCookies(sessionSecret),
   // SHIPPING_FEE_YEN and FREE_SHIPPING_THRESHOLD_YEN may set other rates; the stack sets neither.
   storeSettings: configuredStoreSettings(shippingRatesFromEnv(process.env)),
+  // The owner puts the account's secret key in the secret: a test key on staging (README).
+  payments: stripePayments(stripeSecretKey),
+  checkoutUrls: checkoutReturnUrls(env.SITE_URL),
 });
 
 export const handler = handle(app);

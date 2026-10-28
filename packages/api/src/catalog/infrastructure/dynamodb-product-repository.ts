@@ -1,6 +1,7 @@
 import { ConditionalCheckFailedException } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { queryPartition, withoutUndefined, type Database } from '../../platform/dynamodb';
+import { addWrite } from '../../platform/dynamodb-unit-of-work';
 import type { LocalizedText } from '../../shared-kernel/localized-text';
 import { yen } from '../../shared-kernel/money';
 import {
@@ -94,6 +95,16 @@ export function dynamoDbProductRepository(db: Database): ProductRepository {
         if (isStaleWrite(error)) return 'stale';
         throw error;
       }
+    },
+
+    updateIn(unit, product) {
+      addWrite(unit, {
+        Put: {
+          TableName: db.tableName,
+          Item: toItem({ ...product, version: product.version + 1 }),
+          ...onVersion(product.version),
+        },
+      });
     },
   };
 }

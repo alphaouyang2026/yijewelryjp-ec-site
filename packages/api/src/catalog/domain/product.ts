@@ -1,5 +1,6 @@
 import type { LocalizedText } from '../../shared-kernel/localized-text';
 import type { Money } from '../../shared-kernel/money';
+import type { UnitOfWork } from '../../shared-kernel/unit-of-work';
 import type { ProductPhoto } from './photo';
 import { stockStatusOf, type StockStatus } from './stock-status';
 
@@ -89,6 +90,12 @@ export interface ProductRepository {
    * since it was read.
    */
   update(product: Product): Promise<Product | 'stale'>;
+  /**
+   * Adds to `unit` the write of `product`, changed from the stored version
+   * `product.version`, as the next version; the unit's commit is a conflict
+   * if the stored product is no longer at that version.
+   */
+  updateIn(unit: UnitOfWork, product: Product): void;
 }
 
 /** A new product, as a draft at version 1, with `content` and nothing reserved. */
@@ -220,6 +227,57 @@ export function mainPhoto(product: Product): ProductPhoto | undefined {
 /** On-hand stock less reserved stock, never negative. */
 export function availableStock(variant: Variant): number {
   return Math.max(0, variant.onHandStock - variant.reservedStock);
+}
+
+/** How many of a product's variant a checkout reserves or releases. */
+export type StockQuantity = { readonly sku: string; readonly quantity: number };
+
+/** A variant whose available stock is short of what a checkout wanted to reserve. */
+export type StockShortfall = { readonly sku: string; readonly availableStock: number };
+
+/**
+ * The product with `quantities` of its variants reserved by a checkout, or
+ * the variants that do not have that many available (all of them; none of
+ * the stock is reserved then). A variant the product does not have counts
+ * as having none available.
+ */
+export function reserveStock(product: Product, quantities: readonly StockQuantity[]): Product | StockShortfall[] {
+  const wanted = totalsBySku(quantities);
+  const shortfalls = [...wanted].flatMap(([sku, quantity]) => {
+    const variant = product.variants.find((candidate) => candidate.sku === sku);
+    const available = variant ? availableStock(variant) : 0;
+    return available < quantity ? [{ sku, availableStock: available }] : [];
+  });
+  if (shortfalls.length > 0) return shortfalls;
+  return {
+    ...product,
+    variants: product.variants.map((variant) => ({
+      ...variant,
+      reservedStock: variant.reservedStock + (wanted.get(variant.sku) ?? 0),
+    })),
+  };
+}
+
+/**
+ * The product with stock a checkout had reserved released: available again.
+ * Never below none reserved, and a variant the product no longer has is
+ * skipped (one with reserved stock cannot be removed, so this does not happen).
+ */
+export function releaseStock(product: Product, quantities: readonly StockQuantity[]): Product {
+  const released = totalsBySku(quantities);
+  return {
+    ...product,
+    variants: product.variants.map((variant) => ({
+      ...variant,
+      reservedStock: Math.max(0, variant.reservedStock - (released.get(variant.sku) ?? 0)),
+    })),
+  };
+}
+
+function totalsBySku(quantities: readonly StockQuantity[]): Map<string, number> {
+  const totals = new Map<string, number>();
+  for (const { sku, quantity } of quantities) totals.set(sku, (totals.get(sku) ?? 0) + quantity);
+  return totals;
 }
 
 /** The product's stock status over all its variants: sold out only when every variant is. */
