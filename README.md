@@ -142,6 +142,26 @@ npm run db:stop    # 停止并删除容器
 - 运费和免运费门槛暂时来自配置（见"环境变量"），后台的店铺设置（#16）完成后由店主编辑。
 - 前台：在商品详情页选规格和数量加入购物车；购物车页（`/cart`、`/zh/cart`、`/en/cart`，noindex）可以修改数量、删除行，只显示 API 返回的金额和提示；下架的行（包括规格已不存在的）只显示名称，不链接到商品页（那里已经买不到它）。商品详情页的数量不设上限（商品接口只给库存状态，不给可售数），超过可售数时由 API 拒绝（409 `exceeds_available`），页面显示还能买几件。页头的件数由包住所有前台页面的外框路由（`components/pages/store/`）读取 `GET /api/cart` 得到，读取失败时只是不显示件数；修改购物车成功后页面重新加载数据，件数随之更新。
 
+## 结账
+
+顾客在购物车页点「レジに進む」开始结账：API 按当前商品目录检查购物车，创建待付款订单（明细和价格快照、顾客的语言），在同一个 DynamoDB 事务里锁定每一行的库存，然后创建 Stripe Checkout 的付款页，前端跳转过去。设计见 [ADR 0008](docs/adr/0008-orders-and-checkout.md)。接口都在 `/api/checkout` 下，不缓存：
+
+| 接口 | 作用 |
+| --- | --- |
+| `POST /api/checkout?locale=…` | 结账购物车 cookie 里的购物车，返回付款页 `{ url }`。不改 cookie：购物车在付款完成前一直保留 |
+| `GET /api/checkout/orders/:orderId?token=…` | 感谢页的订单：`{ orderNumber, status }`。令牌不对时 404 |
+| `POST /api/checkout/orders/:orderId/cancel` | 顾客从付款页返回、没有付款：请求体 `{ token }`（JSON）。先让 Stripe 结束付款页，再让订单过期、释放库存，返回 204；订单已不是待付款、或已经付款时什么都不改，也返回 204 |
+
+- 订单号形如 `20261028153012-7KQ3`：下单时的日本时间（到秒）加 4 位随机字母数字（不含 I、L、O、U），按时间排序，同时是订单在表里的 key。
+- 拒绝时什么都不锁定：购物车没有行时 409 `cart_empty`；任何一行的商品未上架、没有这个规格、或可售数少于数量时 409 `unavailable_lines`（带每一行的 `lineId`、当前语言的名称和规格、`availableStock`）；创建付款页失败时立即释放锁定，502 `payment_unavailable`；和其他结账反复冲突时 503 `checkout_busy`。前端在 409 时重新加载购物车（各行的购物车提示说明原因），并列出买不了的商品。
+- 付款页（Stripe Checkout）：日元，明细用订单快照的内联价格数据（不用 Stripe Products），一个固定运费选项（达到免运费门槛时为 ¥0），收货地址只限日本，收集电话，31 分钟后过期（Stripe 要求至少 30 分钟，按它自己的时钟算，所以多留一分钟），元数据和 `client_reference_id` 带订单号，语言与订单一致（`ja`、`zh`、`en`）。
+- 付款页返回的两个前台页面都带订单号和结账令牌（`?order=…&token=…`，令牌只有发起结账的顾客知道）：付款后回到感谢页 `/checkout/complete`（noindex），付款确认到达之前显示「確認中」和订单号；不付款返回时到 `/checkout/cancelled`，它取消结账后转到购物车页，商品都还在，库存也已释放。取消失败时照样转到购物车，库存在付款页过期后释放（#13 处理 Stripe 的过期通知）。
+- 付款结果（已付款、已过期）由 #13 的 webhook 处理；在那之前订单一直是待付款，库存一直锁定。
+
+### 本地结账
+
+本地默认没有 Stripe：`npm run dev` 的 API 用开发用的付款替身（`ordering/infrastructure/dev-payments.ts`），结账后直接转到感谢页，像是立即付了款，但不会收到付款通知，订单一直是待付款、库存一直锁定（重启 API 即清空）。要在本地走一遍 Stripe 的测试模式，启动前设置 `STRIPE_SECRET_KEY` 为测试密钥（`sk_test_…`），付款页会转回 `http://localhost:5173`。
+
 ## 后台登录
 
 店主在后台（`/admin`、`/zh/admin`、`/en/admin`）用 Cognito 托管登录页登录：邮箱、密码，加上验证器应用（Google Authenticator、1Password 等）里的 TOTP 一次性验证码。
@@ -242,8 +262,9 @@ Cognito 会给这个邮箱发送临时密码（3 天内有效）。第一次登�
 | `DEV_OWNER_EMAIL` | 本地开发时以哪个邮箱登录后台 | `owner@localhost` |
 | `SHIPPING_FEE_YEN` | 可选。运费（含税日元整数），本地和 Lambda 都读取；后台能编辑店铺设置（#16）之前用它。不是整数时 API 启动即报错 | `800` |
 | `FREE_SHIPPING_THRESHOLD_YEN` | 可选。免运费门槛（含税日元整数），同上 | `20000` |
+| `STRIPE_SECRET_KEY` | 可选。本地开发时用的 Stripe 测试密钥（见"本地结账"）；不设置时用开发用的付款替身 | 无 |
 
-Lambda 另外需要 `PHOTO_BUCKET`（照片所在的存储桶）、`SITE_URL`、`COGNITO_DOMAIN_URL`、`COGNITO_USER_POOL_ID`、`COGNITO_CLIENT_ID`、`COGNITO_CLIENT_SECRET_ARN`、`SESSION_SECRET_ARN`，都由 CDK 设置（`packages/infra/lib/shop-stack.ts`）。
+Lambda 另外需要 `PHOTO_BUCKET`（照片所在的存储桶）、`SITE_URL`、`COGNITO_DOMAIN_URL`、`COGNITO_USER_POOL_ID`、`COGNITO_CLIENT_ID`、`COGNITO_CLIENT_SECRET_ARN`、`SESSION_SECRET_ARN`、`STRIPE_SECRET_KEY_ARN`，都由 CDK 设置（`packages/infra/lib/shop-stack.ts`）。
 
 ## CI
 
@@ -258,8 +279,9 @@ Lambda 另外需要 `PHOTO_BUCKET`（照片所在的存储桶）、`SITE_URL`、
 ```text
 CloudFront（一个域名）
 ├── /api/*      → API Gateway HTTP API → Lambda（packages/api，Node.js 24，arm64）→ DynamoDB 单表（按需、PITR）
-│                                                  ├→ Secrets Manager（Cognito 应用客户端密钥、会话 cookie 签名密钥，启动时读取）
-│                                                  └→ Cognito 用户池（店主登录：托管登录页、令牌端点）
+│                                                  ├→ Secrets Manager（Cognito 应用客户端密钥、会话 cookie 签名密钥、Stripe 密钥，启动时读取）
+│                                                  ├→ Cognito 用户池（店主登录：托管登录页、令牌端点）
+│                                                  └→ Stripe（付款页）
 ├── /assets/*   → S3（Vite 带哈希的文件，缓存一年）
 ├── /images/*   → S3（商品照片，key 不变，缓存一年）
 └── 其他路径     → S3 的 index.html（React 的 HTML 外壳，no-cache；由前端路由处理）
@@ -270,6 +292,13 @@ CloudFront（一个域名）
 - **照片上传：** 店主的浏览器用 API 签发的预签名 POST 把照片直接上传到存储桶的 `images/products/` 下。存储桶允许来自网站的跨域 POST（没有自定义域名时允许任何 `https://*.cloudfront.net`，因为存储桶无法引用依赖它的分配的域名；授权上传的是签名的策略，不是 CORS）。Lambda 只能写 `images/products/*`。
 - **两个阶段的区别：** 同一套代码，资源名由 CDK 自动生成，互不冲突。production 的表和存储桶在删除栈时保留，表开启删除保护；staging 的会一起删除。
 - **店主登录（Cognito）：** 每个阶段一个用户池：不开放自助注册，用邮箱登录，强制 TOTP MFA，Essentials 功能计划（托管登录页和多语言页面需要它；每月 10,000 名活跃用户以内免费）。托管登录域名是 `yijewelry-<阶段>-<账号ID>.auth.ap-northeast-1.amazoncognito.com`。API 是使用授权码流程的机密应用客户端，回调 URL 是网站域名下的 `/api/admin/auth/callback`，登出后回到网站的 `/`、`/zh/`、`/en/`。应用客户端密钥由 CDK 复制到 Secrets Manager，会话签名密钥由 CDK 生成；Lambda 只能读取这两个机密，不需要任何 Cognito 权限。production 的用户池在删除栈时保留并开启删除保护。没有自定义域名时，这些 URL 使用 CloudFront 的默认域名，CloudFormation 在创建分配后再创建应用客户端。
+- **Stripe 密钥：** 机密 `yijewelry-<stage>/stripe-secret-key`（Secrets Manager，东京）。CDK 创建时放入随机值，店主在第一次部署后换成 Stripe 的密钥：staging 用测试模式的 `sk_test_…`，production 用正式的 `sk_live_…`（#4）。换好之前 Stripe 拒绝每一次结账（502 `payment_unavailable`）。已经启动的 Lambda 实例仍用启动时读到的值；要马上生效，修改一次函数的配置（例如在 Lambda 控制台改一下描述），让它换成新实例。
+
+  ```sh
+  aws secretsmanager put-secret-value --region ap-northeast-1 \
+    --secret-id yijewelry-staging/stripe-secret-key --secret-string 'sk_test_…'
+  ```
+
 - **自定义域名（可选）：** 设置了 `DOMAIN_NAME`、`HOSTED_ZONE_ID`、`HOSTED_ZONE_NAME` 时，会在 us-east-1 多部署一个证书栈 `YiJewelryCertificate-<stage>`，并在 Route 53 加上 A / AAAA 别名记录。不设置时使用 CloudFront 的默认域名（`*.cloudfront.net`）。
 
 ### 一次性准备（店主）
