@@ -1,0 +1,97 @@
+.lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.heading {
+  font-family: var(--font-heading);
+  font-size: var(--text-product-name);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-tight);
+  letter-spacing: var(--tracking-heading);
+}
+
+/* Lines between hairlines; the figures right-aligned, so they line up. */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  border-top: var(--line-width) solid var(--color-hairline);
+}
+
+.table th {
+  padding: var(--space-1) var(--space-1);
+  color: var(--color-graphite);
+  font-size: var(--text-caption);
+  font-weight: normal;
+  text-align: left;
+  border-bottom: var(--line-width) solid var(--color-hairline);
+}
+
+.table td {
+  padding: var(--space-2) var(--space-1);
+  vertical-align: top;
+  border-bottom: var(--line-width) solid var(--color-hairline);
+}
+
+.table th:first-child,
+.table td:first-child {
+  padding-left: 0;
+}
+
+.table th:last-child,
+.table td:last-child {
+  padding-right: 0;
+}
+
+.table .number {
+  font-family: var(--font-latin);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.name {
+  display: block;
+  font-family: var(--font-heading);
+  line-height: var(--line-height-tight);
+  letter-spacing: var(--tracking-caption);
+}
+
+.variant {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--color-graphite);
+  font-size: var(--text-nav);
+  line-height: var(--line-height-tight);
+}
+
+/* The amounts on a mist block, the total set apart by a hairline, as in the cart. */
+.amounts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: var(--space-3);
+  background: var(--color-mist);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.row dd {
+  margin: 0;
+  font-family: var(--font-latin);
+}
+
+.total {
+  margin-top: var(--space-1);
+  padding-top: var(--space-2);
+  border-top: var(--line-width) solid var(--color-hairline);
+  font-weight: var(--font-weight-medium);
+}

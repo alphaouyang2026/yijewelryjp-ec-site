@@ -1,6 +1,6 @@
 import { screen, within } from '@testing-library/react';
-import { beforeEach, expect, test } from 'vitest';
-import type { Cart } from '../../../api';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import type { Cart, CheckoutOrder } from '../../../api';
 import { emptyCart, emptyHomeData, mockApi } from '../../../test/api-mocks';
 import { renderRoute } from '../../../test/render';
 import { server } from '../../../test/server';
@@ -10,6 +10,10 @@ const TOKEN = 'checkout-token-1';
 
 beforeEach(() => {
   server.use(mockApi.home(emptyHomeData));
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 test('the thank-you page shows the order number, and that the order is being confirmed until the payment is', async () => {
@@ -27,6 +31,36 @@ test('the thank-you page shows the order number, and that the order is being con
   expect(document.title).toBe('ご注文ありがとうございます | Y&I Jewelry');
   expect(document.querySelector('meta[name="robots"]')).toHaveAttribute('content', 'noindex');
   expect(requests.map((url) => url.searchParams.get('token'))).toEqual([TOKEN]);
+});
+
+test('once the payment is confirmed, the page says the order is paid and links to the order page', async () => {
+  server.use(mockApi.checkoutOrder({ orderNumber: ORDER, status: 'paid' }, TOKEN));
+
+  renderRoute(`/checkout/complete?order=${ORDER}&token=${TOKEN}`);
+
+  const details = await screen.findByRole('main');
+  expect(await within(details).findByText('お支払い済み')).toBeInTheDocument();
+  expect(details).toHaveTextContent('ご注文を承りました。ご注文確認のメールをお送りしましたので、ご確認ください。');
+  expect(details).not.toHaveTextContent('お支払いの確認が取れ次第');
+  expect(within(details).getByRole('link', { name: 'ご注文内容を見る' })).toHaveAttribute(
+    'href',
+    `/orders/${ORDER}?token=${TOKEN}`,
+  );
+});
+
+test('while the payment is being confirmed, the page checks again, and shows it paid once it is', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  let status: CheckoutOrder['status'] = 'pending_payment';
+  server.use(mockApi.checkoutOrder(() => ({ orderNumber: ORDER, status }), TOKEN));
+
+  renderRoute(`/checkout/complete?order=${ORDER}&token=${TOKEN}`);
+
+  expect(await screen.findByText('確認中')).toBeInTheDocument();
+  status = 'paid';
+  await vi.advanceTimersByTimeAsync(3_000);
+
+  expect(await screen.findByText('お支払い済み')).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'ご注文内容を見る' })).toBeInTheDocument();
 });
 
 test('in the locale of its URL', async () => {

@@ -12,7 +12,8 @@ const tokenQuery = zValidator('query', z.object({ token: z.string().catch('') })
 
 /**
  * Checkout. Starting it reads the cart from its cookie and leaves the cookie
- * as it is: the cart stays until the order is paid. No CSRF token, as for the
+ * as it is: the cart stays until the order is paid, and the thank-you page
+ * then takes what the order bought out of it. No CSRF token, as for the
  * cart: a POST from another site's form is a cross-site navigation, which
  * does not carry the SameSite=Lax cart cookie, so it checks out an empty cart.
  * The routes under /orders/:orderId take the checkout token the payment
@@ -56,13 +57,17 @@ export function checkoutRoutes(deps: {
             return c.json({ error: 'checkout_busy' } as const, 503);
         }
       })
-      // The thank-you page's order.
+      // The thank-you page's order. Once it is paid, what it bought leaves the cart.
       .get('/orders/:orderId', tokenQuery, async (c) => {
-        const order = await deps.findCheckoutOrder({
+        const cart = await deps.cartCookie.read(c);
+        const found = await deps.findCheckoutOrder({
           orderId: c.req.param('orderId'),
           token: c.req.valid('query').token,
+          cart,
         });
-        return order ? c.json(order, 200) : c.json({ error: 'not_found' } as const, 404);
+        if (!found) return c.json({ error: 'not_found' } as const, 404);
+        if (found.cart.lines.length !== cart.lines.length) await deps.cartCookie.write(c, found.cart);
+        return c.json(found.order, 200);
       })
       // The customer left the payment page without paying.
       .post('/orders/:orderId/cancel', jsonBody(z.object({ token: z.string() })), async (c) => {

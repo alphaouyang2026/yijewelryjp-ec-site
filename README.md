@@ -149,18 +149,50 @@ npm run db:stop    # 停止并删除容器
 | 接口 | 作用 |
 | --- | --- |
 | `POST /api/checkout?locale=…` | 结账购物车 cookie 里的购物车，返回付款页 `{ url }`。不改 cookie：购物车在付款完成前一直保留 |
-| `GET /api/checkout/orders/:orderId?token=…` | 感谢页的订单：`{ orderNumber, status }`。令牌不对时 404 |
+| `GET /api/checkout/orders/:orderId?token=…` | 感谢页的订单：`{ orderNumber, status }`。令牌不对时 404。订单已付款时，从购物车 cookie 里去掉这个订单买的行（之后加入的商品留着） |
 | `POST /api/checkout/orders/:orderId/cancel` | 顾客从付款页返回、没有付款：请求体 `{ token }`（JSON）。先让 Stripe 结束付款页，再让订单过期、释放库存，返回 204；订单已不是待付款、或已经付款时什么都不改，也返回 204 |
 
 - 订单号形如 `20261028153012-7KQ3`：下单时的日本时间（到秒）加 4 位随机字母数字（不含 I、L、O、U），按时间排序，同时是订单在表里的 key。
 - 拒绝时什么都不锁定：购物车没有行时 409 `cart_empty`；任何一行的商品未上架、没有这个规格、或可售数少于数量时 409 `unavailable_lines`（带每一行的 `lineId`、当前语言的名称和规格、`availableStock`）；创建付款页失败时立即释放锁定，502 `payment_unavailable`；和其他结账反复冲突时 503 `checkout_busy`。前端在 409 时重新加载购物车（各行的购物车提示说明原因），并列出买不了的商品。
 - 付款页（Stripe Checkout）：日元，明细用订单快照的内联价格数据（不用 Stripe Products），一个固定运费选项（达到免运费门槛时为 ¥0），收货地址只限日本，收集电话，31 分钟后过期（Stripe 要求至少 30 分钟，按它自己的时钟算，所以多留一分钟），元数据和 `client_reference_id` 带订单号，语言与订单一致（`ja`、`zh`、`en`）。
-- 付款页返回的两个前台页面都带订单号和结账令牌（`?order=…&token=…`，令牌只有发起结账的顾客知道）：付款后回到感谢页 `/checkout/complete`（noindex），付款确认到达之前显示「確認中」和订单号；不付款返回时到 `/checkout/cancelled`，它取消结账后转到购物车页，商品都还在，库存也已释放。取消失败时照样转到购物车，库存在付款页过期后释放（#13 处理 Stripe 的过期通知）。
-- 付款结果（已付款、已过期）由 #13 的 webhook 处理；在那之前订单一直是待付款，库存一直锁定。
+- 付款页返回的两个前台页面都带订单号和结账令牌（`?order=…&token=…`，令牌只有发起结账的顾客知道）：付款后回到感谢页 `/checkout/complete`（noindex），付款确认到达之前显示「確認中」和订单号；不付款返回时到 `/checkout/cancelled`，它取消结账后转到购物车页，商品都还在，库存也已释放。取消失败时照样转到购物车，库存在付款页过期、Stripe 发来过期通知后释放。
+- 付款页只接受卡（Apple Pay、Google Pay 属于卡），都是当场付款；不接受便利店付款等之后才付的方式。
+- 付款结果由 Stripe 的 webhook 通知，见"付款通知、邮件与订单页"。
 
 ### 本地结账
 
-本地默认没有 Stripe：`npm run dev` 的 API 用开发用的付款替身（`ordering/infrastructure/dev-payments.ts`），结账后直接转到感谢页，像是立即付了款，但不会收到付款通知，订单一直是待付款、库存一直锁定（DynamoDB Local 停止后才清空；也可以打开感谢页地址里同一订单号和令牌的 `/checkout/cancelled?order=…&token=…` 释放）。要在本地走一遍 Stripe 的测试模式，在 `packages/api/.env` 里设置 `STRIPE_SECRET_KEY` 为测试密钥（`sk_test_…`，见"环境变量"），再重新启动 `npm run dev`，付款页会转回 `http://localhost:5173`。
+本地默认没有 Stripe：`npm run dev` 的 API 用开发用的付款替身（`ordering/infrastructure/dev-payments.ts`），结账后直接转到感谢页，像是立即付了款，但不会收到付款通知，订单一直是待付款、库存一直锁定（DynamoDB Local 停止后才清空；也可以打开感谢页地址里同一订单号和令牌的 `/checkout/cancelled?order=…&token=…` 释放）。
+
+要在本地走一遍 Stripe 的测试模式（包括付款通知和邮件）：
+
+1. 在 `packages/api/.env` 里设置 `STRIPE_SECRET_KEY` 为测试密钥（`sk_test_…`，见"环境变量"）。
+2. 安装 [Stripe CLI](https://docs.stripe.com/stripe-cli)，登录后另开一个终端，把 Stripe 的事件转给本地 API：
+
+   ```sh
+   stripe listen --events checkout.session.completed,checkout.session.expired \
+     --forward-to http://localhost:8787/api/payment-events
+   ```
+
+   它显示的 `whsec_…` 是转发事件的签名密钥，填进 `.env` 的 `STRIPE_WEBHOOK_SECRET`。
+3. 重新启动 `npm run dev`。付款页会转回 `http://localhost:5173`，测试卡号 `4242 4242 4242 4242`（有效期填任意未来的年月，CVC 任意 3 位）。
+
+本地的邮件不发出去，内容打印在 API 的终端里。
+
+## 付款通知、邮件与订单页
+
+Stripe 用 webhook 通知付款结果，API 校验签名后处理；顾客付款后收到下单确认邮件，店主收到新订单通知，顾客用邮件里的链接查看订单页，不需要账号。设计见 [ADR 0009](docs/adr/0009-payment-events-and-order-emails.md)。
+
+| 接口 | 作用 |
+| --- | --- |
+| `POST /api/payment-events` | Stripe 的 webhook。签名不对（或请求体被改过）时 400 `invalid_signature`；处理完（或不需要处理）时 200；有邮件发送失败时 503 `try_again_later`，Stripe 之后会再投递 |
+| `GET /api/orders/:orderId?token=…&locale=…` | 订单页的订单：状态、下单时间、各行、小计、运费、合计、其中消费税、收货地址（付款前为 `null`），文字用请求的语言。令牌不对时 404 |
+
+- **付款完成**（`checkout.session.completed`）：订单从待付款变为已付款，保存顾客在付款页填写的邮箱、电话和收货地址；锁定的库存转为已售（在库数和锁定数都减去购买数量），两者在一个事务里。然后发送两封邮件。
+- **付款页过期**（`checkout.session.expired`）：订单过期，释放锁定的库存。顾客从付款页返回时已经取消的订单，收到这个通知时什么都不改。
+- **重复投递和不符合状态的通知：** Stripe 可能把同一个通知投递多次。订单和库存只按订单当前的状态变化一次：已付款的订单不会再次付款，也不会过期；已过期的订单不会再付款。不符合订单状态的通知记录日志后忽略（返回 200）。其他类型的事件直接返回 200。
+- **邮件：** 下单确认发给顾客（用下单时的语言：日、中、英），新订单通知发给店主（日语，地址是部署设置的 `OWNER_NOTIFICATION_EMAIL`，不设置时不发）。都是 HTML 和纯文本两部分，内容有商品、规格、单价、数量、小计、运费、合计、其中消费税（floor(合计 × 10 / 110)）、收货地址；顾客的邮件附订单页链接，店主的通知附顾客的邮箱、电话和语言。订单上记录已经发出的邮件：某封发送失败时 API 返回 503，Stripe 再投递时只补发没发出的那封，已经发出的不会再发。
+- **感谢页：** 付款确认到达之前显示「確認中」，每 3 秒重新查询一次，最多 1 分钟；确认后显示「お支払い済み」和订单页的链接。
+- **订单页** `/orders/:orderNumber?token=…`（noindex）：邮件里的链接，令牌就是结账令牌。显示订单号、下单时间（日本时间）、状态、各行和金额、其中消费税、收货地址。语言由 URL 决定，和下单时的语言无关。
 
 ## 后台登录
 
@@ -271,8 +303,10 @@ cp packages/api/.env.example packages/api/.env
 | `SHIPPING_FEE_YEN` | 可选。运费（含税日元整数），本地和 Lambda 都读取；后台能编辑店铺设置（#16）之前用它。不是整数时 API 启动即报错 | `800` |
 | `FREE_SHIPPING_THRESHOLD_YEN` | 可选。免运费门槛（含税日元整数），同上 | `20000` |
 | `STRIPE_SECRET_KEY` | 可选。本地开发时用的 Stripe 测试密钥（见"本地结账"）；不设置时用开发用的付款替身 | 无 |
+| `STRIPE_WEBHOOK_SECRET` | 可选。本地开发时 `stripe listen` 显示的签名密钥（`whsec_…`，见"本地结账"） | 无 |
+| `OWNER_NOTIFICATION_EMAIL` | 新订单通知发到哪里。本地只打印在终端里；Lambda 由 CDK 按部署设置的同名变量设置，不设置时不发通知 | 本地为 `owner@localhost` |
 
-Lambda 另外需要 `PHOTO_BUCKET`（照片所在的存储桶）、`SITE_URL`、`COGNITO_DOMAIN_URL`、`COGNITO_USER_POOL_ID`、`COGNITO_CLIENT_ID`、`COGNITO_CLIENT_SECRET_ARN`、`SESSION_SECRET_ARN`、`STRIPE_SECRET_KEY_ARN`，都由 CDK 设置（`packages/infra/lib/shop-stack.ts`）。
+Lambda 另外需要 `PHOTO_BUCKET`（照片所在的存储桶）、`SITE_URL`、`COGNITO_DOMAIN_URL`、`COGNITO_USER_POOL_ID`、`COGNITO_CLIENT_ID`、`COGNITO_CLIENT_SECRET_ARN`、`SESSION_SECRET_ARN`、`STRIPE_SECRET_KEY_ARN`、`STRIPE_WEBHOOK_SECRET_ARN`，有自定义域名时还有 `MAIL_FROM`（发件人；没有时邮件只记录在日志里），都由 CDK 设置（`packages/infra/lib/shop-stack.ts`）。
 
 ## CI
 
@@ -287,9 +321,10 @@ Lambda 另外需要 `PHOTO_BUCKET`（照片所在的存储桶）、`SITE_URL`、
 ```text
 CloudFront（一个域名）
 ├── /api/*      → API Gateway HTTP API → Lambda（packages/api，Node.js 24，arm64）→ DynamoDB 单表（按需、PITR）
-│                                                  ├→ Secrets Manager（Cognito 应用客户端密钥、会话 cookie 签名密钥、Stripe 密钥，启动时读取）
+│                                                  ├→ Secrets Manager（Cognito 应用客户端密钥、会话 cookie 签名密钥、Stripe 密钥和 webhook 签名密钥，启动时读取）
 │                                                  ├→ Cognito 用户池（店主登录：托管登录页、令牌端点）
-│                                                  └→ Stripe（付款页）
+│                                                  ├→ Stripe（付款页；付款通知从 Stripe 发到 /api/payment-events）
+│                                                  └→ SES（下单确认、新订单通知）
 ├── /assets/*   → S3（Vite 带哈希的文件，缓存一年）
 ├── /images/*   → S3（商品照片，key 不变，缓存一年）
 └── 其他路径     → S3 的 index.html（React 的 HTML 外壳，no-cache；由前端路由处理）
@@ -306,6 +341,16 @@ CloudFront（一个域名）
   aws secretsmanager put-secret-value --region ap-northeast-1 \
     --secret-id yijewelry-staging/stripe-secret-key --secret-string 'sk_test_…'
   ```
+
+- **Stripe webhook：** 在 Stripe 后台（staging 用测试模式）的 Developers → Webhooks 添加端点：URL 是 `https://<网站域名>/api/payment-events`，事件选 `checkout.session.completed` 和 `checkout.session.expired`。端点的签名密钥（`whsec_…`）放进机密 `yijewelry-<stage>/stripe-webhook-secret`，方法和 Stripe 密钥一样（换好之前每个通知都因签名不对被拒绝，Stripe 会在 3 天内不断重试）：
+
+  ```sh
+  aws secretsmanager put-secret-value --region ap-northeast-1 \
+    --secret-id yijewelry-staging/stripe-webhook-secret --secret-string 'whsec_…'
+  ```
+
+- **邮件（SES）：** 有自定义域名时，每个阶段在 SES（东京）建一个域名身份：网站的域名本身（`staging.example.com`、`example.com`），发件人是 `Y&I Jewelry <noreply@网站域名>`，回复发到 `OWNER_NOTIFICATION_EMAIL`。CDK 在 Route 53 加上 Easy DKIM 的 3 条 CNAME 记录，以及 MAIL FROM 子域名 `mail.网站域名` 的 MX 和 SPF 记录，所以 DKIM 和 SPF 都和发件人的域名一致，DMARC 能通过。域名本身的 MX、SPF、DMARC 记录（邮箱用的）不归这个栈管理。Lambda 只能以这个身份发信。没有自定义域名时不发邮件，内容只记录在 Lambda 的日志里。
+  - 新的 AWS 账号的 SES 在沙盒里：只能发给已验证的地址（包括身份域名下的地址），每天最多 200 封。正式上线前要申请生产访问（#4）。在那之前，发给顾客的邮件会失败，webhook 返回 503，Stripe 会重试。
 
 - **自定义域名（可选）：** 设置了 `DOMAIN_NAME`、`HOSTED_ZONE_ID`、`HOSTED_ZONE_NAME` 时，会在 us-east-1 多部署一个证书栈 `YiJewelryCertificate-<stage>`，并在 Route 53 加上 A / AAAA 别名记录。不设置时使用 CloudFront 的默认域名（`*.cloudfront.net`）。
 
@@ -341,6 +386,7 @@ CloudFront（一个域名）
      | `HOSTED_ZONE_ID` | 可选。该域名所在的 Route 53 托管区 ID |
      | `HOSTED_ZONE_NAME` | 可选。托管区的名称，如 `example.com` |
      | `REDIRECT_DOMAIN_NAMES` | 可选。永久跳转（301）到 `DOMAIN_NAME` 的其他域名，多个用逗号分隔，如 `www.example.com`。必须在同一个托管区里；证书和 Route 53 记录会自动加上，路径和查询字符串保持不变 |
+     | `OWNER_NOTIFICATION_EMAIL` | 可选。新订单通知发到的邮箱，顾客回复邮件时也发到这里。不设置时不发新订单通知 |
 
      前三个域名变量要么都设置，要么都不设置；`REDIRECT_DOMAIN_NAMES` 需要它们都已设置。
    - **仓库级别的 Variable：** `DEPLOY_ENABLED` = `true`。在设置之前，部署 workflow 会直接跳过。

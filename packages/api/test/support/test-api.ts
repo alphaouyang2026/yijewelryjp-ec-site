@@ -10,7 +10,7 @@ import { createApp, type AppDeps } from '../../src/app';
 import { s3PhotoStorage } from '../../src/catalog/infrastructure/s3-photo-storage';
 import { dynamoDbAdapters } from '../../src/dynamodb-adapters';
 import { signedCookies, type SignedCookies } from '../../src/interface/signed-cookies';
-import { checkoutReturnUrls } from '../../src/ordering/infrastructure/checkout-urls';
+import { orderPageUrls } from '../../src/ordering/infrastructure/order-page-urls';
 import { createTable, deleteTable, localDynamoClient } from '../../src/platform/dynamodb-local';
 import { yen } from '../../src/shared-kernel/money';
 import type { ShippingRates } from '../../src/store/domain/store-settings';
@@ -18,6 +18,7 @@ import { configuredStoreSettings } from '../../src/store/infrastructure/configur
 import { catalogSeed } from './catalog-seed';
 import type { Owner } from '../../src/identity/domain/owner';
 import { createInMemoryAdminIdentity } from './in-memory-admin-identity';
+import { createInMemoryMailer } from './in-memory-mailer';
 import { createInMemoryPayments } from './in-memory-payments';
 import { createTestClock } from './test-clock';
 
@@ -36,6 +37,9 @@ export const TEST_PHOTO_CREDENTIALS = { accessKeyId: 'test-access-key', secretAc
 
 /** The shipping rates in the test API's store settings: ¥800, free from ¥20,000. */
 export const TEST_SHIPPING_RATES: ShippingRates = { fee: yen(800), freeShippingThreshold: yen(20_000) };
+
+/** Where the test API's store settings send the owner's new order notices. */
+export const TEST_OWNER_NOTIFICATION_EMAIL = 'orders@yijewelry.test';
 
 // Every test starts at this instant unless it sets the clock itself.
 const DEFAULT_NOW = new Date('2026-01-01T00:00:00+09:00');
@@ -79,8 +83,8 @@ type TestApp = ReturnType<typeof createTestApp>;
  * DynamoDB Local table, created before its tests and deleted after, and a
  * clock the tests control, an in-memory identity provider owners sign in
  * with, S3 upload forms for a test bucket, the store settings' shipping
- * rates fixed at TEST_SHIPPING_RATES, and an in-memory payment service whose
- * sessions tests can read. The test-only routes are mounted too, and `seed`
+ * rates fixed at TEST_SHIPPING_RATES, an in-memory payment service whose
+ * sessions tests can read, and an in-memory mail service whose outbox they can. The test-only routes are mounted too, and `seed`
  * puts data the API cannot create yet into the table.
  */
 export function useTestApi({ withTable = true }: { withTable?: boolean } = {}) {
@@ -88,6 +92,7 @@ export function useTestApi({ withTable = true }: { withTable?: boolean } = {}) {
   const clock = createTestClock(DEFAULT_NOW);
   const adminIdentity = createInMemoryAdminIdentity();
   const payments = createInMemoryPayments();
+  const mailer = createInMemoryMailer();
   const app = createTestApp({
     ...dynamoDbAdapters(db),
     photoStorage: s3PhotoStorage({
@@ -97,9 +102,13 @@ export function useTestApi({ withTable = true }: { withTable?: boolean } = {}) {
     clock,
     adminIdentity,
     signedCookies: signedCookies(TEST_COOKIE_SECRET),
-    storeSettings: configuredStoreSettings(TEST_SHIPPING_RATES),
+    storeSettings: configuredStoreSettings({
+      shippingRates: TEST_SHIPPING_RATES,
+      ownerNotificationEmail: TEST_OWNER_NOTIFICATION_EMAIL,
+    }),
     payments,
-    checkoutUrls: checkoutReturnUrls(ORIGIN),
+    orderPageUrls: orderPageUrls(ORIGIN),
+    mailer,
   });
 
   beforeAll(async () => {
@@ -113,6 +122,7 @@ export function useTestApi({ withTable = true }: { withTable?: boolean } = {}) {
 
   beforeEach(() => {
     clock.set(DEFAULT_NOW);
+    mailer.outbox.length = 0;
   });
 
   return {
@@ -122,6 +132,8 @@ export function useTestApi({ withTable = true }: { withTable?: boolean } = {}) {
     identity: adminIdentity,
     /** The payment service, with the checkout sessions the API created. */
     payments,
+    /** The mail service, with the emails the API sent. */
+    mailer,
     /** A new client with its own cookie jar, like a fresh browser. */
     client,
     /** Every route the API has (method and path, once each), for tests that walk a group of routes. */

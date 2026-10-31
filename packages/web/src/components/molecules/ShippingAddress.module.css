@@ -1,0 +1,24 @@
+.address {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.heading {
+  font-family: var(--font-heading);
+  font-size: var(--text-product-name);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-tight);
+  letter-spacing: var(--tracking-heading);
+}
+
+.lines {
+  display: flex;
+  flex-direction: column;
+  font-style: normal;
+}
+
+.pending {
+  color: var(--color-graphite);
+}
