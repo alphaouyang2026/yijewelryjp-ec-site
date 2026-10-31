@@ -16,6 +16,7 @@ import {
   type CheckoutRefusal,
   type HomeData,
   type InvalidInput,
+  type OrderPage,
   type PhotoUpload,
   type ProductList,
   type ProductPage,
@@ -93,6 +94,9 @@ export type CheckoutReply =
   | { status: 503; body: { error: 'checkout_busy' } };
 
 const checkoutOrdersUrl = `${api.checkout.$url().href}/orders`;
+
+/** The order page's route; the typed client names only /api/orders/:orderId, not /api/orders itself. */
+const ordersUrl = `${new URL(api.home.$url().href).origin}/api/orders`;
 
 /** Where mocked upload forms post photos: photo storage (S3 in production). */
 export const PHOTO_STORAGE_URL = 'https://yijewelry-photos.s3.ap-northeast-1.amazonaws.com/';
@@ -310,11 +314,24 @@ export const mockApi = {
   checkoutUnreachable: () => http.post(api.checkout.$url().href, () => HttpResponse.error(), { once: true }),
 
   /**
-   * Answers the thank-you page's requests for the order with `order` when they
+   * Answers the thank-you page's requests for the order with `order` (or what
+   * it returns at the time, for an order that changes) when they name its
+   * number with `token`; 404 for any other. `requests` collects each request's URL.
+   */
+  checkoutOrder: (order: CheckoutOrder | (() => CheckoutOrder), token: string, requests: URL[] = []) =>
+    http.get(`${checkoutOrdersUrl}/:orderId`, ({ request, params }) => {
+      requests.push(new URL(request.url));
+      const current = typeof order === 'function' ? order() : order;
+      const found = params.orderId === current.orderNumber && new URL(request.url).searchParams.get('token') === token;
+      return found ? HttpResponse.json(current) : HttpResponse.json(notFound, { status: 404 });
+    }),
+
+  /**
+   * Answers the order page's requests for the order with `order` when they
    * name its number with `token`; 404 for any other. `requests` collects each request's URL.
    */
-  checkoutOrder: (order: CheckoutOrder, token: string, requests: URL[] = []) =>
-    http.get(`${checkoutOrdersUrl}/:orderId`, ({ request, params }) => {
+  orderPage: (order: OrderPage, token: string, requests: URL[] = []) =>
+    http.get(`${ordersUrl}/:orderId`, ({ request, params }) => {
       requests.push(new URL(request.url));
       const found = params.orderId === order.orderNumber && new URL(request.url).searchParams.get('token') === token;
       return found ? HttpResponse.json(order) : HttpResponse.json(notFound, { status: 404 });

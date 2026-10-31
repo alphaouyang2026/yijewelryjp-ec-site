@@ -34,6 +34,8 @@ export type CartQuantityRefusal = InferResponseType<(typeof api.cart.lines)[':li
 export type CheckoutRefusal = InferResponseType<typeof api.checkout.$post, 409>;
 /** The order the thank-you page shows. */
 export type CheckoutOrder = InferResponseType<(typeof api.checkout.orders)[':orderId']['$get'], 200>;
+/** An order as the order page shows it: its lines, amounts and the tax they include, and where it ships. */
+export type OrderPage = InferResponseType<(typeof api.orders)[':orderId']['$get'], 200>;
 
 export type AdminSession = InferResponseType<typeof api.admin.session.$get, 200>;
 
