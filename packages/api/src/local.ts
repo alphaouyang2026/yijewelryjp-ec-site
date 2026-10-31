@@ -10,7 +10,8 @@ import { dynamoDbAdapters } from './dynamodb-adapters';
 import { adminReturnUrls } from './identity/infrastructure/admin-urls';
 import { devAdminIdentity } from './identity/infrastructure/dev-admin-identity';
 import { signedCookies } from './interface/signed-cookies';
-import { checkoutReturnUrls } from './ordering/infrastructure/checkout-urls';
+import { consoleMailer } from './ordering/infrastructure/console-mailer';
+import { orderPageUrls } from './ordering/infrastructure/order-page-urls';
 import { devPayments } from './ordering/infrastructure/dev-payments';
 import { stripePayments } from './ordering/infrastructure/stripe-payments';
 import { LOCAL_PHOTO_BUCKET, LOCAL_PHOTO_CREDENTIALS, localPhotoBucket } from './local-photo-bucket';
@@ -52,10 +53,18 @@ const app = new Hono().use(logger()).route('/', localPhotoBucket()).route(
     // Relative URLs: the browser stays on the Vite dev server, which proxies /api here.
     adminIdentity: devAdminIdentity({ owner: devOwner, returnUrls: adminReturnUrls('') }),
     signedCookies: signedCookies(process.env.SESSION_SECRET ?? 'local-development-session-secret'),
-    storeSettings: configuredStoreSettings(shippingRatesFromEnv(process.env)),
-    // Stripe's test mode with a test key; otherwise checkout goes straight to the thank-you page (README "本地结账").
-    payments: process.env.STRIPE_SECRET_KEY ? stripePayments(process.env.STRIPE_SECRET_KEY) : devPayments(),
-    checkoutUrls: checkoutReturnUrls(siteUrl),
+    storeSettings: configuredStoreSettings({
+      shippingRates: shippingRatesFromEnv(process.env),
+      ownerNotificationEmail: process.env.OWNER_NOTIFICATION_EMAIL ?? 'owner@localhost',
+    }),
+    // Stripe's test mode with a test key, and the Stripe CLI's signing secret for the events it
+    // forwards; otherwise checkout goes straight to the thank-you page (README "本地结账").
+    payments: process.env.STRIPE_SECRET_KEY
+      ? stripePayments(process.env.STRIPE_SECRET_KEY, process.env.STRIPE_WEBHOOK_SECRET ?? '')
+      : devPayments(),
+    orderPageUrls: orderPageUrls(siteUrl),
+    // Emails are printed to this console, not sent.
+    mailer: consoleMailer(),
   }),
 );
 

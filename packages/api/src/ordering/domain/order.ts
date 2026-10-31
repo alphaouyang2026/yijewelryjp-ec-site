@@ -12,6 +12,12 @@ import { shippingFor, type ShippingRates } from './cart';
 export const ORDER_STATUSES = ['pending_payment', 'paid', 'expired', 'shipped', 'cancelled'] as const;
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
+/**
+ * The emails about an order: once it is paid, the customer's order
+ * confirmation and the owner's new order notice. Each is sent once.
+ */
+export type OrderEmail = 'order_confirmation' | 'new_order_notice';
+
 /** A line of an order: a variant and how many, as the catalog had it when checkout started (the snapshot). */
 export type OrderLine = {
   readonly productSlug: string;
@@ -21,6 +27,27 @@ export type OrderLine = {
   /** Tax-inclusive. */
   readonly unitPrice: Money;
   readonly quantity: number;
+};
+
+/** Where an order is shipped, in Japan: as the customer entered it on the payment page. */
+export type ShippingAddress = {
+  /** Who receives the parcel. */
+  readonly name: string;
+  readonly postalCode: string;
+  readonly prefecture: string;
+  /** The city, ward, town or village. */
+  readonly city: string;
+  /** The rest of the address: the district and block number. */
+  readonly line1: string;
+  /** The building and room, if any. */
+  readonly line2?: string;
+};
+
+/** The customer of a paid order: the contact details and address they gave on the payment page. */
+export type Customer = {
+  readonly email: string;
+  readonly phone?: string;
+  readonly shippingAddress: ShippingAddress;
 };
 
 /**
@@ -46,6 +73,11 @@ export type Order = {
   readonly checkoutToken: string;
   /** The payment service's checkout session; undefined until it is created. */
   readonly checkoutSessionId?: string;
+  /** Who paid, from the payment page; undefined until the order is paid. */
+  readonly customer?: Customer;
+  readonly paidAt?: Date;
+  /** The emails about the order sent so far, so that none is sent twice. */
+  readonly sentEmails: readonly OrderEmail[];
   /** 1 when created, one more with each change; each change is saved only onto the version it was made from. */
   readonly version: number;
 };
@@ -53,6 +85,14 @@ export type Order = {
 /** The line amount: unit price × quantity, tax-inclusive. */
 export function lineAmount(line: OrderLine): Money {
   return yen(line.unitPrice.yen * line.quantity);
+}
+
+/**
+ * The consumption tax a tax-inclusive `total` includes, at 10%, once per
+ * order and rounded down: floor(total × 10 / 110).
+ */
+export function taxIncluded(total: Money): Money {
+  return yen(Math.floor((total.yen * 10) / 110));
 }
 
 /**
@@ -79,6 +119,7 @@ export function placeOrder(order: {
     total: yen(subtotal.yen + shipping.yen),
     placedAt: order.placedAt,
     checkoutToken: order.checkoutToken,
+    sentEmails: [],
     version: 1,
   };
 }
@@ -86,6 +127,13 @@ export function placeOrder(order: {
 /** The order once its checkout ended without a payment; undefined unless it is pending payment. */
 export function expireOrder(order: Order): Order | undefined {
   return order.status === 'pending_payment' ? { ...order, status: 'expired' } : undefined;
+}
+
+/** The order once the customer paid it; undefined unless it is pending payment. */
+export function payOrder(order: Order, payment: { customer: Customer; paidAt: Date }): Order | undefined {
+  return order.status === 'pending_payment'
+    ? { ...order, status: 'paid', customer: payment.customer, paidAt: payment.paidAt }
+    : undefined;
 }
 
 /** Crockford's base32: digits and letters, without I, L, O and U, which read like 1, 1, 0 and V. */
