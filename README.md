@@ -160,7 +160,7 @@ npm run db:stop    # 停止并删除容器
 
 ### 本地结账
 
-本地默认没有 Stripe：`npm run dev` 的 API 用开发用的付款替身（`ordering/infrastructure/dev-payments.ts`），结账后直接转到感谢页，像是立即付了款，但不会收到付款通知，订单一直是待付款、库存一直锁定（重启 API 即清空）。要在本地走一遍 Stripe 的测试模式，启动前设置 `STRIPE_SECRET_KEY` 为测试密钥（`sk_test_…`），付款页会转回 `http://localhost:5173`。
+本地默认没有 Stripe：`npm run dev` 的 API 用开发用的付款替身（`ordering/infrastructure/dev-payments.ts`），结账后直接转到感谢页，像是立即付了款，但不会收到付款通知，订单一直是待付款、库存一直锁定（DynamoDB Local 停止后才清空；也可以打开感谢页地址里同一订单号和令牌的 `/checkout/cancelled?order=…&token=…` 释放）。要在本地走一遍 Stripe 的测试模式，在 `packages/api/.env` 里设置 `STRIPE_SECRET_KEY` 为测试密钥（`sk_test_…`，见"环境变量"），再重新启动 `npm run dev`，付款页会转回 `http://localhost:5173`。
 
 ## 后台登录
 
@@ -253,6 +253,14 @@ Cognito 会给这个邮箱发送临时密码（3 天内有效）。第一次登�
 | `npm run synth -w @yi/infra -- -c stage=staging` | 合成 CloudFormation 模板（需要先 `npm run build`；不需要 AWS 凭证） |
 
 ## 环境变量
+
+本地开发时，API 的设置写在 `packages/api/.env`（不提交到仓库）：
+
+```sh
+cp packages/api/.env.example packages/api/.env
+```
+
+然后取消注释、填入需要的值。`npm run dev` 和 `npm run db:seed` 启动时读取这个文件；改了之后要重新启动 `npm run dev`。在命令行设置的同名变量优先于文件里的值。没有这个文件时全部用默认值。测试不读取它。
 
 | 变量 | 用途 | 默认值 |
 | --- | --- | --- |
