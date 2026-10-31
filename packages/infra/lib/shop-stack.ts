@@ -441,16 +441,29 @@ export class ShopStack extends Stack {
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
-    // Reading the two secrets is all the function needs: exchanging codes and
-    // fetching the user pool's signing keys are public HTTPS endpoints.
+    // The Stripe account's secret key, which the owner puts in by hand after
+    // the first deploy (README): a test-mode key on staging, the live key on
+    // production. Until then it holds a random value, and Stripe refuses every
+    // checkout. Named, so the owner can find it.
+    const stripeSecretKey = new Secret(this, 'StripeSecretKey', {
+      secretName: `yijewelry-${config.stage}/stripe-secret-key`,
+      description: `Y&I Jewelry (${config.stage}): the Stripe secret key the API creates payment pages with`,
+      generateSecretString: { passwordLength: 32, excludePunctuation: true },
+      removalPolicy: RemovalPolicy.DESTROY,
+    });
+
+    // Reading the secrets is all the function needs: exchanging codes and
+    // fetching the user pool's signing keys are public HTTPS endpoints, and so is Stripe's API.
     adminClientSecret.grantRead(api);
     sessionSecret.grantRead(api);
+    stripeSecretKey.grantRead(api);
     api.addEnvironment('SITE_URL', siteUrl);
     api.addEnvironment('COGNITO_DOMAIN_URL', managedLogin.baseUrl());
     api.addEnvironment('COGNITO_USER_POOL_ID', ownerPool.userPoolId);
     api.addEnvironment('COGNITO_CLIENT_ID', adminClient.userPoolClientId);
     api.addEnvironment('COGNITO_CLIENT_SECRET_ARN', adminClientSecret.secretArn);
     api.addEnvironment('SESSION_SECRET_ARN', sessionSecret.secretArn);
+    api.addEnvironment('STRIPE_SECRET_KEY_ARN', stripeSecretKey.secretArn);
 
     new CfnOutput(this, 'SiteUrl', { value: siteUrl });
     new CfnOutput(this, 'AdminUrl', { value: `${siteUrl}/admin` });

@@ -1,5 +1,5 @@
 import type { Owner } from './owner';
-import { randomToken } from './random-token';
+import { randomToken } from '../../shared-kernel/random-token';
 
 /** An owner's session goes after this long without a request to the admin. */
 export const SESSION_IDLE_TIMEOUT_MS = 2 * 60 * 60 * 1000;

@@ -1,4 +1,4 @@
-import type { CartNotice, FieldErrorCode } from '../../api';
+import type { CartNotice, CheckoutOrder, FieldErrorCode } from '../../api';
 
 /**
  * The interface text in Japanese, the default locale. Its shape is `Messages`:
@@ -134,6 +134,27 @@ export const ja = {
     exceedsAvailable: (count: number) => `在庫が足りません。${count}点までご購入いただけます。`,
     tooLarge: 'カートの内容が多すぎるため、数量を変更できませんでした。ほかの商品を削除してからお試しください。',
     changeFailed: '変更できませんでした。時間をおいて、もう一度お試しください。',
+    checkout: 'レジに進む',
+    /** Checkout refused some lines, each named by `lineName`. */
+    checkoutUnavailable: (lines: string[]) =>
+      `在庫または販売状況が変わったため、ご購入いただけない商品があります：${lines.join('、')}。カートの内容をご確認ください。`,
+    checkoutFailed: 'お支払いページを開けませんでした。時間をおいて、もう一度お試しください。',
+  },
+  checkout: {
+    label: 'Thank you',
+    title: 'ご注文ありがとうございます',
+    orderNumber: '注文番号',
+    status: 'ご注文状況',
+    /** Each order status's text, by its code: a new status fails type checking until it has one. */
+    statuses: {
+      pending_payment: '確認中',
+      paid: 'お支払い済み',
+      expired: 'お支払いが完了しませんでした',
+      shipped: '発送済み',
+      cancelled: 'キャンセル済み',
+    } satisfies Record<CheckoutOrder['status'], string>,
+    confirming: 'お支払いの確認が取れ次第、ご注文確定のメールをお送りします。',
+    continueShopping: 'お買い物を続ける',
   },
   notFound: {
     title: 'ページが見つかりません',

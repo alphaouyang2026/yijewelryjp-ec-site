@@ -10,6 +10,9 @@ import { dynamoDbAdapters } from './dynamodb-adapters';
 import { adminReturnUrls } from './identity/infrastructure/admin-urls';
 import { devAdminIdentity } from './identity/infrastructure/dev-admin-identity';
 import { signedCookies } from './interface/signed-cookies';
+import { checkoutReturnUrls } from './ordering/infrastructure/checkout-urls';
+import { devPayments } from './ordering/infrastructure/dev-payments';
+import { stripePayments } from './ordering/infrastructure/stripe-payments';
 import { LOCAL_PHOTO_BUCKET, LOCAL_PHOTO_CREDENTIALS, localPhotoBucket } from './local-photo-bucket';
 import type { Database } from './platform/dynamodb';
 import { createTable, localDynamoClient, waitForDynamoDbLocal } from './platform/dynamodb-local';
@@ -22,6 +25,9 @@ const db: Database = {
   client: localDynamoClient(),
   tableName: process.env.TABLE_NAME ?? 'yijewelry-local',
 };
+
+// The site as the browser sees it: the Vite dev server. Payment pages send customers back here.
+const siteUrl = 'http://localhost:5173';
 
 // Signing in to the admin needs no Cognito locally: the dev identity signs
 // everyone in as this owner at once (README "本地登录后台").
@@ -47,6 +53,9 @@ const app = new Hono().use(logger()).route('/', localPhotoBucket()).route(
     adminIdentity: devAdminIdentity({ owner: devOwner, returnUrls: adminReturnUrls('') }),
     signedCookies: signedCookies(process.env.SESSION_SECRET ?? 'local-development-session-secret'),
     storeSettings: configuredStoreSettings(shippingRatesFromEnv(process.env)),
+    // Stripe's test mode with a test key; otherwise checkout goes straight to the thank-you page (README "本地结账").
+    payments: process.env.STRIPE_SECRET_KEY ? stripePayments(process.env.STRIPE_SECRET_KEY) : devPayments(),
+    checkoutUrls: checkoutReturnUrls(siteUrl),
   }),
 );
 

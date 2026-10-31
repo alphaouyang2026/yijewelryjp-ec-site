@@ -17,6 +17,7 @@ import {
   listAdminProducts,
 } from './catalog/application/manage-products';
 import { startPhotoUpload } from './catalog/application/start-photo-upload';
+import { releaseStock, reserveStock } from './catalog/application/stock-reservations';
 import type { CategoryRepository } from './catalog/domain/category';
 import type { PhotoStorage } from './catalog/domain/photo';
 import type { ProductRepository } from './catalog/domain/product';
@@ -39,10 +40,16 @@ import type { SignedCookies } from './interface/signed-cookies';
 import { checkHealth } from './operations/application/check-health';
 import type { DatabaseProbe } from './operations/domain/database-probe';
 import { healthRoutes } from './operations/interface/health-routes';
+import { cancelCheckout, findCheckoutOrder, startCheckout } from './ordering/application/checkout';
 import { addToCart, changeCartQuantity, removeFromCart, viewCart } from './ordering/application/manage-cart';
+import type { CheckoutReturnUrls } from './ordering/domain/checkout-urls';
+import type { OrderRepository } from './ordering/domain/order';
+import type { Payments } from './ordering/domain/payments';
 import { cartCookie } from './ordering/interface/cart-cookie';
 import { cartRoutes } from './ordering/interface/cart-routes';
+import { checkoutRoutes } from './ordering/interface/checkout-routes';
 import type { Clock } from './shared-kernel/clock';
+import type { StartUnitOfWork } from './shared-kernel/unit-of-work';
 import { getShippingRates } from './store/application/get-shipping-rates';
 import type { StoreSettings } from './store/domain/store-settings';
 
@@ -53,6 +60,9 @@ import type { StoreSettings } from './store/domain/store-settings';
 export type AppDeps = {
   categories: CategoryRepository;
   products: ProductRepository;
+  orders: OrderRepository;
+  /** Units of work on the table, for writes that must be made together, such as an order and its reserved stock. */
+  startUnitOfWork: StartUnitOfWork;
   /** Where product photos are uploaded to and served from. Production: S3. */
   photoStorage: PhotoStorage;
   databaseProbe: DatabaseProbe;
@@ -62,6 +72,10 @@ export type AppDeps = {
   signedCookies: SignedCookies;
   /** The store settings, such as the shipping rates. Until the owner can edit them (#16), configured defaults. */
   storeSettings: StoreSettings;
+  /** The payment service. Production: Stripe. */
+  payments: Payments;
+  /** The storefront's pages the payment page sends customers back to. */
+  checkoutUrls: CheckoutReturnUrls;
 };
 
 /** The API: each module's routes, wired to its use cases. */
@@ -74,6 +88,12 @@ export function createApp(deps: AppDeps) {
 
   // The ordering context uses the catalog and the store settings through their application layers.
   const cartDeps = { findCartVariants: findCartVariants(deps), shippingRates: getShippingRates(deps) };
+  const checkoutDeps = {
+    ...deps,
+    reserveStock: reserveStock(deps),
+    releaseStock: releaseStock(deps),
+    shippingRates: cartDeps.shippingRates,
+  };
 
   // The admin's routes, every one behind the owner-only guard: 401 without a
   // signed-in owner's session, 403 for a data-changing request without the
@@ -116,6 +136,15 @@ export function createApp(deps: AppDeps) {
         addToCart: addToCart(cartDeps),
         changeCartQuantity: changeCartQuantity(cartDeps),
         removeFromCart: removeFromCart(cartDeps),
+        cartCookie: cookies.cart,
+      }),
+    )
+    .route(
+      '/checkout',
+      checkoutRoutes({
+        startCheckout: startCheckout(checkoutDeps),
+        findCheckoutOrder: findCheckoutOrder(deps),
+        cancelCheckout: cancelCheckout(checkoutDeps),
         cartCookie: cookies.cart,
       }),
     )

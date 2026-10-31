@@ -124,6 +124,26 @@ export const en: Messages = {
     exceedsAvailable: (count) => `Not enough in stock: you can buy up to ${count}.`,
     tooLarge: 'Your cart has too much in it to change this quantity. Remove something else and try again.',
     changeFailed: 'This could not be changed. Please try again later.',
+    checkout: 'Check out',
+    checkoutUnavailable: (lines) =>
+      'Some items can no longer be bought as they are in your cart, as their stock or availability has changed: ' +
+      `${lines.join(', ')}. Please check your cart.`,
+    checkoutFailed: 'The payment page could not be opened. Please try again later.',
+  },
+  checkout: {
+    label: 'Thank you',
+    title: 'Thank you for your order',
+    orderNumber: 'Order number',
+    status: 'Order status',
+    statuses: {
+      pending_payment: 'Confirming your order',
+      paid: 'Paid',
+      expired: 'Not paid',
+      shipped: 'Shipped',
+      cancelled: 'Cancelled',
+    },
+    confirming: 'Once your payment is confirmed, we will email you to confirm your order.',
+    continueShopping: 'Continue shopping',
   },
   notFound: {
     title: 'Page not found',

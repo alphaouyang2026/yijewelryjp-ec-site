@@ -12,6 +12,8 @@ import {
   type Cart,
   type CartAddRefusal,
   type CartQuantityRefusal,
+  type CheckoutOrder,
+  type CheckoutRefusal,
   type HomeData,
   type InvalidInput,
   type PhotoUpload,
@@ -78,6 +80,19 @@ export type CartChangeReply<Refusal, NotFound = never> =
   | { status: 404; body: NotFound };
 
 const cartLinesUrl = api.cart.lines.$url().href;
+
+/**
+ * How a mocked checkout answers: 200 with the payment page's URL, 409 with
+ * why it did not start, or 502/503 when the payment service failed or other
+ * checkouts kept getting in the way.
+ */
+export type CheckoutReply =
+  | { status: 200; body: { url: string } }
+  | { status: 409; body: CheckoutRefusal }
+  | { status: 502; body: { error: 'payment_unavailable' } }
+  | { status: 503; body: { error: 'checkout_busy' } };
+
+const checkoutOrdersUrl = `${api.checkout.$url().href}/orders`;
 
 /** Where mocked upload forms post photos: photo storage (S3 in production). */
 export const PHOTO_STORAGE_URL = 'https://yijewelry-photos.s3.ap-northeast-1.amazonaws.com/';
@@ -282,6 +297,35 @@ export const mockApi = {
     http.delete(`${cartLinesUrl}/:lineId`, ({ request }) => {
       requests.push(request);
       return HttpResponse.json(cart);
+    }),
+
+  /** Answers requests to start checkout with `answer`; `requests` collects each request's URL. */
+  checkout: (answer: CheckoutReply, requests: URL[] = []) =>
+    http.post(api.checkout.$url().href, ({ request }) => {
+      requests.push(new URL(request.url));
+      return HttpResponse.json(answer.body, { status: answer.status });
+    }),
+
+  /** The next request to start checkout fails as if the network were down; later ones go on to other handlers. */
+  checkoutUnreachable: () => http.post(api.checkout.$url().href, () => HttpResponse.error(), { once: true }),
+
+  /**
+   * Answers the thank-you page's requests for the order with `order` when they
+   * name its number with `token`; 404 for any other. `requests` collects each request's URL.
+   */
+  checkoutOrder: (order: CheckoutOrder, token: string, requests: URL[] = []) =>
+    http.get(`${checkoutOrdersUrl}/:orderId`, ({ request, params }) => {
+      requests.push(new URL(request.url));
+      const found = params.orderId === order.orderNumber && new URL(request.url).searchParams.get('token') === token;
+      return found ? HttpResponse.json(order) : HttpResponse.json(notFound, { status: 404 });
+    }),
+
+  /** Answers requests to cancel a checkout with `status` (204 when cancelled); `requests` collects each request. */
+  checkoutCancel: (status: 204 | 404 | 502, requests: Request[] = []) =>
+    http.post(`${checkoutOrdersUrl}/:orderId/cancel`, ({ request }) => {
+      requests.push(request);
+      if (status === 204) return new HttpResponse(null, { status });
+      return HttpResponse.json(status === 404 ? notFound : { error: 'payment_unavailable' }, { status });
     }),
 
   /**

@@ -21,6 +21,9 @@ const page = (path: string) => path as PagePath;
 export const paths = {
   home: page('/'),
   cart: page('/cart'),
+  // The payment page sends the customer back to /checkout/complete or
+  // /checkout/cancelled (?order=…&token=…): the API builds those URLs
+  // (packages/api ordering/infrastructure/checkout-urls.ts), so they are not here.
   products: page('/products'),
   category: (slug: string) => page(`/categories/${slug}`),
   product: (slug: string) => page(`/products/${slug}`),
