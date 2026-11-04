@@ -11,9 +11,9 @@ import {
 } from '../domain/product';
 
 // For the ordering context: checkouts reserve stock of the variants they
-// order, release it when they end without a payment, and sell it once paid. The writes go into
-// the checkout's unit of work, alongside its order's, so they are made
-// together or not at all.
+// order, release it when they end without a payment, and sell it once paid.
+// The writes go into the checkout's unit of work, alongside its order's, so
+// they are made together or not at all.
 
 /** How many of a variant (named by its product's slug and its SKU) a checkout reserves or releases. */
 export type VariantQuantity = { productSlug: string; sku: string; quantity: number };

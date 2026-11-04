@@ -6,8 +6,9 @@ import type { Payments } from '../domain/payments';
  * Payments without a payment service: the "payment page" is the thank-you
  * page itself, as if the customer had paid at once. No payment is ever
  * reported (no request to the webhook is from it), so the order stays
- * pending payment, and its stock reserved; and nothing is charged. With STRIPE_SECRET_KEY set to a test key, local
- * development uses Stripe's test mode instead.
+ * pending payment, and its stock reserved; and nothing is charged. With
+ * STRIPE_SECRET_KEY set to a test key, local development uses Stripe's test
+ * mode instead.
  */
 export function devPayments(): Payments {
   let sessions = 0;

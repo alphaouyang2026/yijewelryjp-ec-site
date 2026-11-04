@@ -84,8 +84,9 @@ type TestApp = ReturnType<typeof createTestApp>;
  * clock the tests control, an in-memory identity provider owners sign in
  * with, S3 upload forms for a test bucket, the store settings' shipping
  * rates fixed at TEST_SHIPPING_RATES, an in-memory payment service whose
- * sessions tests can read, and an in-memory mail service whose outbox they can. The test-only routes are mounted too, and `seed`
- * puts data the API cannot create yet into the table.
+ * sessions tests can read, and an in-memory mail service whose outbox they
+ * can. The test-only routes are mounted too, and `seed` puts data the API
+ * cannot create yet into the table.
  */
 export function useTestApi({ withTable = true }: { withTable?: boolean } = {}) {
   const db = { client: localDynamoClient(), tableName: `test-${randomUUID()}` };

@@ -47,8 +47,9 @@ export type HandlePaymentEvent = (delivery: { payload: string; headers: Headers 
 /**
  * Use case: the payment service reports what became of a checkout, in a
  * request to the webhook (its body `payload`, and `headers`), which must be
- * signed by the service. The service may deliver an event more than once; each changes the order (and
- * its stock) at most once, and each email goes once, as the order records.
+ * signed by the service. The service may deliver an event more than once;
+ * each changes the order (and its stock) at most once, and each email goes
+ * once, as the order records.
  * An event that does not fit the order's status is logged and ignored.
  */
 export function handlePaymentEvent(deps: Deps): HandlePaymentEvent {
@@ -59,8 +60,7 @@ export function handlePaymentEvent(deps: Deps): HandlePaymentEvent {
       case 'checkout_completed':
         return checkoutPaid(deps, event);
       case 'checkout_expired':
-        await checkoutExpired(deps, event);
-        return 'done';
+        return checkoutExpired(deps, event);
       case 'other':
         return 'done';
     }
@@ -99,14 +99,16 @@ async function checkoutPaid(
  * The payment page expired unpaid: the order expires and its stock is
  * released. An order the customer cancelled expired already.
  */
-async function checkoutExpired(deps: Deps, event: Extract<PaymentEvent, { type: 'checkout_expired' }>) {
+async function checkoutExpired(
+  deps: Deps,
+  event: Extract<PaymentEvent, { type: 'checkout_expired' }>,
+): Promise<PaymentEventHandling> {
   const order = await deps.orders.byId(event.orderId);
   if (!order) return ignored(event, 'no such order');
-  if (order.status !== 'pending_payment') {
-    if (order.status !== 'expired') ignored(event, `the order is ${order.status}`);
-    return;
-  }
+  if (order.status === 'expired') return 'done';
+  if (order.status !== 'pending_payment') return ignored(event, `the order is ${order.status}`);
   await endCheckout(deps, order);
+  return 'done';
 }
 
 /** Logs that `event` does not fit its order, which it leaves as it is. */
