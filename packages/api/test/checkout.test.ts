@@ -68,13 +68,12 @@ describe('starting checkout', () => {
     expect(await reservedStock(api, 'moon-ring')).toEqual({ 'moon-ring-9': 2 });
   });
 
-  test('leaves the cart as it was: the customer still has it while they pay', async () => {
+  test('keeps the cart’s lines: the customer still has them while they pay', async () => {
     const client = api.client();
     await fill(client, ['moon-ring', 'moon-ring-9', 1]);
 
     const res = await checkout(client);
 
-    expect(res.headers.getSetCookie()).toEqual([]);
     expect(res.headers.get('cache-control')).toBe('no-store');
     const cart = await client.api.cart.$get({ query: { locale: 'ja' } });
     assert(cart.status === 200);

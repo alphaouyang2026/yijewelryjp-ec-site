@@ -5,7 +5,7 @@ import { textIn } from '../../shared-kernel/localized-text';
 import { isSameToken, randomToken } from '../../shared-kernel/random-token';
 import type { StartUnitOfWork } from '../../shared-kernel/unit-of-work';
 import type { GetShippingRates } from '../../store/application/get-shipping-rates';
-import { removeLine, type Cart } from '../domain/cart';
+import { withoutPaidOrder, type Cart } from '../domain/cart';
 import type { OrderPageUrls } from '../domain/order-page-urls';
 import {
   expireOrder,
@@ -59,8 +59,11 @@ export type UnavailableLineView = {
 };
 
 export type CheckoutStart =
-  /** The order is created and its stock reserved: the customer goes on to `url`, the payment page. */
-  | { outcome: 'started'; url: string }
+  /**
+   * The order is created and its stock reserved: the customer goes on to
+   * `url`, the payment page, with `cart` waiting on the order.
+   */
+  | { outcome: 'started'; url: string; cart: Cart }
   /** Nothing to check out: the cart has no lines (or only lines of products that no longer exist). */
   | { outcome: 'cart_empty' }
   /** Some lines cannot be bought as they are; nothing is reserved. */
@@ -128,7 +131,7 @@ export function startCheckout(deps: Deps): StartCheckout {
       }
       const stored = await deps.orders.update({ ...order, checkoutSessionId: session.id });
       if (stored === 'stale') throw new Error(`Order ${order.id} changed before its checkout session was kept`);
-      return { outcome: 'started', url: session.url };
+      return { outcome: 'started', url: session.url, cart: { ...cart, checkoutOrder: order.id } };
     }
     return { outcome: 'busy' };
   };
@@ -198,8 +201,9 @@ export type FindCheckoutOrder = (query: {
  * Query: the order the payment page's return URL names, for the thank-you
  * page. Only with the order's checkout token, which only the customer who
  * started the checkout has; undefined for any other. With it, the customer's
- * `cart` without what the order bought once it is paid (and as it is until
- * then), so the cart no longer has it but keeps what was added since.
+ * `cart` without what the order bought once it is paid, the first time the
+ * cart sees it paid (and as it is otherwise), so the cart no longer has it
+ * but keeps what was added since.
  */
 export function findCheckoutOrder(deps: { orders: OrderRepository }): FindCheckoutOrder {
   return async ({ orderId, token, cart }) => {
@@ -207,7 +211,7 @@ export function findCheckoutOrder(deps: { orders: OrderRepository }): FindChecko
     if (!order || !isSameToken(token, order.checkoutToken)) return undefined;
     return {
       order: { orderNumber: order.id, status: order.status },
-      cart: order.paidAt ? order.lines.reduce(removeLine, cart) : cart,
+      cart: order.paidAt ? withoutPaidOrder(cart, order) : cart,
     };
   };
 }

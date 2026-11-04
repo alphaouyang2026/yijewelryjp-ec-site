@@ -24,8 +24,9 @@ const MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 const MAX_COOKIE_BYTES = 4000;
 
 /**
- * The cookie's content: a version, and each line as [slug, SKU, quantity,
- * seen price in yen]. Short keys and tuples keep the cookie small.
+ * The cookie's content: a version, each line as [slug, SKU, quantity, seen
+ * price in yen], and the order number of the checkout the cart waits on, if
+ * any. Short keys and tuples keep the cookie small.
  */
 const content = z.object({
   v: z.literal(1),
@@ -43,6 +44,7 @@ const content = z.object({
       const keys = new Set(lines.map(([productSlug, sku]) => lineKeyString({ productSlug, sku })));
       return keys.size === lines.length;
     }),
+  o: z.string().min(1).max(32).optional(),
 });
 
 type Content = z.infer<typeof content>;
@@ -52,6 +54,7 @@ export function cartCookie(cookies: SignedCookies): CartCookie {
   const toContent = (cart: Cart): Content => ({
     v: 1,
     l: cart.lines.map((line) => [line.productSlug, line.sku, line.quantity, line.seenPrice.yen]),
+    ...(cart.checkoutOrder && { o: cart.checkoutOrder }),
   });
 
   return {
@@ -65,6 +68,7 @@ export function cartCookie(cookies: SignedCookies): CartCookie {
           quantity,
           seenPrice: yen(seenPriceYen),
         })),
+        ...(stored.o && { checkoutOrder: stored.o }),
       };
     },
     async write(c, cart) {

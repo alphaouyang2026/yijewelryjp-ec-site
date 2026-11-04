@@ -11,9 +11,10 @@ import { lineIdOf } from './cart-input';
 const tokenQuery = zValidator('query', z.object({ token: z.string().catch('') }));
 
 /**
- * Checkout. Starting it reads the cart from its cookie and leaves the cookie
- * as it is: the cart stays until the order is paid, and the thank-you page
- * then takes what the order bought out of it. No CSRF token, as for the
+ * Checkout. Starting it reads the cart from its cookie and keeps its lines:
+ * the cart stays until the order is paid, and the thank-you page then takes
+ * what the order bought out of it, once. The cookie notes the order to know
+ * which. No CSRF token, as for the
  * cart: a POST from another site's form is a cross-site navigation, which
  * does not carry the SameSite=Lax cart cookie, so it checks out an empty cart.
  * The routes under /orders/:orderId take the checkout token the payment
@@ -35,6 +36,7 @@ export function checkoutRoutes(deps: {
         });
         switch (start.outcome) {
           case 'started':
+            await deps.cartCookie.write(c, start.cart);
             return c.json({ url: start.url }, 200);
           case 'cart_empty':
             return c.json({ error: 'cart_empty' } as const, 409);
@@ -66,7 +68,7 @@ export function checkoutRoutes(deps: {
           cart,
         });
         if (!found) return c.json({ error: 'not_found' } as const, 404);
-        if (found.cart.lines.length !== cart.lines.length) await deps.cartCookie.write(c, found.cart);
+        if (found.cart !== cart) await deps.cartCookie.write(c, found.cart);
         return c.json(found.order, 200);
       })
       // The customer left the payment page without paying.

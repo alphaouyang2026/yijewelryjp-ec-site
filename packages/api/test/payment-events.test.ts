@@ -242,6 +242,27 @@ describe('the cart, once the order is paid', () => {
 
     expect(await cartLines(client)).toEqual([['star-45', 2]]);
   });
+
+  test('the same variant put in the cart again after the payment stays when the customer comes back to the thank-you page', async () => {
+    const { client, order, token, session } = await checkedOut(api);
+    await deliver(api, api.payments.pay(session.id));
+    await orderLookup(client, order, token);
+    await fill(client, ['moon-ring', 'moon-ring-9', 1]);
+
+    await orderLookup(client, order, token);
+
+    expect(await cartLines(client)).toEqual([['moon-ring-9', 1]]);
+  });
+
+  test('more of a variant put in the cart while paying stays: the thank-you page takes out only what was bought', async () => {
+    const { client, order, token, session } = await checkedOut(api, { lines: [['moon-ring', 'moon-ring-9', 1]] });
+    await fill(client, ['moon-ring', 'moon-ring-9', 1]);
+    await deliver(api, api.payments.pay(session.id));
+
+    await orderLookup(client, order, token);
+
+    expect(await cartLines(client)).toEqual([['moon-ring-9', 1]]);
+  });
 });
 
 describe('the payment service reports a payment page expired', () => {

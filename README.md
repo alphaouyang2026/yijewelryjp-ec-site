@@ -148,8 +148,8 @@ npm run db:stop    # 停止并删除容器
 
 | 接口 | 作用 |
 | --- | --- |
-| `POST /api/checkout?locale=…` | 结账购物车 cookie 里的购物车，返回付款页 `{ url }`。不改 cookie：购物车在付款完成前一直保留 |
-| `GET /api/checkout/orders/:orderId?token=…` | 感谢页的订单：`{ orderNumber, status }`。令牌不对时 404。订单已付款时，从购物车 cookie 里去掉这个订单买的行（之后加入的商品留着） |
+| `POST /api/checkout?locale=…` | 结账购物车 cookie 里的购物车，返回付款页 `{ url }`。购物车的行在付款完成前一直保留，cookie 只记下这个订单号 |
+| `GET /api/checkout/orders/:orderId?token=…` | 感谢页的订单：`{ orderNumber, status }`。令牌不对时 404。订单已付款、且购物车 cookie 记着这个订单号时，各行减去这个订单买的数量（减到 0 的行去掉），只做一次：之后加入的商品、再打开感谢页都不受影响 |
 | `POST /api/checkout/orders/:orderId/cancel` | 顾客从付款页返回、没有付款：请求体 `{ token }`（JSON）。先让 Stripe 结束付款页，再让订单过期、释放库存，返回 204；订单已不是待付款、或已经付款时什么都不改，也返回 204 |
 
 - 订单号形如 `20261028153012-7KQ3`：下单时的日本时间（到秒）加 4 位随机字母数字（不含 I、L、O、U），按时间排序，同时是订单在表里的 key。
