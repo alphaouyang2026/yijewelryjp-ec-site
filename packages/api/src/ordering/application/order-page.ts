@@ -23,7 +23,7 @@ export type OrderPageView = {
   shippingYen: number;
   totalYen: number;
   /** The consumption tax the total includes. */
-  taxYen: number;
+  taxIncludedYen: number;
   /** Where it ships; null until the order is paid (the customer gives it on the payment page). */
   shippingAddress: ShippingAddress | null;
 };
@@ -54,7 +54,7 @@ export function getOrderPage(deps: { orders: OrderRepository }): GetOrderPage {
       subtotalYen: order.subtotal.yen,
       shippingYen: order.shipping.yen,
       totalYen: order.total.yen,
-      taxYen: taxIncluded(order.total).yen,
+      taxIncludedYen: taxIncluded(order.total).yen,
       shippingAddress: order.customer?.shippingAddress ?? null,
     };
   };

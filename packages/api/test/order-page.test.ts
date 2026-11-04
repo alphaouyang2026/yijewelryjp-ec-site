@@ -53,7 +53,7 @@ describe('the order page', () => {
       shippingYen: 800,
       totalYen: 17_800,
       // floor(17,800 × 10 / 110) = floor(1,618.1…)
-      taxYen: 1_618,
+      taxIncludedYen: 1_618,
       shippingAddress: {
         name: '山田 花子',
         postalCode: '150-0001',

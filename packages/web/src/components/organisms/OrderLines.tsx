@@ -16,12 +16,12 @@ export function OrderLines({ order }: { order: OrderPage }) {
   return (
     <section aria-labelledby={headingId} className={styles.lines}>
       <h2 id={headingId} className={styles.heading}>
-        {text.items}
+        {text.lines}
       </h2>
       <table className={styles.table}>
         <thead>
           <tr>
-            <th scope="col">{text.columns.item}</th>
+            <th scope="col">{text.columns.product}</th>
             <th scope="col" className={styles.number}>
               {text.columns.unitPrice}
             </th>
@@ -58,7 +58,7 @@ export function OrderLines({ order }: { order: OrderPage }) {
         </div>
         <div className={[styles.row, styles.total].join(' ')}>
           <dt>{text.total}</dt>
-          <dd>{text.totalWithTax(formatYen(order.totalYen), formatYen(order.taxYen))}</dd>
+          <dd>{text.totalWithTax(formatYen(order.totalYen), formatYen(order.taxIncludedYen))}</dd>
         </div>
       </dl>
     </section>

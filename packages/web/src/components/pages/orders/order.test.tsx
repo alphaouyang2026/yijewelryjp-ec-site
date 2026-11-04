@@ -20,7 +20,7 @@ const paidOrder: OrderPage = {
   subtotalYen: 17_000,
   shippingYen: 800,
   totalYen: 17_800,
-  taxYen: 1_618,
+  taxIncludedYen: 1_618,
   shippingAddress: {
     name: '山田 花子',
     postalCode: '150-0001',

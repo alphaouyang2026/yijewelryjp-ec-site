@@ -11,7 +11,7 @@ type ConfirmationTexts = {
   greeting(name: string): string;
   intro: string[];
   orderNumber(orderNumber: string): string;
-  items: string;
+  lines: string;
   lineName(name: string, variant: string): string;
   subtotal(amount: string): string;
   shipping(amount: string): string;
@@ -29,7 +29,7 @@ const CONFIRMATION_TEXTS: Record<Locale, ConfirmationTexts> = {
     greeting: (name) => `${name} 様`,
     intro: [`このたびは ${STORE_NAME} をご利用いただき、誠にありがとうございます。`, '以下の内容でご注文を承りました。'],
     orderNumber: (number) => `ご注文番号：${number}`,
-    items: 'ご注文内容',
+    lines: 'ご注文内容',
     lineName: (name, variant) => (variant ? `${name}（${variant}）` : name),
     subtotal: (amount) => `小計：${amount}`,
     shipping: (amount) => `送料：${amount}`,
@@ -45,7 +45,7 @@ const CONFIRMATION_TEXTS: Record<Locale, ConfirmationTexts> = {
     greeting: (name) => `${name} 您好：`,
     intro: [`感谢您在 ${STORE_NAME} 购物。`, '我们已收到您的以下订单。'],
     orderNumber: (number) => `订单号：${number}`,
-    items: '订单内容',
+    lines: '订单内容',
     lineName: (name, variant) => (variant ? `${name}（${variant}）` : name),
     subtotal: (amount) => `小计：${amount}`,
     shipping: (amount) => `运费：${amount}`,
@@ -61,7 +61,7 @@ const CONFIRMATION_TEXTS: Record<Locale, ConfirmationTexts> = {
     greeting: (name) => `Dear ${name},`,
     intro: [`Thank you for shopping at ${STORE_NAME}.`, 'We have received your order as follows.'],
     orderNumber: (number) => `Order number: ${number}`,
-    items: 'Your order',
+    lines: 'Your order',
     lineName: (name, variant) => (variant ? `${name} (${variant})` : name),
     subtotal: (amount) => `Subtotal: ${amount}`,
     shipping: (amount) => `Shipping: ${amount}`,
@@ -84,7 +84,7 @@ export function orderConfirmationEmail(order: Order, customer: Customer, orderPa
   const { name } = customer.shippingAddress;
   const sections: EmailSection[] = [
     { paragraphs: [[texts.greeting(name)], texts.intro, [texts.orderNumber(order.id)]] },
-    { heading: texts.items, paragraphs: itemParagraphs(order, order.locale) },
+    { heading: texts.lines, paragraphs: lineParagraphs(order, order.locale) },
     { heading: texts.shippingAddress, paragraphs: [addressLines(customer, order.locale)] },
     { heading: texts.orderPage, paragraphs: [[texts.orderPageIntro], { link: orderPageUrl }] },
     { paragraphs: [texts.closing, [STORE_NAME]] },
@@ -106,7 +106,7 @@ export function newOrderNoticeEmail(order: Order, customer: Customer, to: string
         [texts.orderNumber(order.id), `お客様の言語：${LOCALE_NAMES_JA[order.locale]}`],
       ],
     },
-    { heading: texts.items, paragraphs: itemParagraphs(order, 'ja') },
+    { heading: texts.lines, paragraphs: lineParagraphs(order, 'ja') },
     { heading: texts.shippingAddress, paragraphs: [addressLines(customer, 'ja')] },
     { heading: 'お客様の連絡先', paragraphs: [[customer.email, ...(customer.phone ? [customer.phone] : [])]] },
   ];
@@ -121,7 +121,7 @@ export function newOrderNoticeEmail(order: Order, customer: Customer, to: string
 const LOCALE_NAMES_JA: Record<Locale, string> = { ja: '日本語', zh: '中国語', en: '英語' };
 
 /** The order's lines, then its amounts and the tax included, in `locale`. */
-function itemParagraphs(order: Order, locale: Locale): EmailParagraph[] {
+function lineParagraphs(order: Order, locale: Locale): EmailParagraph[] {
   const texts = CONFIRMATION_TEXTS[locale];
   return [
     ...order.lines.map((line) => [
