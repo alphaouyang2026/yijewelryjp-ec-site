@@ -20,20 +20,27 @@ export type DomainConfig = {
 
 export type DeployConfig = {
   stage: Stage;
-  /** Without a domain the site is served on CloudFront's default domain. */
+  /** Without a domain the site is served on CloudFront's default domain, and sends no email. */
   domain?: DomainConfig;
+  /** Where the owner's new order notices go, and replies to the store's emails; without it, no notice is sent. */
+  ownerNotificationEmail?: string;
 };
 
 /**
  * Reads the deployment from the CDK context (`-c stage=staging|production`)
  * and the environment: DOMAIN_NAME, HOSTED_ZONE_ID, HOSTED_ZONE_NAME (all three
- * or none), and optionally REDIRECT_DOMAIN_NAMES (comma-separated host names
- * that redirect to DOMAIN_NAME). GitHub Actions passes unset variables as
- * empty strings.
+ * or none), optionally REDIRECT_DOMAIN_NAMES (comma-separated host names that
+ * redirect to DOMAIN_NAME), and optionally OWNER_NOTIFICATION_EMAIL. GitHub
+ * Actions passes unset variables as empty strings.
  */
 export function readDeployConfig(stage: unknown, env: NodeJS.ProcessEnv): DeployConfig {
   if (!isStage(stage)) {
     throw new Error(`Pass the stage to deploy: -c stage=${STAGES.join('|')} (got ${JSON.stringify(stage)}).`);
+  }
+
+  const ownerNotificationEmail = env.OWNER_NOTIFICATION_EMAIL?.trim() || undefined;
+  if (ownerNotificationEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ownerNotificationEmail)) {
+    throw new Error(`OWNER_NOTIFICATION_EMAIL: ${ownerNotificationEmail} is not an email address.`);
   }
 
   const domainName = env.DOMAIN_NAME || undefined;
@@ -50,7 +57,11 @@ export function readDeployConfig(stage: unknown, env: NodeJS.ProcessEnv): Deploy
         throw new Error(`REDIRECT_DOMAIN_NAMES: ${name} must be another host name in ${hostedZoneName}.`);
       }
     }
-    return { stage, domain: { domainName, hostedZoneId, hostedZoneName, redirectDomainNames } };
+    return {
+      stage,
+      domain: { domainName, hostedZoneId, hostedZoneName, redirectDomainNames },
+      ownerNotificationEmail,
+    };
   }
   if (domainName || hostedZoneId || hostedZoneName) {
     throw new Error('Set all of DOMAIN_NAME, HOSTED_ZONE_ID and HOSTED_ZONE_NAME, or none of them.');
@@ -58,7 +69,7 @@ export function readDeployConfig(stage: unknown, env: NodeJS.ProcessEnv): Deploy
   if (redirectDomainNames.length > 0) {
     throw new Error('REDIRECT_DOMAIN_NAMES needs DOMAIN_NAME, HOSTED_ZONE_ID and HOSTED_ZONE_NAME.');
   }
-  return { stage };
+  return { stage, ownerNotificationEmail };
 }
 
 function isInZone(name: string, zoneName: string) {

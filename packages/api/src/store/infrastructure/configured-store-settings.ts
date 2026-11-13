@@ -6,8 +6,14 @@ import { DEFAULT_SHIPPING_RATES, type ShippingRates, type StoreSettings } from '
  * the production adapter until the owner can edit the settings in the admin
  * (#16), whose settings will fall back to these.
  */
-export function configuredStoreSettings(rates: ShippingRates): StoreSettings {
-  return { shippingRates: () => Promise.resolve(rates) };
+export function configuredStoreSettings(settings: {
+  shippingRates: ShippingRates;
+  ownerNotificationEmail: string | undefined;
+}): StoreSettings {
+  return {
+    shippingRates: () => Promise.resolve(settings.shippingRates),
+    ownerNotifications: () => Promise.resolve({ email: settings.ownerNotificationEmail }),
+  };
 }
 
 type Env = Readonly<Record<string, string | undefined>>;

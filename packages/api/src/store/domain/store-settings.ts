@@ -9,7 +9,14 @@ export type ShippingRates = { readonly fee: Money; readonly freeShippingThreshol
  */
 export const DEFAULT_SHIPPING_RATES: ShippingRates = { fee: yen(800), freeShippingThreshold: yen(20_000) };
 
+/**
+ * Where the owner's notices (such as new orders) go; without an address,
+ * none is sent. Their locale is a setting to come (#16): Japanese until then.
+ */
+export type OwnerNotifications = { readonly email: string | undefined };
+
 /** The store settings. Until the owner can edit them (#16), the configured defaults. */
 export interface StoreSettings {
   shippingRates(): Promise<ShippingRates>;
+  ownerNotifications(): Promise<OwnerNotifications>;
 }

@@ -15,8 +15,12 @@ export type LineKey = { readonly productSlug: string; readonly sku: string };
  */
 export type CartLine = LineKey & { readonly quantity: number; readonly seenPrice: Money };
 
-/** The customer's cart: its lines in the order they were first added. */
-export type Cart = { readonly lines: readonly CartLine[] };
+/**
+ * The customer's cart: its lines in the order they were first added, and the
+ * order number of the checkout last started from it, until the thank-you page
+ * has taken what that order bought out of it.
+ */
+export type Cart = { readonly lines: readonly CartLine[]; readonly checkoutOrder?: string };
 
 export const EMPTY_CART: Cart = { lines: [] };
 
@@ -87,8 +91,8 @@ export function addLine(
 
   const line: CartLine = { productSlug: key.productSlug, sku: key.sku, quantity: total, seenPrice: variant.price };
   return existing
-    ? { lines: cart.lines.map((other) => (other === existing ? line : other)) }
-    : { lines: [...cart.lines, line] };
+    ? { ...cart, lines: cart.lines.map((other) => (other === existing ? line : other)) }
+    : { ...cart, lines: [...cart.lines, line] };
 }
 
 /**
@@ -105,13 +109,34 @@ export function setLineQuantity(
   const available = buyable(inCatalog);
   if (quantity > available) return { outcome: 'exceeds_available', availableStock: available };
   const changed: CartLine = { ...line, quantity, seenPrice: inCatalog.variant?.price ?? line.seenPrice };
-  return { lines: cart.lines.map((other) => (other === line ? changed : other)) };
+  return { ...cart, lines: cart.lines.map((other) => (other === line ? changed : other)) };
 }
 
 /** The cart without the line of `key`; the same cart if it has no such line. */
 export function removeLine(cart: Cart, key: LineKey): Cart {
   const removed = lineKeyString(key);
-  return { lines: cart.lines.filter((line) => lineKeyString(line) !== removed) };
+  return { ...cart, lines: cart.lines.filter((line) => lineKeyString(line) !== removed) };
+}
+
+/**
+ * The cart once `order`, the checkout started from it, is paid: each line
+ * less what the order bought of it (gone when nothing is left), and no
+ * longer waiting on the order. Only once, and only for the cart's own
+ * checkout: the same cart for any other order, so what the customer puts in
+ * it afterwards stays.
+ */
+export function withoutPaidOrder(
+  cart: Cart,
+  order: { id: string; lines: readonly (LineKey & { quantity: number })[] },
+): Cart {
+  if (cart.checkoutOrder !== order.id) return cart;
+  const bought = new Map(order.lines.map((line) => [lineKeyString(line), line.quantity]));
+  return {
+    lines: cart.lines.flatMap((line) => {
+      const left = line.quantity - (bought.get(lineKeyString(line)) ?? 0);
+      return left > 0 ? [{ ...line, quantity: left }] : [];
+    }),
+  };
 }
 
 /**

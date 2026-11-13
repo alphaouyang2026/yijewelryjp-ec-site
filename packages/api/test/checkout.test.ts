@@ -1,26 +1,12 @@
 import { assert, beforeEach, describe, expect, test } from 'vitest';
+import { checkedOut, checkout, fill, orderLookup, reservedStock, type Client } from './support/shopping';
 import { useTestApi } from './support/test-api';
 
 // The amounts below are at the test API's shipping rates (TEST_SHIPPING_RATES):
 // a fee of ¥800, and free shipping from a subtotal of ¥20,000.
 
-type Locale = 'ja' | 'zh' | 'en';
-type Api = ReturnType<typeof useTestApi>;
-type Client = ReturnType<Api['client']>;
-
 /** An order number: when it was placed in Japan (yyyyMMddHHmmss), and 4 random letters or digits. */
 const ORDER_NUMBER = /^\d{14}-[0-9A-HJKMNP-TV-Z]{4}$/;
-
-async function fill(client: Client, ...lines: [string, string, number][]) {
-  for (const [productSlug, sku, quantity] of lines) {
-    const res = await client.api.cart.lines.$post({ query: { locale: 'ja' }, json: { productSlug, sku, quantity } });
-    expect(res.status).toBe(200);
-  }
-}
-
-function checkout(client: Client, locale: Locale = 'ja') {
-  return client.api.checkout.$post({ query: { locale } });
-}
 
 describe('starting checkout', () => {
   const api = useTestApi();
@@ -82,13 +68,12 @@ describe('starting checkout', () => {
     expect(await reservedStock(api, 'moon-ring')).toEqual({ 'moon-ring-9': 2 });
   });
 
-  test('leaves the cart as it was: the customer still has it while they pay', async () => {
+  test('keeps the cart’s lines: the customer still has them while they pay', async () => {
     const client = api.client();
     await fill(client, ['moon-ring', 'moon-ring-9', 1]);
 
     const res = await checkout(client);
 
-    expect(res.headers.getSetCookie()).toEqual([]);
     expect(res.headers.get('cache-control')).toBe('no-store');
     const cart = await client.api.cart.$get({ query: { locale: 'ja' } });
     assert(cart.status === 200);
@@ -221,24 +206,6 @@ describe('leaving the payment page without paying', () => {
 
 function cancel(client: Client, order: string, token: string) {
   return client.api.checkout.orders[':orderId'].cancel.$post({ param: { orderId: order }, json: { token } });
-}
-
-/** A customer checks out a ring: the order number and checkout token the payment page's return URLs carry. */
-async function checkedOut(api: Api, slug = 'moon-ring', sku = 'moon-ring-9') {
-  const client = api.client();
-  await fill(client, [slug, sku, 1]);
-  expect((await checkout(client)).status).toBe(200);
-  const returnUrl = new URL(api.payments.sessions.at(-1)?.request.successUrl ?? '');
-  return {
-    client,
-    order: returnUrl.searchParams.get('order') ?? '',
-    token: returnUrl.searchParams.get('token') ?? '',
-    session: api.payments.sessions.at(-1)!,
-  };
-}
-
-function orderLookup(client: Client, order: string, token: string) {
-  return client.api.checkout.orders[':orderId'].$get({ param: { orderId: order }, query: { token } });
 }
 
 describe('checkouts at the same time', () => {
@@ -426,12 +393,3 @@ describe('checkout refused', () => {
 
 /** The id a cart line has in the cart's routes: its slug and SKU, in base64url. */
 const lineId = (productSlug: string, sku: string) => Buffer.from(`${productSlug}/${sku}`).toString('base64url');
-
-/** Each variant's reserved stock, by SKU, as the admin shows the product. */
-async function reservedStock(api: Api, slug: string): Promise<Record<string, number>> {
-  const { client } = await api.owner();
-  const res = await client.api.admin.products[':slug'].$get({ param: { slug } });
-  assert(res.status === 200);
-  const product = await res.json();
-  return Object.fromEntries(product.variants.map((variant) => [variant.sku, variant.reservedStock]));
-}

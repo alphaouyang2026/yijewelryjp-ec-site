@@ -11,6 +11,8 @@ import { ProductDetailPage } from '../components/pages/product/ProductDetailPage
 import { productLoader } from '../components/pages/product/productLoader';
 import { ProductListPage } from '../components/pages/products/ProductListPage';
 import { productListLoader } from '../components/pages/products/productListLoader';
+import { OrderPage } from '../components/pages/orders/OrderPage';
+import { orderLoader } from '../components/pages/orders/orderLoader';
 import { NotFoundPage } from '../components/pages/status/NotFoundPage';
 import { StoreFramePage } from '../components/pages/store/StoreFramePage';
 import { storeFrameLoader } from '../components/pages/store/storeFrameLoader';
@@ -135,6 +137,7 @@ function storeFrame(): RouteObject {
       pageWithData({ path: 'checkout/complete', loader: checkoutCompleteLoader, Component: CheckoutCompletePage }),
       // Only cancels the checkout, then sends the browser on to the cart.
       pageWithData({ path: 'checkout/cancelled', loader: checkoutCancelledLoader }),
+      pageWithData({ path: 'orders/:orderNumber', loader: orderLoader, Component: OrderPage }),
       { path: '*', Component: NotFoundPage },
     ],
   });

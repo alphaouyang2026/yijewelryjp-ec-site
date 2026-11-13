@@ -274,6 +274,26 @@ export function releaseStock(product: Product, quantities: readonly StockQuantit
   };
 }
 
+/**
+ * The product with stock a checkout had reserved sold, once its order is
+ * paid: on-hand and reserved stock both go down by the quantities, never
+ * below none. A variant the product no longer has is skipped.
+ */
+export function sellStock(product: Product, quantities: readonly StockQuantity[]): Product {
+  const sold = totalsBySku(quantities);
+  return {
+    ...product,
+    variants: product.variants.map((variant) => {
+      const quantity = sold.get(variant.sku) ?? 0;
+      return {
+        ...variant,
+        onHandStock: Math.max(0, variant.onHandStock - quantity),
+        reservedStock: Math.max(0, variant.reservedStock - quantity),
+      };
+    }),
+  };
+}
+
 function totalsBySku(quantities: readonly StockQuantity[]): Map<string, number> {
   const totals = new Map<string, number>();
   for (const { sku, quantity } of quantities) totals.set(sku, (totals.get(sku) ?? 0) + quantity);

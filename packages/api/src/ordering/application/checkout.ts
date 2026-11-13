@@ -5,8 +5,8 @@ import { textIn } from '../../shared-kernel/localized-text';
 import { isSameToken, randomToken } from '../../shared-kernel/random-token';
 import type { StartUnitOfWork } from '../../shared-kernel/unit-of-work';
 import type { GetShippingRates } from '../../store/application/get-shipping-rates';
-import type { Cart } from '../domain/cart';
-import type { CheckoutReturnUrls } from '../domain/checkout-urls';
+import { withoutPaidOrder, type Cart } from '../domain/cart';
+import type { OrderPageUrls } from '../domain/order-page-urls';
 import {
   expireOrder,
   newOrderNumber,
@@ -39,7 +39,7 @@ const ATTEMPTS = 3;
 type Deps = {
   orders: OrderRepository;
   payments: Payments;
-  checkoutUrls: CheckoutReturnUrls;
+  orderPageUrls: OrderPageUrls;
   startUnitOfWork: StartUnitOfWork;
   reserveStock: ReserveStock;
   releaseStock: ReleaseStock;
@@ -59,8 +59,11 @@ export type UnavailableLineView = {
 };
 
 export type CheckoutStart =
-  /** The order is created and its stock reserved: the customer goes on to `url`, the payment page. */
-  | { outcome: 'started'; url: string }
+  /**
+   * The order is created and its stock reserved: the customer goes on to
+   * `url`, the payment page, with `cart` waiting on the order.
+   */
+  | { outcome: 'started'; url: string; cart: Cart }
   /** Nothing to check out: the cart has no lines (or only lines of products that no longer exist). */
   | { outcome: 'cart_empty' }
   /** Some lines cannot be bought as they are; nothing is reserved. */
@@ -128,7 +131,7 @@ export function startCheckout(deps: Deps): StartCheckout {
       }
       const stored = await deps.orders.update({ ...order, checkoutSessionId: session.id });
       if (stored === 'stale') throw new Error(`Order ${order.id} changed before its checkout session was kept`);
-      return { outcome: 'started', url: session.url };
+      return { outcome: 'started', url: session.url, cart: { ...cart, checkoutOrder: order.id } };
     }
     return { outcome: 'busy' };
   };
@@ -140,7 +143,10 @@ export function startCheckout(deps: Deps): StartCheckout {
  * Reads the order again and retries when something changed it, or the
  * products, meanwhile.
  */
-async function endCheckout(deps: Deps, order: Order): Promise<void> {
+export async function endCheckout(
+  deps: Pick<Deps, 'orders' | 'startUnitOfWork' | 'releaseStock'>,
+  order: Order,
+): Promise<void> {
   let current: Order | undefined = order;
   for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
     const expired = current && expireOrder(current);
@@ -166,8 +172,8 @@ function createPaymentPage(deps: Deps, order: Order, now: Date): Promise<Checkou
       quantity: line.quantity,
     })),
     shippingFee: order.shipping,
-    successUrl: deps.checkoutUrls.completed(order.locale, order),
-    cancelUrl: deps.checkoutUrls.cancelled(order.locale, order),
+    successUrl: deps.orderPageUrls.completed(order.locale, order),
+    cancelUrl: deps.orderPageUrls.cancelled(order.locale, order),
     expiresAt: new Date(now.getTime() + PAYMENT_WINDOW_MS),
   });
 }
@@ -185,18 +191,28 @@ function unavailableLine(variant: UnavailableVariant, locale: Locale): Unavailab
 /** An order as the thank-you page shows it. */
 export type CheckoutOrderView = { orderNumber: string; status: OrderStatus };
 
-export type FindCheckoutOrder = (query: { orderId: string; token: string }) => Promise<CheckoutOrderView | undefined>;
+export type FindCheckoutOrder = (query: {
+  orderId: string;
+  token: string;
+  cart: Cart;
+}) => Promise<{ order: CheckoutOrderView; cart: Cart } | undefined>;
 
 /**
  * Query: the order the payment page's return URL names, for the thank-you
  * page. Only with the order's checkout token, which only the customer who
- * started the checkout has; undefined for any other.
+ * started the checkout has; undefined for any other. With it, the customer's
+ * `cart` without what the order bought once it is paid, the first time the
+ * cart sees it paid (and as it is otherwise), so the cart no longer has it
+ * but keeps what was added since.
  */
 export function findCheckoutOrder(deps: { orders: OrderRepository }): FindCheckoutOrder {
-  return async ({ orderId, token }) => {
+  return async ({ orderId, token, cart }) => {
     const order = await deps.orders.byId(orderId);
     if (!order || !isSameToken(token, order.checkoutToken)) return undefined;
-    return { orderNumber: order.id, status: order.status };
+    return {
+      order: { orderNumber: order.id, status: order.status },
+      cart: order.paidAt ? withoutPaidOrder(cart, order) : cart,
+    };
   };
 }
 

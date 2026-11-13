@@ -41,11 +41,12 @@ import { AttributeType, BillingMode, Table } from 'aws-cdk-lib/aws-dynamodb';
 import { Architecture, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { NodejsFunction, OutputFormat } from 'aws-cdk-lib/aws-lambda-nodejs';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
-import { AaaaRecord, ARecord, HostedZone, RecordTarget } from 'aws-cdk-lib/aws-route53';
+import { AaaaRecord, ARecord, CnameRecord, HostedZone, MxRecord, RecordTarget, TxtRecord } from 'aws-cdk-lib/aws-route53';
 import { CloudFrontTarget } from 'aws-cdk-lib/aws-route53-targets';
 import { BlockPublicAccess, Bucket, BucketEncryption, HttpMethods } from 'aws-cdk-lib/aws-s3';
 import { BucketDeployment, CacheControl, Source } from 'aws-cdk-lib/aws-s3-deployment';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
+import { EmailIdentity, Identity } from 'aws-cdk-lib/aws-ses';
 import type { Construct } from 'constructs';
 import type { DeployConfig } from './config';
 
@@ -342,11 +343,13 @@ export class ShopStack extends Stack {
 
     // --- Custom domain -------------------------------------------------------
 
-    if (config.domain) {
-      const zone = HostedZone.fromHostedZoneAttributes(this, 'Zone', {
+    const zone =
+      config.domain &&
+      HostedZone.fromHostedZoneAttributes(this, 'Zone', {
         hostedZoneId: config.domain.hostedZoneId,
         zoneName: config.domain.hostedZoneName,
       });
+    if (config.domain && zone) {
       const target = RecordTarget.fromAlias(new CloudFrontTarget(distribution));
       new ARecord(this, 'SiteAliasIpv4', { zone, recordName: config.domain.domainName, target });
       new AaaaRecord(this, 'SiteAliasIpv6', { zone, recordName: config.domain.domainName, target });
@@ -452,11 +455,23 @@ export class ShopStack extends Stack {
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
-    // Reading the secrets is all the function needs: exchanging codes and
-    // fetching the user pool's signing keys are public HTTPS endpoints, and so is Stripe's API.
+    // The signing secret of the Stripe webhook endpoint, which the owner
+    // registers in Stripe and puts in by hand (README), as for the key. Until
+    // then every event is refused as unsigned, and Stripe keeps retrying it.
+    const stripeWebhookSecret = new Secret(this, 'StripeWebhookSecret', {
+      secretName: `yijewelry-${config.stage}/stripe-webhook-secret`,
+      description: `Y&I Jewelry (${config.stage}): the signing secret of the Stripe webhook endpoint`,
+      generateSecretString: { passwordLength: 32, excludePunctuation: true },
+      removalPolicy: RemovalPolicy.DESTROY,
+    });
+
+    // Reading the secrets is all the function needs of them: exchanging codes
+    // and fetching the user pool's signing keys are public HTTPS endpoints, and
+    // so is Stripe's API. (Sending mail is granted with the SES identity below.)
     adminClientSecret.grantRead(api);
     sessionSecret.grantRead(api);
     stripeSecretKey.grantRead(api);
+    stripeWebhookSecret.grantRead(api);
     api.addEnvironment('SITE_URL', siteUrl);
     api.addEnvironment('COGNITO_DOMAIN_URL', managedLogin.baseUrl());
     api.addEnvironment('COGNITO_USER_POOL_ID', ownerPool.userPoolId);
@@ -464,6 +479,39 @@ export class ShopStack extends Stack {
     api.addEnvironment('COGNITO_CLIENT_SECRET_ARN', adminClientSecret.secretArn);
     api.addEnvironment('SESSION_SECRET_ARN', sessionSecret.secretArn);
     api.addEnvironment('STRIPE_SECRET_KEY_ARN', stripeSecretKey.secretArn);
+    api.addEnvironment('STRIPE_WEBHOOK_SECRET_ARN', stripeWebhookSecret.secretArn);
+    // Where the owner's new order notices go, and replies to the store's emails.
+    if (config.ownerNotificationEmail) api.addEnvironment('OWNER_NOTIFICATION_EMAIL', config.ownerNotificationEmail);
+
+    // --- Email (SES) ------------------------------------------------------------
+
+    // The store's emails come from noreply@ the site's own domain (each stage
+    // its own: staging.example.com, example.com), a domain identity in SES:
+    // Easy DKIM signs them (three CNAME records), and the bounces go to a
+    // MAIL FROM subdomain of it (an MX record and its SPF record), so DMARC
+    // passes on both DKIM and SPF. The domain's own mailboxes (MX, SPF, DMARC
+    // at the zone apex) are not this stack's. Without a domain the API sends
+    // nothing, only logs each email.
+    if (config.domain && zone) {
+      const mailDomain = config.domain.domainName;
+      const mailFromDomain = `mail.${mailDomain}`;
+      const mailIdentity = new EmailIdentity(this, 'MailIdentity', {
+        identity: Identity.domain(mailDomain),
+        mailFromDomain,
+      });
+      // SES gives each record's full host name; the final dot keeps the zone from being added to it again.
+      mailIdentity.dkimRecords.forEach((record, index) => {
+        new CnameRecord(this, `MailDkim${index + 1}`, { zone, recordName: `${record.name}.`, domainName: record.value });
+      });
+      new MxRecord(this, 'MailFromMx', {
+        zone,
+        recordName: mailFromDomain,
+        values: [{ priority: 10, hostName: `feedback-smtp.${this.region}.amazonses.com` }],
+      });
+      new TxtRecord(this, 'MailFromSpf', { zone, recordName: mailFromDomain, values: ['v=spf1 include:amazonses.com ~all'] });
+      mailIdentity.grantSendEmail(api);
+      api.addEnvironment('MAIL_FROM', `Y&I Jewelry <noreply@${mailDomain}>`);
+    }
 
     new CfnOutput(this, 'SiteUrl', { value: siteUrl });
     new CfnOutput(this, 'AdminUrl', { value: `${siteUrl}/admin` });

@@ -22,8 +22,12 @@ export const paths = {
   home: page('/'),
   cart: page('/cart'),
   // The payment page sends the customer back to /checkout/complete or
-  // /checkout/cancelled (?order=…&token=…): the API builds those URLs
-  // (packages/api ordering/infrastructure/checkout-urls.ts), so they are not here.
+  // /checkout/cancelled (?order=…&token=…), and the emails link to the order
+  // page: the API builds those URLs (packages/api
+  // ordering/infrastructure/order-page-urls.ts), the same as `order` below.
+  /** The order page: the order `number`, which only its checkout `token` shows. */
+  order: (number: string, token: string) =>
+    page(`/orders/${encodeURIComponent(number)}?${new URLSearchParams({ token })}`),
   products: page('/products'),
   category: (slug: string) => page(`/categories/${slug}`),
   product: (slug: string) => page(`/products/${slug}`),

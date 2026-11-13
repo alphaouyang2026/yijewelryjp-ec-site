@@ -5,7 +5,7 @@ import { addWrite } from '../../platform/dynamodb-unit-of-work';
 import type { Locale } from '../../shared-kernel/locale';
 import type { LocalizedText } from '../../shared-kernel/localized-text';
 import { yen } from '../../shared-kernel/money';
-import type { Order, OrderRepository, OrderStatus } from '../domain/order';
+import type { Customer, Order, OrderEmail, OrderRepository, OrderStatus } from '../domain/order';
 
 /**
  * An order's item: every order in partition ORDER, keyed by its number, which
@@ -23,6 +23,11 @@ export type OrderItem = {
   placedAt: string; // ISO 8601
   checkoutToken: string;
   checkoutSessionId?: string;
+  /** Once paid: the customer as they gave their details on the payment page. */
+  customer?: Customer;
+  paidAt?: string; // ISO 8601
+  /** Missing on orders placed before emails were sent: none was. */
+  sentEmails?: OrderEmail[];
   /** 1 when created, one more with each write; every change is conditional on the version it read. */
   version: number;
 };
@@ -98,6 +103,9 @@ function toOrder(item: OrderItem): Order {
     placedAt: new Date(item.placedAt),
     checkoutToken: item.checkoutToken,
     checkoutSessionId: item.checkoutSessionId,
+    customer: item.customer,
+    paidAt: item.paidAt === undefined ? undefined : new Date(item.paidAt),
+    sentEmails: item.sentEmails ?? [],
     version: item.version,
   };
 }
@@ -122,6 +130,9 @@ function toItem(order: Order): OrderItem {
     placedAt: order.placedAt.toISOString(),
     checkoutToken: order.checkoutToken,
     checkoutSessionId: order.checkoutSessionId,
+    customer: order.customer,
+    paidAt: order.paidAt?.toISOString(),
+    sentEmails: [...order.sentEmails],
     version: order.version,
   });
 }

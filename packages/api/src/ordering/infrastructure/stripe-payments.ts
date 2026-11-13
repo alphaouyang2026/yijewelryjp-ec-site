@@ -1,6 +1,7 @@
 import Stripe from 'stripe';
 import type { Locale } from '../../shared-kernel/locale';
-import type { CheckoutSessionRequest, Payments } from '../domain/payments';
+import type { Customer } from '../domain/order';
+import type { CheckoutSessionRequest, PaymentEvent, Payments } from '../domain/payments';
 
 /** The shipping charge's name on the payment page, in its locale. */
 const SHIPPING_NAMES: Record<Locale, { fee: string; free: string }> = {
@@ -16,9 +17,10 @@ const SHIPPING_NAMES: Record<Locale, { fee: string; free: string }> = {
  * only in the store's table, not in Stripe Products), with one fixed shipping
  * option, shipping to Japan only, and the customer's phone number. The
  * session's metadata and client reference carry the order number, which the
- * session's events report back.
+ * session's events report back. Events come to the webhook signed with the
+ * webhook endpoint's signing secret, `webhookSecret`.
  */
-export function stripePayments(secretKey: string): Payments {
+export function stripePayments(secretKey: string, webhookSecret: string): Payments {
   const stripe = new Stripe(secretKey);
 
   return {
@@ -43,6 +45,71 @@ export function stripePayments(secretKey: string): Payments {
         throw error;
       }
     },
+
+    async verifyEvent(payload, headers) {
+      const signature = headers.get('stripe-signature');
+      if (!signature || !webhookSecret) return 'invalid';
+      let event: Stripe.Event;
+      try {
+        event = await stripe.webhooks.constructEventAsync(payload, signature, webhookSecret);
+      } catch {
+        return 'invalid';
+      }
+      return paymentEventOf(event);
+    },
+  };
+}
+
+/** What a Stripe event reports, as a payment event: the checkout sessions' completions and expiries. */
+function paymentEventOf(event: Stripe.Event): PaymentEvent {
+  switch (event.type) {
+    case 'checkout.session.completed': {
+      const session = event.data.object;
+      const orderId = session.metadata?.orderId;
+      // Cards (and the wallets, Apple Pay and Google Pay) are paid when the session completes.
+      if (!orderId || session.payment_status !== 'paid') {
+        console.warn('A completed checkout session is not a paid order', { eventId: event.id, sessionId: session.id });
+        return { type: 'other', id: event.id };
+      }
+      return {
+        type: 'checkout_completed',
+        id: event.id,
+        orderId,
+        sessionId: session.id,
+        customer: customerOf(session),
+      };
+    }
+    case 'checkout.session.expired': {
+      const session = event.data.object;
+      const orderId = session.metadata?.orderId;
+      if (!orderId) return { type: 'other', id: event.id };
+      return { type: 'checkout_expired', id: event.id, orderId, sessionId: session.id };
+    }
+    default:
+      return { type: 'other', id: event.id };
+  }
+}
+
+/**
+ * The customer's details as they gave them on the payment page, which
+ * requires the email address, the phone number and a shipping address in Japan.
+ */
+function customerOf(session: Stripe.Checkout.Session): Customer {
+  const email = session.customer_details?.email;
+  const shipping = session.collected_information?.shipping_details;
+  if (!email || !shipping) throw new Error(`Checkout session ${session.id} has no email address or shipping address`);
+  const { address } = shipping;
+  return {
+    email,
+    phone: session.customer_details?.phone ?? undefined,
+    shippingAddress: {
+      name: shipping.name,
+      postalCode: address.postal_code ?? '',
+      prefecture: address.state ?? '',
+      city: address.city ?? '',
+      line1: address.line1 ?? '',
+      line2: address.line2 || undefined,
+    },
   };
 }
 
@@ -50,6 +117,9 @@ function sessionParams(request: CheckoutSessionRequest): Stripe.Checkout.Session
   const shippingName = SHIPPING_NAMES[request.locale];
   return {
     mode: 'payment',
+    // Cards, with Apple Pay and Google Pay (card wallets): paid at once. Not
+    // methods paid later (konbini, bank transfer), which a 31-minute page cannot wait for.
+    allowed_payment_method_types: ['card'],
     currency: 'jpy',
     locale: request.locale,
     line_items: request.lines.map((line) => ({

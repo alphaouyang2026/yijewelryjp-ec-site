@@ -5,14 +5,15 @@ import {
   isListed,
   releaseStock as releaseProductStock,
   reserveStock as reserveProductStock,
+  sellStock as sellProductStock,
   type Product,
   type ProductRepository,
 } from '../domain/product';
 
 // For the ordering context: checkouts reserve stock of the variants they
-// order, and release it when they end without a payment. The writes go into
-// the checkout's unit of work, alongside its order's, so they are made
-// together or not at all.
+// order, release it when they end without a payment, and sell it once paid.
+// The writes go into the checkout's unit of work, alongside its order's, so
+// they are made together or not at all.
 
 /** How many of a variant (named by its product's slug and its SKU) a checkout reserves or releases. */
 export type VariantQuantity = { productSlug: string; sku: string; quantity: number };
@@ -104,6 +105,26 @@ export function releaseStock(deps: { products: ProductRepository }): ReleaseStoc
       if (!product) continue;
       const own = quantities.filter(({ productSlug }) => productSlug === product.slug);
       deps.products.updateIn(unit, releaseProductStock(product, own));
+    }
+  };
+}
+
+/**
+ * Command, for the ordering context: sells stock a checkout reserved, once
+ * its order is paid (on-hand and reserved stock both go down), adding the
+ * writes to `unit`, each conditional on its product being as read.
+ */
+export type SellReservedStock = (command: {
+  unit: UnitOfWork;
+  quantities: readonly VariantQuantity[];
+}) => Promise<void>;
+
+export function sellReservedStock(deps: { products: ProductRepository }): SellReservedStock {
+  return async ({ unit, quantities }) => {
+    for (const product of (await productsOf(deps, quantities)).values()) {
+      if (!product) continue;
+      const own = quantities.filter(({ productSlug }) => productSlug === product.slug);
+      deps.products.updateIn(unit, sellProductStock(product, own));
     }
   };
 }

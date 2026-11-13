@@ -17,7 +17,7 @@ import {
   listAdminProducts,
 } from './catalog/application/manage-products';
 import { startPhotoUpload } from './catalog/application/start-photo-upload';
-import { releaseStock, reserveStock } from './catalog/application/stock-reservations';
+import { releaseStock, reserveStock, sellReservedStock } from './catalog/application/stock-reservations';
 import type { CategoryRepository } from './catalog/domain/category';
 import type { PhotoStorage } from './catalog/domain/photo';
 import type { ProductRepository } from './catalog/domain/product';
@@ -42,14 +42,20 @@ import type { DatabaseProbe } from './operations/domain/database-probe';
 import { healthRoutes } from './operations/interface/health-routes';
 import { cancelCheckout, findCheckoutOrder, startCheckout } from './ordering/application/checkout';
 import { addToCart, changeCartQuantity, removeFromCart, viewCart } from './ordering/application/manage-cart';
-import type { CheckoutReturnUrls } from './ordering/domain/checkout-urls';
+import { getOrderPage } from './ordering/application/order-page';
+import { handlePaymentEvent } from './ordering/application/payment-events';
+import type { Mailer } from './ordering/domain/mailer';
+import type { OrderPageUrls } from './ordering/domain/order-page-urls';
 import type { OrderRepository } from './ordering/domain/order';
 import type { Payments } from './ordering/domain/payments';
 import { cartCookie } from './ordering/interface/cart-cookie';
 import { cartRoutes } from './ordering/interface/cart-routes';
 import { checkoutRoutes } from './ordering/interface/checkout-routes';
+import { orderRoutes } from './ordering/interface/order-routes';
+import { paymentEventRoutes } from './ordering/interface/payment-event-routes';
 import type { Clock } from './shared-kernel/clock';
 import type { StartUnitOfWork } from './shared-kernel/unit-of-work';
+import { getOwnerNotifications } from './store/application/get-owner-notifications';
 import { getShippingRates } from './store/application/get-shipping-rates';
 import type { StoreSettings } from './store/domain/store-settings';
 
@@ -74,8 +80,10 @@ export type AppDeps = {
   storeSettings: StoreSettings;
   /** The payment service. Production: Stripe. */
   payments: Payments;
-  /** The storefront's pages the payment page sends customers back to. */
-  checkoutUrls: CheckoutReturnUrls;
+  /** The storefront's pages about an order: those the payment page sends customers back to, and the order page. */
+  orderPageUrls: OrderPageUrls;
+  /** Sends the store's emails. Production: SES. */
+  mailer: Mailer;
 };
 
 /** The API: each module's routes, wired to its use cases. */
@@ -146,6 +154,18 @@ export function createApp(deps: AppDeps) {
         findCheckoutOrder: findCheckoutOrder(deps),
         cancelCheckout: cancelCheckout(checkoutDeps),
         cartCookie: cookies.cart,
+      }),
+    )
+    .route('/orders', orderRoutes({ getOrderPage: getOrderPage(deps) }))
+    .route(
+      '/payment-events',
+      paymentEventRoutes({
+        handlePaymentEvent: handlePaymentEvent({
+          ...deps,
+          sellReservedStock: sellReservedStock(deps),
+          releaseStock: checkoutDeps.releaseStock,
+          ownerNotifications: getOwnerNotifications(deps),
+        }),
       }),
     )
     // The owner's way in, open to everyone. Mounted before the admin group, so

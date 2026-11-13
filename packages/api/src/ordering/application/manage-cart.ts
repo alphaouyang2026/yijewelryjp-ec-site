@@ -148,7 +148,7 @@ async function checkAgainstCatalog(
   );
 
   return {
-    cart: { lines: lines.map(({ line }) => line) },
+    cart: { ...cart, lines: lines.map(({ line }) => line) },
     view: {
       lines: priced.lines.map((pricedLine, index) => {
         const { variant } = lines[index]!;
