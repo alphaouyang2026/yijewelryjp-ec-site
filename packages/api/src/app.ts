@@ -42,12 +42,19 @@ import type { DatabaseProbe } from './operations/domain/database-probe';
 import { healthRoutes } from './operations/interface/health-routes';
 import { cancelCheckout, findCheckoutOrder, startCheckout } from './ordering/application/checkout';
 import { addToCart, changeCartQuantity, removeFromCart, viewCart } from './ordering/application/manage-cart';
+import {
+  getAdminOrder,
+  listAdminOrders,
+  sendShippingNotice,
+  shipOrder,
+} from './ordering/application/manage-orders';
 import { getOrderPage } from './ordering/application/order-page';
 import { handlePaymentEvent } from './ordering/application/payment-events';
 import type { Mailer } from './ordering/domain/mailer';
 import type { OrderPageUrls } from './ordering/domain/order-page-urls';
 import type { OrderRepository } from './ordering/domain/order';
 import type { Payments } from './ordering/domain/payments';
+import { adminOrderRoutes } from './ordering/interface/admin-order-routes';
 import { cartCookie } from './ordering/interface/cart-cookie';
 import { cartRoutes } from './ordering/interface/cart-routes';
 import { checkoutRoutes } from './ordering/interface/checkout-routes';
@@ -129,7 +136,16 @@ export function createApp(deps: AppDeps) {
         renameCategory: renameCategory(deps),
       }),
     )
-    .route('/category-order', categoryOrderRoutes({ reorderCategories: reorderCategories(deps) }));
+    .route('/category-order', categoryOrderRoutes({ reorderCategories: reorderCategories(deps) }))
+    .route(
+      '/orders',
+      adminOrderRoutes({
+        listAdminOrders: listAdminOrders(deps),
+        getAdminOrder: getAdminOrder(deps),
+        shipOrder: shipOrder(deps),
+        sendShippingNotice: sendShippingNotice(deps),
+      }),
+    );
 
   return new Hono()
     .basePath('/api')

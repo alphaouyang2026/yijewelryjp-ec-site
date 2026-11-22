@@ -29,6 +29,7 @@ const paidOrder: OrderPage = {
     line1: '神宮前1-2-3',
     line2: 'ジュエリービル 401',
   },
+  shipment: null,
 };
 
 beforeEach(() => {

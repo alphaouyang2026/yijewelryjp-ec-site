@@ -2,7 +2,15 @@ import type { Locale } from '../../shared-kernel/locale';
 import { textIn } from '../../shared-kernel/localized-text';
 import type { Money } from '../../shared-kernel/money';
 import type { Email } from '../domain/mailer';
-import { lineAmount, taxIncluded, type Customer, type Order, type ShippingAddress } from '../domain/order';
+import {
+  lineAmount,
+  taxIncluded,
+  type Carrier,
+  type Customer,
+  type Order,
+  type Shipment,
+  type ShippingAddress,
+} from '../domain/order';
 import { renderEmail, STORE_NAME, type EmailParagraph, type EmailSection } from './email-document';
 
 /** The texts of the order confirmation in each locale. */
@@ -115,6 +123,77 @@ export function newOrderNoticeEmail(order: Order, customer: Customer, to: string
     subject: `【新規注文】ご注文番号 ${order.id}（合計 ${formatYen(order.total)}）`,
     sections,
   });
+}
+
+/** The texts of the shipping notice in each locale. */
+type ShippingTexts = {
+  subject(orderNumber: string): string;
+  intro: string[];
+  shipment: string;
+  carrier(name: string): string;
+  trackingNumber(trackingNumber: string): string;
+  closing: string[];
+};
+
+const SHIPPING_TEXTS: Record<Locale, ShippingTexts> = {
+  ja: {
+    subject: (number) => `【${STORE_NAME}】ご注文の商品を発送しました（ご注文番号 ${number}）`,
+    intro: [`このたびは ${STORE_NAME} をご利用いただき、誠にありがとうございます。`, 'ご注文の商品を発送いたしました。'],
+    shipment: '配送情報',
+    carrier: (name) => `配送業者：${name}`,
+    trackingNumber: (number) => `伝票番号：${number}`,
+    closing: ['お届けまでいましばらくお待ちください。', 'ご不明な点がございましたら、このメールにご返信ください。'],
+  },
+  zh: {
+    subject: (number) => `【${STORE_NAME}】您的订单已发货（订单号 ${number}）`,
+    intro: [`感谢您在 ${STORE_NAME} 购物。`, '您订购的商品已经发货。'],
+    shipment: '物流信息',
+    carrier: (name) => `快递公司：${name}`,
+    trackingNumber: (number) => `运单号：${number}`,
+    closing: ['请耐心等待商品送达。', '如有任何疑问，请直接回复此邮件。'],
+  },
+  en: {
+    subject: (number) => `[${STORE_NAME}] Your order has shipped (order ${number})`,
+    intro: [`Thank you for shopping at ${STORE_NAME}.`, 'Your order is on its way.'],
+    shipment: 'Delivery',
+    carrier: (name) => `Carrier: ${name}`,
+    trackingNumber: (number) => `Tracking number: ${number}`,
+    closing: ['It will be with you soon.', 'If you have any questions, just reply to this email.'],
+  },
+};
+
+/** Each carrier's name in each locale; 'other' is named by the owner. */
+const CARRIER_NAMES: Record<Exclude<Carrier, 'other'>, Record<Locale, string>> = {
+  yamato: { ja: 'ヤマト運輸', zh: '大和运输', en: 'Yamato Transport' },
+  sagawa: { ja: '佐川急便', zh: '佐川急便', en: 'Sagawa Express' },
+  japan_post: { ja: '日本郵便', zh: '日本邮政', en: 'Japan Post' },
+};
+
+/** The carrier of `shipment` by name, in `locale`. */
+function carrierName(shipment: Shipment, locale: Locale): string {
+  return shipment.carrier === 'other' ? (shipment.carrierName ?? '') : CARRIER_NAMES[shipment.carrier][locale];
+}
+
+/**
+ * The shipping notice the customer gets once the owner has shipped the
+ * order, in the locale they ordered in: the carrier and tracking number, the
+ * order's lines, where it ships, and the link to the order page.
+ */
+export function shippingNoticeEmail(order: Order, customer: Customer, shipment: Shipment, orderPageUrl: string): Email {
+  const confirmation = CONFIRMATION_TEXTS[order.locale];
+  const texts = SHIPPING_TEXTS[order.locale];
+  const sections: EmailSection[] = [
+    { paragraphs: [[confirmation.greeting(customer.shippingAddress.name)], texts.intro, [confirmation.orderNumber(order.id)]] },
+    {
+      heading: texts.shipment,
+      paragraphs: [[texts.carrier(carrierName(shipment, order.locale)), texts.trackingNumber(shipment.trackingNumber)]],
+    },
+    { heading: confirmation.lines, paragraphs: lineParagraphs(order, order.locale) },
+    { heading: confirmation.shippingAddress, paragraphs: [addressLines(customer, order.locale)] },
+    { heading: confirmation.orderPage, paragraphs: [[confirmation.orderPageIntro], { link: orderPageUrl }] },
+    { paragraphs: [texts.closing, [STORE_NAME]] },
+  ];
+  return renderEmail({ to: customer.email, subject: texts.subject(order.id), sections });
 }
 
 /** Each locale's name, in Japanese. */

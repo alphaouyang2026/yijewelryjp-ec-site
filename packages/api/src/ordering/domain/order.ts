@@ -14,9 +14,10 @@ export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
 /**
  * The emails about an order: once it is paid, the customer's order
- * confirmation and the owner's new order notice. Each is sent once.
+ * confirmation and the owner's new order notice; once it is shipped, the
+ * customer's shipping notice. Each is sent once.
  */
-export type OrderEmail = 'order_confirmation' | 'new_order_notice';
+export type OrderEmail = 'order_confirmation' | 'new_order_notice' | 'shipping_notice';
 
 /** A line of an order: a variant and how many, as the catalog had it when checkout started (the snapshot). */
 export type OrderLine = {
@@ -41,6 +42,19 @@ export type ShippingAddress = {
   readonly line1: string;
   /** The building and room, if any. */
   readonly line2?: string;
+};
+
+/** The carriers the owner ships with; 'other' is any else, named by the owner. */
+export const CARRIERS = ['yamato', 'sagawa', 'japan_post', 'other'] as const;
+export type Carrier = (typeof CARRIERS)[number];
+
+/** How a shipped order went: its carrier (named, for 'other') and tracking number, and when it shipped. */
+export type Shipment = {
+  readonly carrier: Carrier;
+  /** The carrier's name, for 'other' only. */
+  readonly carrierName?: string;
+  readonly trackingNumber: string;
+  readonly shippedAt: Date;
 };
 
 /** The customer of a paid order: the contact details and address they gave on the payment page. */
@@ -76,6 +90,8 @@ export type Order = {
   /** Who paid, from the payment page; undefined until the order is paid. */
   readonly customer?: Customer;
   readonly paidAt?: Date;
+  /** How the owner shipped it; undefined until the order is shipped. */
+  readonly shipment?: Shipment;
   /** The emails about the order sent so far, so that none is sent twice. */
   readonly sentEmails: readonly OrderEmail[];
   /** 1 when created, one more with each change; each change is saved only onto the version it was made from. */
@@ -136,6 +152,11 @@ export function payOrder(order: Order, payment: { customer: Customer; paidAt: Da
     : undefined;
 }
 
+/** The order once the owner shipped it as `shipment`; undefined unless it is paid. */
+export function shipOrder(order: Order, shipment: Shipment): Order | undefined {
+  return order.status === 'paid' ? { ...order, status: 'shipped', shipment } : undefined;
+}
+
 /** Crockford's base32: digits and letters, without I, L, O and U, which read like 1, 1, 0 and V. */
 const ORDER_NUMBER_LETTERS = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
 
@@ -160,6 +181,8 @@ export function newOrderNumber(now: Date): string {
 export interface OrderRepository {
   /** The order with the number `id`; undefined if there is none. */
   byId(id: string): Promise<Order | undefined>;
+  /** Every order, the most recently placed first. */
+  latestFirst(): Promise<Order[]>;
   /** Adds to `unit` the write of a new order; the unit's commit is a conflict if an order already has its number. */
   addIn(unit: UnitOfWork, order: Order): void;
   /**
