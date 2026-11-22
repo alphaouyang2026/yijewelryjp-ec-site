@@ -6,6 +6,8 @@ import {
   api,
   type AdminCategory,
   type AdminCategoryList,
+  type AdminOrder,
+  type AdminOrderList,
   type AdminProduct,
   type AdminProductList,
   type AdminSession,
@@ -40,6 +42,7 @@ type AdminSignedOut = InferResponseType<(typeof api.admin)['sign-out']['$post'],
 
 const adminProductsUrl = api.admin.products.$url().href;
 const adminCategoriesUrl = api.admin.categories.$url().href;
+const adminOrdersUrl = api.admin.orders.$url().href;
 
 /**
  * How a mocked admin change answers: 200 (or 201 for creating) with the
@@ -184,6 +187,50 @@ export const mockApi = {
     http.get(adminProductsUrl, ({ request }) => {
       requests.push(new URL(request.url));
       return HttpResponse.json(list);
+    }),
+
+  /**
+   * Answers the admin's order list requests with `list`. `requests` collects
+   * each request's URL, so a test can check the query the page sent.
+   */
+  adminOrders: (list: AdminOrderList, requests: URL[] = []) =>
+    http.get(adminOrdersUrl, ({ request }) => {
+      requests.push(new URL(request.url));
+      return HttpResponse.json(list);
+    }),
+
+  /**
+   * Answers the admin's requests for an order with `order` (or what it
+   * returns at the time, for an order that changes) for its number, 404 for
+   * any other. `requests` collects each request's URL.
+   */
+  adminOrder: (order: AdminOrder | (() => AdminOrder), requests: URL[] = []) =>
+    http.get(`${adminOrdersUrl}/:orderNumber`, ({ request, params }) => {
+      requests.push(new URL(request.url));
+      const current = typeof order === 'function' ? order() : order;
+      return params.orderNumber === current.orderNumber
+        ? HttpResponse.json(current)
+        : HttpResponse.json(notFound, { status: 404 });
+    }),
+
+  /**
+   * Answers requests to ship an order with `answer` (or what it returns,
+   * called for each request); `requests` collects each request.
+   */
+  adminShipOrder: (answer: AdminChangeReply<AdminOrder> | (() => AdminChangeReply<AdminOrder>), requests: Request[] = []) =>
+    http.post(`${adminOrdersUrl}/:orderNumber/shipment`, ({ request }) => {
+      requests.push(request);
+      return reply(typeof answer === 'function' ? answer() : answer);
+    }),
+
+  /** Answers requests to send an order's shipping notice again with `answer` (or what it returns); `requests` collects each. */
+  adminSendShippingNotice: (
+    answer: AdminChangeReply<AdminOrder> | (() => AdminChangeReply<AdminOrder>),
+    requests: Request[] = [],
+  ) =>
+    http.post(`${adminOrdersUrl}/:orderNumber/shipping-notice`, ({ request }) => {
+      requests.push(request);
+      return reply(typeof answer === 'function' ? answer() : answer);
     }),
 
   /**

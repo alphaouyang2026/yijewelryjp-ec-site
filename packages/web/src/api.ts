@@ -47,6 +47,11 @@ export type NewProduct = InferRequestType<typeof api.admin.products.$post>['json
 export type ProductEdit = InferRequestType<(typeof api.admin.products)[':slug']['$put']>['json'];
 export type PhotoUpload = InferResponseType<(typeof api.admin)['photo-uploads']['$post'], 200>;
 export type AdminCategoryList = InferResponseType<typeof api.admin.categories.$get, 200>;
+export type AdminOrderList = InferResponseType<typeof api.admin.orders.$get, 200>;
+export type AdminOrderSummary = AdminOrderList['orders'][number];
+export type OrderStatus = AdminOrderSummary['status'];
+export type AdminOrder = InferResponseType<(typeof api.admin.orders)[':orderNumber']['$get'], 200>;
+export type Carrier = NonNullable<AdminOrder['shipment']>['carrier'];
 export type AdminCategory = AdminCategoryList['categories'][number];
 
 /** The answer (400) to an admin form with invalid fields: each field's error code, by its path in the request body. */

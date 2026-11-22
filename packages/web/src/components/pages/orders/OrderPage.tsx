@@ -1,5 +1,6 @@
 import { useLoaderData } from 'react-router';
 import { BRAND_NAME } from '../../../brand';
+import { carrierNameOf } from '../../../carriers';
 import { formatDateTime } from '../../../i18n/format';
 import { useLocale } from '../../../i18n/useLocale';
 import { useMessages } from '../../../i18n/useMessages';
@@ -14,8 +15,9 @@ import type { orderLoader } from './orderLoader';
 
 /**
  * The order page, which the order confirmation email links to (no account,
- * only the link's token): the order's number, when it was placed, its status,
- * its lines and amounts, and where it ships.
+ * only the link's token): the order's number, when it was placed, its status
+ * (and once it ships, the carrier and tracking number), its lines and
+ * amounts, and where it ships.
  */
 export function OrderPage() {
   const { order, categories } = useLoaderData<typeof orderLoader>();
@@ -34,6 +36,12 @@ export function OrderPage() {
             { term: text.orderNumber, value: order.orderNumber },
             { term: text.placedAt, value: formatDateTime(order.placedAt, locale) },
             { term: text.status, value: messages.checkout.statuses[order.status] },
+            ...(order.shipment
+              ? [
+                  { term: text.carrier, value: carrierNameOf(order.shipment, messages.carriers) },
+                  { term: text.trackingNumber, value: order.shipment.trackingNumber },
+                ]
+              : []),
           ]}
         />
         <OrderLines order={order} />

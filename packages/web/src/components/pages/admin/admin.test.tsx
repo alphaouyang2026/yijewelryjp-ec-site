@@ -47,22 +47,22 @@ test('admin sections not built yet show a placeholder, and the navigation marks 
   renderRoute('/admin');
   const nav = await screen.findByRole('navigation', { name: '管理メニュー' });
 
-  await user.click(within(nav).getByRole('link', { name: '注文' }));
+  await user.click(within(nav).getByRole('link', { name: 'ショップ設定' }));
 
-  expect(await screen.findByRole('heading', { level: 1, name: '注文' })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { level: 1, name: 'ショップ設定' })).toBeInTheDocument();
   expect(screen.getByText('この画面は準備中です。')).toBeInTheDocument();
-  expect(within(nav).getByRole('link', { name: '注文' })).toHaveAttribute('aria-current', 'page');
+  expect(within(nav).getByRole('link', { name: 'ショップ設定' })).toHaveAttribute('aria-current', 'page');
   expect(within(nav).getByRole('link', { name: '商品' })).not.toHaveAttribute('aria-current');
 });
 
 test.each([
   {
-    path: '/zh/admin/orders',
+    path: '/zh/admin/settings',
     lang: 'zh-Hans',
     nav: '后台菜单',
     links: ['商品', '类别', '订单', '店铺设置'],
     hrefs: ['/zh/admin/products', '/zh/admin/categories', '/zh/admin/orders', '/zh/admin/settings'],
-    heading: '订单',
+    heading: '店铺设置',
     comingSoon: '此页面正在准备中。',
     signOut: '退出登录',
   },
@@ -93,12 +93,12 @@ test.each([
 test('switching the locale in the admin stays on the same admin page', async () => {
   server.use(mockApi.adminSession(ownerSession));
   const user = userEvent.setup();
-  renderRoute('/admin/orders');
+  renderRoute('/admin/settings');
   const switcher = await screen.findByRole('navigation', { name: '言語' });
 
   await user.click(within(switcher).getByRole('link', { name: 'English' }));
 
-  expect(await screen.findByRole('heading', { level: 1, name: 'Orders' })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { level: 1, name: 'Store settings' })).toBeInTheDocument();
   expect(screen.getByRole('navigation', { name: 'Admin menu' })).toBeInTheDocument();
 });
 
