@@ -25,23 +25,32 @@ export function useAdminChanges<Done extends string>(initial: ChangeNotice<Done>
   /**
    * Sends a change with `request`, and shows how it ended: `done`, or why
    * nothing changed. Once it is stored, `onStored` gets the API's answer
-   * before the data is reloaded. A 400's field errors go to `onInvalid`;
-   * without it, a 400 is a failure (there is no field to show them by).
+   * before the data is reloaded; `succeeded`, if given, tells by the answer
+   * whether the change did what was asked (say, an email the API could not
+   * send), and if not the notice says it failed. A 400's field errors go to
+   * `onInvalid`; without it, a 400 is a failure (there is no field to show them by).
    */
   async function send(
     request: () => Promise<Response>,
     {
       done,
       onStored,
+      succeeded,
       onInvalid,
-    }: { done: Done; onStored?: (stored: unknown) => void; onInvalid?: (errors: FieldErrors) => void },
+    }: {
+      done: Done;
+      onStored?: (stored: unknown) => void;
+      succeeded?: (stored: unknown) => boolean;
+      onInvalid?: (errors: FieldErrors) => void;
+    },
   ) {
     setBusy(true);
     try {
       const res = await request();
       if (res.ok) {
-        onStored?.(await res.json());
-        setNotice({ tone: 'done', text: done });
+        const stored: unknown = await res.json();
+        onStored?.(stored);
+        setNotice(succeeded && !succeeded(stored) ? { tone: 'problem', text: 'failed' } : { tone: 'done', text: done });
         await revalidator.revalidate();
       } else if (res.status === 400 && onInvalid) {
         onInvalid(fieldErrorsOf((await res.json()) as InvalidInput));

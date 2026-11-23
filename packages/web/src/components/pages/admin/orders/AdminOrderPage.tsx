@@ -39,21 +39,25 @@ export function AdminOrderPage() {
   const [errors, setErrors] = useState<FieldErrors>({});
 
   const param = { orderNumber: order.orderNumber };
+  const query = { locale };
   const ship = ({ carrier, carrierName, trackingNumber }: ShipmentValues) =>
     changes.send(
       () =>
         api.admin.orders[':orderNumber'].shipment.$post(
           {
             param,
+            query,
             json: { version: order.version, carrier, trackingNumber, ...(carrier === 'other' && { carrierName }) },
           },
           { headers },
         ),
       { done: 'shipped', onStored: () => setErrors({}), onInvalid: setErrors },
     );
+  // The API answers 200 also when the mail service fails the notice again: the order says whether it went.
   const sendNotice = () =>
-    changes.send(() => api.admin.orders[':orderNumber']['shipping-notice'].$post({ param }, { headers }), {
+    changes.send(() => api.admin.orders[':orderNumber']['shipping-notice'].$post({ param, query }, { headers }), {
       done: 'noticeSent',
+      succeeded: (stored) => (stored as AdminOrder).shippingNoticeSent,
     });
 
   async function reload() {

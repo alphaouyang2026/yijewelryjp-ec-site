@@ -110,6 +110,7 @@ test('the owner ships a paid order: the carrier (named, for another one) and tra
 
   expect(await screen.findByText('発送済みにしました。')).toBeInTheDocument();
   expect(requests[0]?.headers.get('X-CSRF-Token')).toBe(ownerSession.csrfToken);
+  expect(new URL(requests[0]?.url ?? '').searchParams.get('locale')).toBe('ja');
   expect(await requests[0]?.json()).toEqual({ version: 5, carrier: 'other', carrierName: '西濃運輸', trackingNumber: 'A-1' });
   await waitFor(() =>
     expect(details()).toEqual([
@@ -191,5 +192,24 @@ test('a shipping notice that could not be sent says so, and the owner sends it a
 
   expect(await screen.findByText('発送通知メールを送信しました。')).toBeInTheDocument();
   expect(requests[0]?.headers.get('X-CSRF-Token')).toBe(ownerSession.csrfToken);
+  expect(new URL(requests[0]?.url ?? '').searchParams.get('locale')).toBe('ja');
   await waitFor(() => expect(screen.queryByText('発送通知メールをお客様に送信できませんでした。')).not.toBeInTheDocument());
+});
+
+test('a shipping notice that still cannot be sent is not said to be sent', async () => {
+  const unsent: AdminOrder = { ...shippedOrder, shippingNoticeSent: false };
+  server.use(
+    mockApi.adminSession(ownerSession),
+    mockApi.adminOrder(unsent),
+    mockApi.adminSendShippingNotice({ status: 200, body: unsent }),
+  );
+  const user = userEvent.setup();
+  renderRoute('/admin/orders/20261101100000-7KQ3');
+
+  await user.click(await screen.findByRole('button', { name: '発送通知メールを送信' }));
+
+  expect(await screen.findByText('保存できませんでした。時間をおいて、もう一度お試しください。')).toBeInTheDocument();
+  expect(screen.queryByText('発送通知メールを送信しました。')).not.toBeInTheDocument();
+  expect(screen.getByText('発送通知メールをお客様に送信できませんでした。')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '発送通知メールを送信' })).toBeEnabled();
 });

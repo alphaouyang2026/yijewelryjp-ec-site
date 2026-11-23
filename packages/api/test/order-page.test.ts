@@ -79,6 +79,7 @@ describe('the order page', () => {
     await owner.client.api.admin.orders[':orderNumber'].shipment.$post(
       {
         param: { orderNumber: order },
+        query: { locale: 'ja' },
         json: { version: (await opened.json()).version, carrier: 'other', carrierName: '西濃運輸', trackingNumber: 'A-1' },
       },
       { headers: owner.headers },

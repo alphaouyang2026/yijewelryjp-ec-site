@@ -62,12 +62,12 @@ export function adminOrderRoutes(useCases: {
         });
         return order ? c.json(order, 200) : c.json({ error: 'not_found' } as const, 404);
       })
-      // The answer is the shipped order in Japanese, the admin's default locale; the admin reloads it in its own.
-      .post('/:orderNumber/shipment', shipmentBody, async (c) => {
+      // The answer is the shipped order, its texts in the requested locale.
+      .post('/:orderNumber/shipment', localeQuery, shipmentBody, async (c) => {
         const shipping = await useCases.shipOrder({
           orderNumber: c.req.param('orderNumber'),
           ...c.req.valid('json'),
-          locale: 'ja',
+          locale: c.req.valid('query').locale,
         });
         switch (shipping.outcome) {
           case 'shipped':
@@ -81,8 +81,11 @@ export function adminOrderRoutes(useCases: {
         }
       })
       // Sends again a shipping notice that could not be sent; the answer is the order, as for shipping it.
-      .post('/:orderNumber/shipping-notice', async (c) => {
-        const sending = await useCases.sendShippingNotice({ orderNumber: c.req.param('orderNumber'), locale: 'ja' });
+      .post('/:orderNumber/shipping-notice', localeQuery, async (c) => {
+        const sending = await useCases.sendShippingNotice({
+          orderNumber: c.req.param('orderNumber'),
+          locale: c.req.valid('query').locale,
+        });
         switch (sending.outcome) {
           case 'sent':
             return c.json(sending.order, 200);

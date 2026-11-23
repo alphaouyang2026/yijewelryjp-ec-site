@@ -233,8 +233,8 @@ Stripe 用 webhook 通知付款结果，API 校验签名后处理；顾客付款
 | --- | --- |
 | `GET /api/admin/orders?status=…` | 订单列表，新订单在前：不带 `status` 时是已付款、已发货、已取消的订单（待付款和已过期的不用店主处理，默认不显示），带上时只看这一种状态 |
 | `GET /api/admin/orders/:orderNumber?locale=…` | 一个订单：和订单页相同的内容，加上下单时的语言、顾客的邮箱和电话、发货通知是否已发出、版本号。不存在时 404 |
-| `POST /api/admin/orders/:orderNumber/shipment` | 标记发货：`{ version, carrier, carrierName?, trackingNumber }`，快递公司是 `yamato`、`sagawa`、`japan_post` 或 `other`（`other` 时 `carrierName` 必填）。只有已付款的订单可以发货，其他状态 409 `invalid_status_transition`；版本不对 409 `stale_version`；输入不合格 400 `invalid_input` |
-| `POST /api/admin/orders/:orderNumber/shipping-notice` | 重新发送没能发出的发货通知；已经发出的不会再发。未发货的订单 409 `invalid_status_transition` |
+| `POST /api/admin/orders/:orderNumber/shipment?locale=…` | 标记发货：`{ version, carrier, carrierName?, trackingNumber }`，快递公司是 `yamato`、`sagawa`、`japan_post` 或 `other`（`other` 时 `carrierName` 必填）。只有已付款的订单可以发货，其他状态 409 `invalid_status_transition`；版本不对 409 `stale_version`；输入不合格 400 `invalid_input`。返回发货后的订单，文字用请求的语言 |
+| `POST /api/admin/orders/:orderNumber/shipping-notice?locale=…` | 重新发送没能发出的发货通知；已经发出的不会再发。返回订单（文字用请求的语言），这次也没发出时 `shippingNoticeSent` 仍是 `false`，后台提示发送失败。未发货的订单 409 `invalid_status_transition` |
 
 - **发货通知：** 标记发货后用顾客下单时的语言发送（日、中、英，HTML 和纯文本），内容有快递公司、运单号、各行和金额、收货地址、订单页链接，发出后记在订单的 `sentEmails` 里。邮件发送失败时订单照样是已发货，返回的订单 `shippingNoticeSent: false`，后台订单页提示并提供「発送通知メールを送信」按钮。
 - **后台页面：** `/admin/orders` 列出订单（订单号、下单时间、收货人、件数、合计、状态），可以按状态筛选；`/admin/orders/:orderNumber` 显示一个订单的全部内容，已付款的订单下方是发货表单。

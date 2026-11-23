@@ -180,7 +180,7 @@ describe('marking an order shipped', () => {
     shipment: { version: number; carrier: string; carrierName?: string; trackingNumber: string },
   ) {
     return owner.client.api.admin.orders[':orderNumber'].shipment.$post(
-      { param: { orderNumber }, json: shipment as never },
+      { param: { orderNumber }, query: { locale: 'ja' }, json: shipment as never },
       { headers: owner.headers },
     );
   }
@@ -291,10 +291,13 @@ describe('the shipping notice', () => {
 
   /**
    * A customer checks out a ring in `locale` and pays; the owner ships it by
-   * Yamato as 1234-5678-9012, the mail service failing the notice if asked.
-   * The emails shipping it sent.
+   * Yamato as 1234-5678-9012 (the answer in `answerIn`), the mail service
+   * failing the notice if asked. The emails shipping it sent.
    */
-  async function shipped(owner: Owner, { locale = 'ja', failNotice = false }: { locale?: Locale; failNotice?: boolean } = {}) {
+  async function shipped(
+    owner: Owner,
+    { locale = 'ja', answerIn = 'ja', failNotice = false }: { locale?: Locale; answerIn?: Locale; failNotice?: boolean } = {},
+  ) {
     const { order, token, session } = await checkedOut(api, { locale });
     await deliver(api, api.payments.pay(session.id));
     const opened = await owner.client.api.admin.orders[':orderNumber'].$get({
@@ -307,11 +310,20 @@ describe('the shipping notice', () => {
     const res = await owner.client.api.admin.orders[':orderNumber'].shipment.$post(
       {
         param: { orderNumber: order },
+        query: { locale: answerIn },
         json: { version: (await opened.json()).version, carrier: 'yamato', trackingNumber: '1234-5678-9012' },
       },
       { headers: owner.headers },
     );
     return { order, token, res, emails: api.mailer.outbox.slice(sentBefore) };
+  }
+
+  /** The owner sends the order's shipping notice again, the answer in `locale`. */
+  function sendNoticeAgain(owner: Owner, orderNumber: string, locale: Locale = 'ja') {
+    return owner.client.api.admin.orders[':orderNumber']['shipping-notice'].$post(
+      { param: { orderNumber }, query: { locale } },
+      { headers: owner.headers },
+    );
   }
 
   test.each([
@@ -365,14 +377,9 @@ describe('the shipping notice', () => {
     const owner = await api.owner();
     const { order } = await shipped(owner, { failNotice: true });
     const sentBefore = api.mailer.outbox.length;
-    const resend = () =>
-      owner.client.api.admin.orders[':orderNumber']['shipping-notice'].$post(
-        { param: { orderNumber: order } },
-        { headers: owner.headers },
-      );
 
-    const first = await resend();
-    const second = await resend();
+    const first = await sendNoticeAgain(owner, order);
+    const second = await sendNoticeAgain(owner, order);
 
     expect(first.status).toBe(200);
     expect(await first.json()).toMatchObject({ shippingNoticeSent: true });
@@ -385,12 +392,39 @@ describe('the shipping notice', () => {
     const { order, session } = await checkedOut(api);
     await deliver(api, api.payments.pay(session.id));
 
-    const res = await owner.client.api.admin.orders[':orderNumber']['shipping-notice'].$post(
-      { param: { orderNumber: order } },
-      { headers: owner.headers },
-    );
+    const res = await sendNoticeAgain(owner, order);
 
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({ error: 'invalid_status_transition' });
+  });
+
+  test('shipping, and sending the notice again, answer with the order in the locale asked for', async () => {
+    const owner = await api.owner();
+    const { order, res } = await shipped(owner, { answerIn: 'en', failNotice: true });
+
+    const resent = await sendNoticeAgain(owner, order, 'zh');
+
+    expect(await res.json()).toMatchObject({ lines: [{ name: 'Moon Ring' }], shippingNoticeSent: false });
+    expect(await resent.json()).toMatchObject({ lines: [{ name: '月亮戒指' }], shippingNoticeSent: true });
+  });
+
+  test('shipping, or sending the notice again, without a locale is refused: 400 unsupported_locale', async () => {
+    const owner = await api.owner();
+    const { order, session } = await checkedOut(api);
+    await deliver(api, api.payments.pay(session.id));
+    const withoutLocale = { param: { orderNumber: order }, query: {} as never };
+
+    const shipping = await owner.client.api.admin.orders[':orderNumber'].shipment.$post(
+      { ...withoutLocale, json: { version: 1, carrier: 'yamato', trackingNumber: '1' } },
+      { headers: owner.headers },
+    );
+    const sending = await owner.client.api.admin.orders[':orderNumber']['shipping-notice'].$post(withoutLocale, {
+      headers: owner.headers,
+    });
+
+    for (const res of [shipping, sending]) {
+      expect(res.status).toBe(400);
+      expect(await res.json()).toMatchObject({ error: 'unsupported_locale' });
+    }
   });
 });
