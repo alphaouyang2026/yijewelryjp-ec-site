@@ -62,6 +62,35 @@ describe('the order page', () => {
         line1: '神宮前1-2-3',
         line2: 'ジュエリービル 401',
       },
+      shipment: null,
+    });
+  });
+
+  test('once the owner ships the order, it shows the carrier and tracking number', async () => {
+    api.clock.set(new Date('2026-11-03T15:00:00+09:00'));
+    const { order, token, session } = await checkedOut(api);
+    await deliver(api, api.payments.pay(session.id));
+    const owner = await api.owner();
+    const opened = await owner.client.api.admin.orders[':orderNumber'].$get({
+      param: { orderNumber: order },
+      query: { locale: 'ja' },
+    });
+    assert(opened.status === 200);
+    await owner.client.api.admin.orders[':orderNumber'].shipment.$post(
+      {
+        param: { orderNumber: order },
+        query: { locale: 'ja' },
+        json: { version: (await opened.json()).version, carrier: 'other', carrierName: '西濃運輸', trackingNumber: 'A-1' },
+      },
+      { headers: owner.headers },
+    );
+
+    const res = await orderPage(api.client(), order, token);
+
+    assert(res.status === 200);
+    expect(await res.json()).toMatchObject({
+      status: 'shipped',
+      shipment: { carrier: 'other', carrierName: '西濃運輸', trackingNumber: 'A-1', shippedAt: '2026-11-03T06:00:00.000Z' },
     });
   });
 

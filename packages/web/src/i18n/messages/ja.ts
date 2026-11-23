@@ -1,4 +1,4 @@
-import type { CartNotice, CheckoutOrder, FieldErrorCode } from '../../api';
+import type { Carrier, CartNotice, CheckoutOrder, FieldErrorCode, OrderStatus } from '../../api';
 
 /**
  * The interface text in Japanese, the default locale. Its shape is `Messages`:
@@ -174,6 +174,8 @@ export const ja = {
     addressPending: 'お支払いの確認後に表示されます。',
     recipient: (name: string) => `${name} 様`,
     questions: 'ご不明な点がございましたら、ご注文確認のメールにご返信ください。',
+    carrier: '配送業者',
+    trackingNumber: '伝票番号',
   },
   notFound: {
     title: 'ページが見つかりません',
@@ -185,6 +187,13 @@ export const ja = {
     text: '時間をおいて、もう一度お試しください。',
     home: 'トップページへ戻る',
   },
+  /** Each carrier's name; 'other' is the form's choice for a carrier named by the owner. */
+  carriers: {
+    yamato: 'ヤマト運輸',
+    sagawa: '佐川急便',
+    japan_post: '日本郵便',
+    other: 'その他',
+  } satisfies Record<Carrier, string>,
   admin: {
     label: 'Admin',
     title: '管理画面',
@@ -230,6 +239,52 @@ export const ja = {
       reserved: (count: number) => `（確保中 ${count}）`,
       featured: 'ピックアップ',
       empty: '条件に合う商品はありません。',
+    },
+    orderStatus: {
+      paid: '支払い済み',
+      shipped: '発送済み',
+      cancelled: 'キャンセル',
+      pending_payment: '支払い待ち',
+      expired: '期限切れ',
+    } satisfies Record<OrderStatus, string>,
+    orderList: {
+      filterNav: '状態',
+      confirmed: '受注済み',
+      columns: {
+        orderNumber: '注文番号',
+        placedAt: '注文日時',
+        recipient: 'お届け先',
+        quantity: '点数',
+        total: '合計（税込）',
+        status: '状態',
+      },
+      none: '—',
+      empty: '条件に合う注文はありません。',
+    },
+    order: {
+      title: (orderNumber: string) => `注文 ${orderNumber}`,
+      back: '注文一覧へ',
+      placedAt: '注文日時',
+      status: '状態',
+      orderedIn: '注文時の言語',
+      email: 'メールアドレス',
+      phone: '電話番号',
+      none: '—',
+      carrier: '配送業者',
+      trackingNumber: '伝票番号',
+      shippedAt: '発送日時',
+      shipped: '発送済みにしました。',
+      noticeSent: '発送通知メールを送信しました。',
+      noticeUnsent: '発送通知メールをお客様に送信できませんでした。',
+      sendNotice: '発送通知メールを送信',
+      stale: 'この注文はほかの画面で変更されました。最新の内容を読み込んでから、もう一度操作してください。',
+    },
+    shipmentForm: {
+      title: '発送',
+      carrier: '配送業者',
+      carrierName: '配送業者名',
+      trackingNumber: '伝票番号',
+      submit: '発送済みにする',
     },
     localizedText: {
       jaRequired: '日本語（必須）',

@@ -30,7 +30,7 @@ const pageWithData = (route: RouteObject): RouteObject => ({
 });
 
 /** The admin's sections whose pages later tickets build: a placeholder until then. */
-const ADMIN_SECTIONS_TO_COME: AdminSection[] = ['orders', 'settings'];
+const ADMIN_SECTIONS_TO_COME: AdminSection[] = ['settings'];
 
 /**
  * The admin, under /admin in each locale. Its code loads only when an admin
@@ -90,6 +90,26 @@ function adminPages(): RouteObject {
             import('../components/pages/admin/categories/adminCategoriesLoader'),
           ]);
           return { Component: AdminCategoriesPage, loader: adminCategoriesLoader };
+        },
+      },
+      {
+        path: 'orders',
+        lazy: async () => {
+          const [{ AdminOrderListPage }, { adminOrderListLoader }] = await Promise.all([
+            import('../components/pages/admin/orders/AdminOrderListPage'),
+            import('../components/pages/admin/orders/adminOrderListLoader'),
+          ]);
+          return { Component: AdminOrderListPage, loader: adminOrderListLoader };
+        },
+      },
+      {
+        path: 'orders/:orderNumber',
+        lazy: async () => {
+          const [{ AdminOrderPage }, { adminOrderLoader }] = await Promise.all([
+            import('../components/pages/admin/orders/AdminOrderPage'),
+            import('../components/pages/admin/orders/adminOrderLoader'),
+          ]);
+          return { Component: AdminOrderPage, loader: adminOrderLoader };
         },
       },
       ...ADMIN_SECTIONS_TO_COME.map(

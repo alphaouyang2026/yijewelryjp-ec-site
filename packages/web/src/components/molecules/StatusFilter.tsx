@@ -1,27 +1,22 @@
-import type { ProductStatus } from '../../api';
-import { useMessages } from '../../i18n/useMessages';
-import { paths } from '../../paths';
-import { PRODUCT_STATUSES } from '../../productStatuses';
+import type { PagePath } from '../../paths';
 import { LocalizedLink } from '../atoms/LocalizedLink';
 import styles from './StatusFilter.module.css';
 
-/** Links to the admin's product list with every product, or one status's; the current one is marked. */
-export function StatusFilter({ current }: { current: ProductStatus | undefined }) {
-  const text = useMessages().admin;
-  const options = [
-    { status: undefined, label: text.productList.all },
-    ...PRODUCT_STATUSES.map((status) => ({ status, label: text.productStatus[status] })),
-  ];
+/** One of a status filter's links: where it goes, and whether the page shows it now. */
+export type StatusFilterOption = { label: string; to: PagePath; current: boolean };
+
+/** Links to an admin list with one status's items (or its default); the current one is marked. */
+export function StatusFilter({ label, options }: { label: string; options: StatusFilterOption[] }) {
   return (
-    <nav aria-label={text.productList.filterNav} className={styles.filter}>
-      {options.map(({ status, label }) => (
+    <nav aria-label={label} className={styles.filter}>
+      {options.map((option) => (
         <LocalizedLink
-          key={label}
-          to={paths.adminProducts({ status })}
+          key={option.label}
+          to={option.to}
           variant="option"
-          aria-current={status === current ? 'page' : undefined}
+          aria-current={option.current ? 'page' : undefined}
         >
-          {label}
+          {option.label}
         </LocalizedLink>
       ))}
     </nav>

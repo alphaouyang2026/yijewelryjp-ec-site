@@ -1,11 +1,11 @@
 import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { ConditionalCheckFailedException } from '@aws-sdk/client-dynamodb';
-import { withoutUndefined, type Database } from '../../platform/dynamodb';
+import { queryPartition, withoutUndefined, type Database } from '../../platform/dynamodb';
 import { addWrite } from '../../platform/dynamodb-unit-of-work';
 import type { Locale } from '../../shared-kernel/locale';
 import type { LocalizedText } from '../../shared-kernel/localized-text';
 import { yen } from '../../shared-kernel/money';
-import type { Customer, Order, OrderEmail, OrderRepository, OrderStatus } from '../domain/order';
+import type { Carrier, Customer, Order, OrderEmail, OrderRepository, OrderStatus } from '../domain/order';
 
 /**
  * An order's item: every order in partition ORDER, keyed by its number, which
@@ -26,6 +26,8 @@ export type OrderItem = {
   /** Once paid: the customer as they gave their details on the payment page. */
   customer?: Customer;
   paidAt?: string; // ISO 8601
+  /** Once shipped: how. */
+  shipment?: { carrier: Carrier; carrierName?: string; trackingNumber: string; shippedAt: string };
   /** Missing on orders placed before emails were sent: none was. */
   sentEmails?: OrderEmail[];
   /** 1 when created, one more with each write; every change is conditional on the version it read. */
@@ -59,6 +61,11 @@ export function dynamoDbOrderRepository(db: Database): OrderRepository {
         new GetCommand({ TableName: db.tableName, Key: { pk: PARTITION, sk: id } }),
       );
       return Item ? toOrder(Item as OrderItem) : undefined;
+    },
+
+    // Order numbers start with when the order was placed, so the partition sorts by it.
+    async latestFirst() {
+      return (await queryPartition<OrderItem>(db, PARTITION, { descending: true })).map(toOrder);
     },
 
     addIn(unit, order) {
@@ -105,6 +112,7 @@ function toOrder(item: OrderItem): Order {
     checkoutSessionId: item.checkoutSessionId,
     customer: item.customer,
     paidAt: item.paidAt === undefined ? undefined : new Date(item.paidAt),
+    shipment: item.shipment && { ...item.shipment, shippedAt: new Date(item.shipment.shippedAt) },
     sentEmails: item.sentEmails ?? [],
     version: item.version,
   };
@@ -132,6 +140,7 @@ function toItem(order: Order): OrderItem {
     checkoutSessionId: order.checkoutSessionId,
     customer: order.customer,
     paidAt: order.paidAt?.toISOString(),
+    shipment: order.shipment && { ...order.shipment, shippedAt: order.shipment.shippedAt.toISOString() },
     sentEmails: [...order.sentEmails],
     version: order.version,
   });

@@ -29,6 +29,7 @@ const paidOrder: OrderPage = {
     line1: '神宮前1-2-3',
     line2: 'ジュエリービル 401',
   },
+  shipment: null,
 };
 
 beforeEach(() => {
@@ -82,6 +83,29 @@ test('in the locale of its URL', async () => {
   expect(requests.map((url) => url.searchParams.get('locale'))).toEqual(['en']);
 });
 
+test('once the order ships, the page shows the carrier, in the page’s locale, and the tracking number', async () => {
+  const shipment = { carrier: 'yamato', carrierName: null, trackingNumber: '1234-5678-9012', shippedAt: '2026-10-30T01:00:00.000Z' } as const;
+  server.use(mockApi.orderPage({ ...paidOrder, status: 'shipped', shipment }, TOKEN));
+
+  renderRoute(`/zh/orders/${ORDER}?token=${TOKEN}`);
+
+  const main = await screen.findByRole('main');
+  expect(await within(main).findByText('快递公司')).toBeInTheDocument();
+  expect(within(main).getByText('快递公司').nextElementSibling).toHaveTextContent('大和运输');
+  expect(within(main).getByText('运单号').nextElementSibling).toHaveTextContent('1234-5678-9012');
+});
+
+test('another carrier shows by the name the owner gave', async () => {
+  const shipment = { carrier: 'other', carrierName: '西濃運輸', trackingNumber: 'A-1', shippedAt: '2026-10-30T01:00:00.000Z' } as const;
+  server.use(mockApi.orderPage({ ...paidOrder, status: 'shipped', shipment }, TOKEN));
+
+  renderRoute(`/orders/${ORDER}?token=${TOKEN}`);
+
+  expect(await screen.findByText('配送業者')).toBeInTheDocument();
+  expect(screen.getByText('配送業者').nextElementSibling).toHaveTextContent('西濃運輸');
+  expect(screen.getByText('伝票番号').nextElementSibling).toHaveTextContent('A-1');
+});
+
 test('before the payment is confirmed, the address is not there yet', async () => {
   server.use(mockApi.orderPage({ ...paidOrder, status: 'pending_payment', shippingAddress: null }, TOKEN));
 
@@ -90,6 +114,7 @@ test('before the payment is confirmed, the address is not there yet', async () =
   const address = await screen.findByRole('region', { name: 'お届け先' });
   expect(address).toHaveTextContent('お支払いの確認後に表示されます。');
   expect(screen.getByText('ご注文状況').nextElementSibling).toHaveTextContent('確認中');
+  expect(screen.queryByText('配送業者')).not.toBeInTheDocument();
 });
 
 test('an order the API does not find with the token is not found', async () => {

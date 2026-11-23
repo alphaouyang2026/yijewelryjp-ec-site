@@ -70,7 +70,8 @@ export function handlePaymentEvent(deps: Deps): HandlePaymentEvent {
 /**
  * The customer paid: the order is paid, with the customer's details, and its
  * reserved stock sold, together. Then the customer gets the order
- * confirmation, and the owner the new order notice, those not sent yet.
+ * confirmation, and the owner the new order notice, those not sent yet; the
+ * owner may have shipped the order meanwhile, which does not stop them.
  */
 async function checkoutPaid(
   deps: Deps,
@@ -79,7 +80,7 @@ async function checkoutPaid(
   for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
     const order = await deps.orders.byId(event.orderId);
     if (!order) return ignored(event, 'no such order');
-    if (order.status === 'paid') return sendPaidOrderEmails(deps, order);
+    if (order.status === 'paid' || order.status === 'shipped') return sendPaidOrderEmails(deps, order);
     // An expired order's payment page cannot be paid (it expires first), so a payment for one is a surprise.
     if (order.status !== 'pending_payment') return ignored(event, `the order is ${order.status}`);
 

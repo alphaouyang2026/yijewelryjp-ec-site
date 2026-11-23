@@ -377,6 +377,38 @@ describe('an event the payment service delivers more than once', () => {
     expect(api.mailer.outbox.map((sent) => sent.to)).toEqual(['hanako@example.com', TEST_OWNER_NOTIFICATION_EMAIL]);
     expect(await stock(api, 'moon-ring')).toEqual({ 'moon-ring-9': { onHand: 2, reserved: 0 } });
   });
+
+  test('the emails not sent yet still go once the owner has shipped the order, which stays shipped', async () => {
+    const { order, token, session } = await checkedOut(api);
+    const event = api.payments.pay(session.id);
+    api.mailer.failNextSend({ to: 'hanako@example.com' });
+    expect((await deliver(api, event)).status).toBe(503);
+    const owner = await api.owner();
+    const opened = await owner.client.api.admin.orders[':orderNumber'].$get({
+      param: { orderNumber: order },
+      query: { locale: 'ja' },
+    });
+    assert(opened.status === 200);
+    const shipping = await owner.client.api.admin.orders[':orderNumber'].shipment.$post(
+      {
+        param: { orderNumber: order },
+        query: { locale: 'ja' },
+        json: { version: (await opened.json()).version, carrier: 'yamato', trackingNumber: '1' },
+      },
+      { headers: owner.headers },
+    );
+    expect(shipping.status).toBe(200);
+    const sentBefore = api.mailer.outbox.length;
+
+    for (const delivery of [await deliver(api, event), await deliver(api, event)]) expect(delivery.status).toBe(200);
+
+    expect(api.mailer.outbox.slice(sentBefore).map((sent) => [sent.to, sent.subject])).toEqual([
+      ['hanako@example.com', `【Y&I Jewelry】ご注文ありがとうございます（ご注文番号 ${order}）`],
+      [TEST_OWNER_NOTIFICATION_EMAIL, expect.stringContaining(order)],
+    ]);
+    expect(await (await orderLookup(api.client(), order, token)).json()).toMatchObject({ status: 'shipped' });
+    expect(await stock(api, 'moon-ring')).toEqual({ 'moon-ring-9': { onHand: 2, reserved: 0 } });
+  });
 });
 
 describe('the webhook', () => {

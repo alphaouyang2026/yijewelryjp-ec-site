@@ -3,7 +3,7 @@ import { formatYen } from '../../i18n/format';
 import { useMessages } from '../../i18n/useMessages';
 import { paths } from '../../paths';
 import { LocalizedLink } from '../atoms/LocalizedLink';
-import styles from './AdminProductTable.module.css';
+import styles from './AdminTable.module.css';
 
 /**
  * The admin's products as a table: each one's name (linking to its edit

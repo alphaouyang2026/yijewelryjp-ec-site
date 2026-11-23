@@ -1,3 +1,5 @@
+/* The admin's tables, of products and of orders. */
+
 /* Narrow screens scroll the table sideways rather than squeezing it. */
 .scroll {
   overflow-x: auto;

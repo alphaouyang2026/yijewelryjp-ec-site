@@ -114,6 +114,7 @@
   --variant-number-min-width: 160px; /* a variant's price and stock */
   --photo-preview-width: 120px; /* a product photo beside its alt text */
   --select-min-width: 50%; /* drop-down lists, of their field's width */
+  --shipment-form-max-width: 448px; /* the admin order page's shipment form */
 }
 
 /* Simplified Chinese: Japanese fonts lack many Simplified glyphs. src/i18n/fonts.ts loads these on zh pages only. */
